@@ -43,7 +43,9 @@ jobs:
         with:
           sdk-version: 22621
       
-      - uses: jurplel/install-qt-action@v3.3.0
+      - uses: jdpurcell/install-qt-action@v5
+        env:
+           AQT_CONFIG: ${{ github.workspace }}/src/aqt-settings.ini
         with:
           version:      5.15.2
           host:         windows
