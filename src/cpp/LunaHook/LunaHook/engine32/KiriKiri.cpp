@@ -130,7 +130,6 @@ bool FindKiriKiriHook(DWORD fun, DWORD size, DWORD pt, DWORD flag) // jichi 10/2
                     hp.index = -0x2;
                     hp.split = regoffset(ecx);
                     hp.type = CODEC_UTF16 | NO_CONTEXT | USING_SPLIT | DATA_INDIRECT;
-                    ConsoleOutput("INSERT KiriKiri2");
                     if (!NewHook(hp, "KiriKiri2"))
                       return false;
 
@@ -168,7 +167,6 @@ bool FindKiriKiriHook(DWORD fun, DWORD size, DWORD pt, DWORD flag) // jichi 10/2
               hp.index = 0x14;
               hp.split = regoffset(eax);
               hp.type = CODEC_UTF16 | DATA_INDIRECT | USING_SPLIT | SPLIT_INDIRECT;
-              ConsoleOutput("INSERT KiriKiri1");
               if (!NewHook(hp, "KiriKiri1"))
                 return false;
               // 该函数为InternalDrawText
@@ -225,10 +223,6 @@ bool FindKiriKiriHook(DWORD fun, DWORD size, DWORD pt, DWORD flag) // jichi 10/2
           }
       // ConsoleOutput("KiriKiri: FAILED to find function entry");
     }
-  if (flag)
-    ConsoleOutput("KiriKiri2: failed");
-  else
-    ConsoleOutput("KiriKiri1: failed");
   return false;
 }
 
@@ -237,10 +231,6 @@ bool InsertKiriKiriHook() // 9/20/2014 jichi: change return type to bool
   bool k1 = FindKiriKiriHook((DWORD)GetGlyphOutlineW, processStopAddress - processStartAddress, processStartAddress, 0),     // KiriKiri1
       k2 = FindKiriKiriHook((DWORD)GetTextExtentPoint32W, processStopAddress - processStartAddress, processStartAddress, 1); // KiriKiri2
   // RegisterEngineType(ENGINE_KIRIKIRI);
-  if (k1 && k2)
-  {
-    ConsoleOutput("KiriKiri1: disable GDI hooks");
-  }
   return k1 || k2;
 }
 
@@ -1012,19 +1002,22 @@ namespace
     hp.split = hp.offset; // the same logic but diff value as KiriKiri1, use [ecx] as split
     hp.index = 0x14;      // the same as KiriKiri1
     hp.type = CODEC_UTF16 | DATA_INDIRECT | USING_SPLIT | SPLIT_INDIRECT;
-    ConsoleOutput("INSERT KiriKiriZ");
-    ConsoleOutput("KiriKiriZ: disable GDI hooks");
-    return NewHook(hp, "KiriKiriZ");
+    auto __ = NewHook(hp, "KiriKiriZ");
+    if (!__)
+    {
+      // https://vndb.org/r67025
+      // drm保护导致inlinehook失效
+      hp.type |= BREAK_POINT;
+      __ |= NewHook(hp, "KiriKiriZ");
+    }
+    return __;
   }
 
   bool InsertKiriKiriZHook1()
   {
     ULONG addr = MemDbg::findCallerAddressAfterInt3((DWORD)::GetGlyphOutlineW, processStartAddress, processStopAddress);
     if (!addr)
-    {
-      ConsoleOutput("KiriKiriZ1: could not find caller of GetGlyphOutlineW");
       return false;
-    }
 
     HookParam hp;
     hp.address = addr;
@@ -1036,14 +1029,9 @@ namespace
       DWORD addr = context->stack[0];                           // retaddr
       addr = MemDbg::findEnclosingAlignedFunction(addr, 0x400); // range is around 0x377c50 - 0x377a40 = 0x210
       if (!addr)
-      {
-        ConsoleOutput("KiriKiriZ: failed to find enclosing function");
         return;
-      }
       NewKiriKiriZHook(addr);
-      ConsoleOutput("KiriKiriZ1 inserted");
     };
-    ConsoleOutput("INSERT KiriKiriZ1 empty hook");
 
     return NewHook(hp, "KiriKiriZ Hook");
   }
@@ -1066,10 +1054,7 @@ namespace
     ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
     // GROWL_DWORD(addr);
     if (!addr)
-    {
-      ConsoleOutput("KiriKiriZ2: pattern not found");
       return false;
-    }
 
     // 012280e0   55               push ebp
     // 012280e1   8bec             mov ebp,esp
@@ -1079,13 +1064,9 @@ namespace
       push_ebp = 0x55
     }; // 011d4c80  /$ 55             push ebp
     if (!addr || *(BYTE *)addr != push_ebp)
-    {
-      ConsoleOutput("KiriKiriZ2: pattern found but the function offset is invalid");
       return false;
-    }
 
     NewKiriKiriZHook(addr);
-    ConsoleOutput("KiriKiriZ2 inserted");
     return true;
   }
 
@@ -1270,12 +1251,20 @@ namespace
     if (!addr)
       return false;
     auto succ = false;
-    HookParam hp = {};
+    HookParam hp;
     hp.address = addr;
     hp.offset = stackoffset(2);
     hp.type = CODEC_UTF16 | USING_STRING;
     hp.filter_fun = KiriKiri4Filter;
     return NewHook(hp, "KAGParser");
+  }
+  auto filterkrkrz(std::wstring &ws)
+  {
+    strReplace(ws, L"／");
+    strReplace(ws, L"　");
+    ws = re::sub(ws, LR"(\$r:(.*?),(.*?);)", L"$1");
+    ws = re::sub(ws, LR"(\$(.*?);)");
+    return ws;
   }
   bool krkrzx()
   {
@@ -1304,11 +1293,7 @@ namespace
       if (ws == last)
         return buffer->clear();
       last = ws;
-      strReplace(ws, L"／");
-      strReplace(ws, L"　");
-      ws = re::sub(ws, LR"(\$r:(.*?),(.*?);)", L"$1");
-      ws = re::sub(ws, LR"(\$(.*?);)");
-      buffer->from(ws);
+      buffer->from(filterkrkrz(ws));
     };
     return NewHook(hp, "KiriKiriZX");
   }
@@ -1686,12 +1671,55 @@ bool InsertKiriKiri4Hook()
   if (!addr)
     return false;
 
-  HookParam hp = {};
+  HookParam hp;
   hp.address = addr + sizeof(bytes) - 5;
   hp.offset = regoffset(edx);
   hp.type = NO_CONTEXT | CODEC_UTF16 | USING_STRING;
   hp.filter_fun = KiriKiri4Filter;
   return NewHook(hp, "KiriKiri4");
+}
+namespace
+{
+  bool krkrz2()
+  {
+    // すれ違う兄妹の壊れる倫理観
+    const BYTE bytes[] = {
+        0x3b, 0xd7,
+        0x73, 0x18,
+        0x0f, 0x1f, 0x80, 0x00, 0x00, 0x00, 0x00,
+        0x8b, 0x43, 0x38,
+        0x56,
+        0x8b, 0x00,
+        0xff, 0xd0,
+        0x03, 0xf0,
+        0x83, 0xc4, 0x04,
+        0x3b, 0xf7,
+        0x72, XX,
+        0x8b, 0x43, 0x4c,
+        0x8b, 0xce,
+        0x48,
+        0x83, 0xf8, 0x04,
+        0x0f, 0x87, XX4,
+        0xff, 0x24, 0x85, XX4};
+    ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
+    if (!addr)
+      return false;
+    addr = MemDbg::findEnclosingAlignedFunction(addr);
+    if (!addr)
+      return false;
+    HookParam hp;
+    hp.address = addr;
+    hp.offset = regoffset(edx);
+    hp.type = CODEC_UTF16 | USING_STRING;
+    hp.filter_fun = [](TextBuffer *buffer, HookParam *)
+    {
+      static int idx;
+      if (idx++ % 2 == 0)
+        return buffer->clear();
+      buffer->from(filterkrkrz(buffer->strW()));
+    };
+    return NewHook(hp, "krkrz2");
+  }
 }
 bool KiriKiri::attach_function()
 {
@@ -1703,7 +1731,7 @@ bool KiriKiri::attach_function()
     // else if (Util::CheckFile(L"plugin\\KAGParserEx.dll"))
     //  InsertKAGParserExHook();
     bool krz = Private::attach(processStartAddress, processStopAddress);
-    if (InsertKiriKiriZHook() || krz)
+    if (InsertKiriKiriZHook() || krkrz2() || krz)
       return true;
   }
   bool b1 = attachkr2(processStartAddress, processStopAddress);

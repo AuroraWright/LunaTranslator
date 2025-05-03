@@ -1594,13 +1594,13 @@ namespace
       return false;
     //[241227] [とこはな] エロ漫画お姉ちゃん！！ ～ダメダメな姉との甘々コスプレえっちな日々～
     addr = addr + 5 + *(int *)(addr + 1);
-    HookParam hp = {};
+    HookParam hp;
     hp.address = addr;
     hp.type = CODEC_UTF16 | USING_STRING | USING_SPLIT | EMBED_ABLE;
     hp.embed_hook_font = F_GetGlyphOutlineW;
     hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
-      buffer->from(((TextUnionW *)context->ecx)->getText());
+      buffer->from(((TextUnionW *)context->ecx)->view());
       *split = context->ebx;
     };
     hp.embed_fun = [](hook_context *context, TextBuffer buffer)

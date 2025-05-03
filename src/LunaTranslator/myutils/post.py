@@ -199,15 +199,7 @@ def _4_f(line):
 
 def _6_fEX(line: str):
     white = getlangsrc().space
-    while True:
-        curr = line
-        for _ in "\r\n\u2928\u2029":
-            line = line.replace(_ + " ", " ").replace(" " + _, " ")
-        if line == curr:
-            break
-
-    line = re.sub(r"[\r\n\u2928\u2029]+", white, line)
-
+    line = white.join(sec for sec in line.splitlines() if sec)
     return line
 
 
@@ -350,7 +342,7 @@ def POSTSOLVE(line, isEx=False):
         return ""
     useranklist = globalconfig["postprocess_rank"]
     usedpostprocessconfig = postprocessconfig
-    usemypostpath = "./userconfig/mypost.py"
+    usemypostpath = "userconfig/mypost.py"
     usemodule = "mypost"
     try:
 
@@ -367,7 +359,7 @@ def POSTSOLVE(line, isEx=False):
                     "posts."
                     + savehook_new_data[gameuid]["save_text_process_info"]["mypost"]
                 )
-                usemypostpath = "./userconfig/posts/{}.py".format(
+                usemypostpath = "userconfig/posts/{}.py".format(
                     savehook_new_data[gameuid]["save_text_process_info"]["mypost"]
                 )
     except:

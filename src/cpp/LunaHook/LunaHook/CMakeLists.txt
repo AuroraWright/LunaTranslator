@@ -25,14 +25,14 @@ else()
 		ShinyDaysGame MarineHeart ShinaRio CaramelBox UnisonShift Escude Ryokucha Alice Footy2
 		utawarerumono System4x Abalone Abel 5pb HorkEye XUSE Leaf Nekopack AXL AGS AdobeFlash10
 		FocasLens Tamamo Ages3ResT H_do_C RScript TYPEMOON TAKUYO MixwillSoft MerRouge GROOVER
-		SmartAdv Hug GJ)
+		SmartAdv Hug GJ Pinpai)
 	set(enginepath "engine32")
 	set(collector "enginecollection32.cpp")
 endif()
 string(REPLACE ";" ".cpp;${enginepath}/" enginessrc "${enginessrc}")
-#message("${enginessrc}")
+
 set(enginessrc "${enginepath}/${enginessrc}.cpp")
-message("${enginessrc}")
+
 set_source_files_properties(${enginessrc} PROPERTIES SOURCE_ENCODING "UTF-8")
 
 
@@ -66,3 +66,5 @@ set_target_properties(LunaHook PROPERTIES OUTPUT_NAME "LunaHook${bitappendix}")
 target_link_libraries(LunaHook lang_hook VERSION_DEF Version httpapi ws2_32 Shlwapi pch minhook commonengine utils ${YY_Thunks})
 
 target_link_options(LunaHook PRIVATE "/DELAYLOAD:httpapi.dll")
+target_link_options(LunaHook PRIVATE "/DELAYLOAD:WS2_32.dll")
+target_link_options(LunaHook PRIVATE "/DELAYLOAD:VERSION.dll")

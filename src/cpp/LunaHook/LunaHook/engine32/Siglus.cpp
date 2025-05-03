@@ -1567,7 +1567,7 @@ bool InsertSiglus4Hook()
   {
     // 写回有乱码
     auto textu = (TextUnionW *)(context->ecx + 4);
-    buffer->from(textu->getText(), textu->size * 2);
+    buffer->from(textu->view());
   }
 
   // jichi: 8/17/2013: Change return type to bool
@@ -1759,7 +1759,7 @@ namespace
         auto arg = (TextUnionW *)(type_ == Type1 ? s->ecx : s->stack[1]);
         if (!arg || !arg->isValid())
           return;
-        buffer->from(arg->getText(), arg->size * 2);
+        buffer->from(arg->view());
       }
       void hookafter(hook_context *s, TextBuffer buffer)
       {
@@ -1796,10 +1796,10 @@ namespace OtherHook
       auto arg = (TextUnionW *)s->stack[0];
       if (!arg || !arg->isValid())
         return;
-
-      LPCWSTR text = arg->getText();
+      auto vw = arg->view();
+      LPCWSTR text = vw.data();
       // Skip all ascii
-      if (!text || !*text || *text <= 127 || arg->size > 1500) // there could be garbage
+      if (!text || !*text || *text <= 127 || vw.size() > 1500) // there could be garbage
         return;
 
       *role = Engine::OtherRole;
@@ -1821,7 +1821,7 @@ namespace OtherHook
       }
       // auto sig = Engine::hashThreadSignature(role, split);
 
-      buffer->from(text, arg->size * 2);
+      buffer->from(vw);
       //           newText = EngineController::instance()->dispatchTextWSTD(oldText, role, sig);
     }
     void hookafter2(hook_context *s, TextBuffer buffer)

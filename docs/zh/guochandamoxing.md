@@ -29,23 +29,13 @@
 
 == OpenAI
 
-**API接口地址** `https://api.openai.com/v1` 
-
 **API Key** https://platform.openai.com/api-keys
-
-**model** https://platform.openai.com/docs/models
 
 == Gemini
 
-**API接口地址** `https://generativelanguage.googleapis.com`
-
 **API Key** https://aistudio.google.com/app/apikey
 
-**model** https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
-
 == claude
-
-**API接口地址** `https://api.anthropic.com/v1/messages`
 
 **API Key** https://console.anthropic.com/
 
@@ -53,41 +43,24 @@
 
 == cohere
 
-**API接口地址** `https://api.cohere.ai/compatibility/v1`
-
 **API Key** https://dashboard.cohere.com/api-keys
 
-**model** https://docs.cohere.com/docs/models
-
 == x.ai
-
-**API接口地址** `https://api.x.ai/`
 
 **API Key** https://console.x.ai/
 
 == groq
 
-**API接口地址** `https://api.groq.com/openai/v1/chat/completions`
-
 **API Key** https://console.groq.com/keys
-
-**model** https://console.groq.com/docs/models 填写`Model ID`
 
 == OpenRouter
 
-**API接口地址** `https://openrouter.ai/api/v1/chat/completions`
-
 **API Key** https://openrouter.ai/settings/keys
 
-**model** https://openrouter.ai/docs/models
 
 == Mistral AI
 
-**API接口地址** `https://api.mistral.ai/v1/chat/completions`
-
 **API Key** https://console.mistral.ai/api-keys/
-
-**model** https://docs.mistral.ai/getting-started/models/
 
 == Azure
 
@@ -97,17 +70,15 @@
 
 == deepinfra
 
-**API接口地址** `https://api.deepinfra.com/v1/openai/chat/completions` 
-
 **API Key** https://deepinfra.com/dash/api_keys
 
 == cerebras
 
-**API接口地址** `https://api.cerebras.ai/v1/chat/completions` 
-
-**model** 支持`llama3.1-8b` `llama3.1-70b` `llama-3.3-70b`
-
 **API Key** https://cloud.cerebras.ai/  ->  API Keys
+
+== Chutes
+
+**API Key** https://chutes.ai/app/api
 
 :::
 
@@ -117,23 +88,15 @@
 
 == DeepSeek
 
-**API接口地址** `https://api.deepseek.com`
-
 **API Key** https://platform.deepseek.com/api_keys
 
-**model** https://platform.deepseek.com/api-docs/zh-cn/pricing
-
 == 阿里云百炼大模型
-
-**API接口地址** `https://dashscope.aliyuncs.com/compatible-mode/v1`
 
 **API Key** https://bailian.console.aliyun.com/?apiKey=1#/api-key
 
 **model** https://help.aliyun.com/zh/model-studio/getting-started/models
 
-== 字节跳动豆包大模型
-
-**API接口地址** `https://ark.cn-beijing.volces.com/api/v3`
+== 字节跳动火山引擎
 
 **API Key** [创建API Key](https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D)获取
 
@@ -144,47 +107,27 @@
 
 == 月之暗面
 
-**API接口地址** `https://api.moonshot.cn`
-
 **API Key** https://platform.moonshot.cn/console/api-keys
-
-**model** https://platform.moonshot.cn/docs/intro
 
 == 智谱AI
 
-**API接口地址** `https://open.bigmodel.cn/api/paas/v4/chat/completions`
-
 **API Key** https://bigmodel.cn/usercenter/apikeys
-
-**model** https://bigmodel.cn/dev/howuse/model
 
 == 零一万物
 
-**API接口地址** `https://api.lingyiwanwu.com`
-
 **API Key** https://platform.lingyiwanwu.com/apikeys
 
-**model** https://platform.lingyiwanwu.com/docs/api-reference#list-models
- 
 == 硅基流动
-
-**API接口地址** `https://api.siliconflow.cn`
 
 **API Key** https://cloud-hk.siliconflow.cn/account/ak
 
-**model** https://docs.siliconflow.cn/docs/model-names
-
 == 讯飞星火大模型
-
-**API接口地址** `https://spark-api-open.xf-yun.com/v1`
 
 **API Key** 参考[官方文档](https://www.xfyun.cn/doc/spark/HTTP%E8%B0%83%E7%94%A8%E6%96%87%E6%A1%A3.html#_3-%E8%AF%B7%E6%B1%82%E8%AF%B4%E6%98%8E)获取**APIKey**和**APISecret**后，按照**APIKey:APISecret**的格式填入
 
 **model** https://www.xfyun.cn/doc/spark/HTTP%E8%B0%83%E7%94%A8%E6%96%87%E6%A1%A3.html#_3-2-%E8%AF%B7%E6%B1%82%E5%8F%82%E6%95%B0
 
 == 腾讯混元大模型
-
-**API接口地址** `https://api.hunyuan.cloud.tencent.com/v1`
 <!-- 
 **SecretId** & **SecretKey** https://console.cloud.tencent.com/cam/capi -->
 **API Key** 参考[官方文档](https://cloud.tencent.com/document/product/1729/111008)
@@ -192,8 +135,6 @@
 **model** https://cloud.tencent.com/document/product/1729/97731
 
 == 百度千帆大模型
-
-**API接口地址** `https://qianfan.baidubce.com/v2`
 
 **API Key** https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Um2wxbaps
 
@@ -204,10 +145,6 @@
 
 == MiniMax
 
-**API接口地址** `https://api.minimax.chat/v1`
-
 **API Key** https://platform.minimaxi.com/document/Fast%20access?key=66701cf51d57f38758d581b2
-
-**model** https://platform.minimaxi.com/document/Models?key=66701cb01d57f38758d581a4
 
 :::

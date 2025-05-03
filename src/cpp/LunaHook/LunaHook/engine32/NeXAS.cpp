@@ -345,7 +345,6 @@ bool InsertNeXASHookA()
   // hp.split = stackoffset(3); //虽然可以将人名分开，但也会把一个句子点击快进的文本也给分开，还不如不分。
   // hp.split = arg7_lpmat2; // = 0x18, arg7
 
-  ConsoleOutput("INSERT NeXAS");
   return NewHook(hp, "NeXAS");
 }
 struct nexassomeinfo
@@ -454,17 +453,21 @@ namespace
       return false;
     auto addr = MemDbg::findPushAddress(aV, processStartAddress, processStopAddress);
     if (!addr)
-      return 0;
+      return false;
     addr = MemDbg::findEnclosingAlignedFunction(addr);
     if (!addr)
-      return 0;
+      return false;
+    // 彼女はオレからはなれない
+    // 这个地址不正确，跳过。
+    if (*(BYTE *)addr == 0x10)
+      return false;
     HookParam hp;
     hp.address = addr;
     hp.type = USING_STRING;
     hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
       auto a2 = (TextUnionA *)context->stack[1]; // std::string*
-      buffer->from(a2->getText());
+      buffer->from(a2->view());
     };
     hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
     {
@@ -484,7 +487,7 @@ namespace
       }
     };
     hp.lineSeparator = L"@n";
-    return NewHook(hp, "NeXAS3");
+    return NewHook(hp, "NeXAS4");
   }
 }
 namespace
@@ -509,7 +512,7 @@ namespace
     hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
       auto _ = (TextUnionA *)context->eax;
-      buffer->from(_->getText(), _->size);
+      buffer->from(_->view());
     };
     hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
     {
