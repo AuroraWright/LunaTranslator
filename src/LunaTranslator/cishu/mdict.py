@@ -257,7 +257,7 @@ class mdict(cishubase):
         self.builders = []
         self.dedump = set()
         for f in self.config["paths"]:
-            if f.strip() == "":
+            if not f.strip():
                 continue
             if not os.path.exists(f):
                 continue
@@ -675,7 +675,7 @@ function safe_mdict_search_word(word){
             return
 
         class everydict(DictTree):
-            def __init__(self, ref, f, index: IndexBuilder) -> None:
+            def __init__(self, ref: "mdict", f, index: IndexBuilder) -> None:
                 self.f = f
                 self.index = index
                 self.ref = ref
@@ -687,10 +687,10 @@ function safe_mdict_search_word(word){
                 return sorted(list(set(self.index.get_mdx_keys("*"))))
 
         class DictTreeRoot(DictTree):
-            def __init__(self, ref) -> None:
+            def __init__(self, ref: "mdict") -> None:
                 self.ref = ref
 
-            def childrens(self):
+            def childrens(self) -> "list[DictTree]":
                 saves = []
                 for f, index in self.ref.builders:
                     saves.append(

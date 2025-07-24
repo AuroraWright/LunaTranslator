@@ -1,9 +1,8 @@
 ﻿// Magpie\AdaptersService.cpp
 #ifndef WINXP
 #include <dxgi1_6.h>
-#include <d3d11_4.h>
 #else
-#include "xp_dxgi.h"
+#include "../xpundef/xp_dxgi.h"
 #endif
 struct AdapterInfo
 {
@@ -236,13 +235,18 @@ bool AdaptersService::_GatherAdapterInfos(
     Win32Helper::RunParallel([&](uint32_t i)
                              {
 		D3D_FEATURE_LEVEL fl = D3D_FEATURE_LEVEL_11_0;
-		if (SUCCEEDED(D3D11CreateDevice(adapters[i], D3D_DRIVER_TYPE_UNKNOWN,
+		if (FAILED(D3D11CreateDevice(adapters[i], D3D_DRIVER_TYPE_UNKNOWN,
 			NULL, 0, &fl, 1, D3D11_SDK_VERSION, nullptr, nullptr, nullptr))) {
 			std::unique_lock _(lock);
-			compatibleAdapterInfos.push_back(std::move(adapterInfos[i]));
+			adapterInfos[i].idx = std::numeric_limits<uint32_t>::max();
 		} }, (uint32_t)adapters.size());
-
-    _adapterInfos = std::move(compatibleAdapterInfos);
+    adapterInfos.erase(
+        std::remove_if(adapterInfos.begin(), adapterInfos.end(),
+                       [](const AdapterInfo &info)
+                       {
+                           return info.idx == std::numeric_limits<uint32_t>::max();
+                       }),
+        adapterInfos.end());
     AdaptersChanged();
     return true;
 }

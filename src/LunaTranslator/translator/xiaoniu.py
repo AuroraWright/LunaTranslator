@@ -1,11 +1,7 @@
 from translator.basetranslator import basetrans
 
-from language import Languages
-
 
 class TS(basetrans):
-    def langmap(self):
-        return {Languages.TradChinese: "cht"}
 
     def translate(self, query):
         self.checkempty(["apikey"])
@@ -20,7 +16,6 @@ class TS(basetrans):
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "none",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53",
         }
 
         params = {

@@ -121,7 +121,7 @@ void NewLineCharToSpaceFilterA(TextBuffer *buffer, HookParam *)
 }
 void all_ascii_Filter(TextBuffer *buffer, HookParam *)
 {
-  if (all_ascii((char *)buffer->buff, buffer->size))
+  if (all_ascii(buffer->viewA()))
     buffer->clear();
 }
 
@@ -156,8 +156,9 @@ std::wstring &remapkatakana(std::wstring &ws)
 {
   for (auto &c : ws)
   {
-    if (katakanaMap.find(c) != katakanaMap.end())
-      c = katakanaMap[c];
+    auto found = katakanaMap.find(c);
+    if (found != katakanaMap.end())
+      c = found->second;
   }
   return ws;
 }

@@ -11,7 +11,6 @@ class TS(basetrans):
             Languages.Korean: "kor",
             Languages.French: "fra",
             Languages.Japanese: "jp",
-            Languages.TradChinese: "cht",
             Languages.Vietnamese: "vie",
             Languages.Ukrainian: "ukr",
             Languages.Arabic: "ara",
@@ -32,7 +31,6 @@ class TS(basetrans):
             "Sec-Fetch-Site": "same-origin",
             "Sec-Fetch-User": "?1",
             "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "sec-ch-ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": '"Windows"',
@@ -65,7 +63,6 @@ class TS(basetrans):
         headers = {
             "sec-ch-ua-platform": '"Windows"',
             "Referer": "https://fanyi.baidu.com/mtpe-individual/multimodal",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
             "sec-ch-ua": '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
             "sec-ch-ua-mobile": "?0",
         }
@@ -87,7 +84,6 @@ class TS(basetrans):
         headers = {
             "sec-ch-ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
             "sec-ch-ua-mobile": "?0",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "accept": "text/event-stream",
             #'Acs-Token':
             "Referer": "https://fanyi.baidu.com/mtpe-individual/multimodal",
@@ -121,14 +117,12 @@ class TS(basetrans):
             "https://fanyi.baidu.com/ait/text/translate",
             headers=headers,
             json=json_data,
-            stream=True,
         )
-
-        for text in response.iter_lines():
+        for text in response.text.splitlines():
             # print(text,text[:5]!=b'data:',text[:5],b'data:')
-            if len(text) == 0 or text[:5] != b"data:":
+            if len(text) == 0 or text[:5] != "data:":
                 continue
-            js = json.loads(text[5:].decode("utf8"))
+            js = json.loads(text[5:])
             if js["data"] is None:
                 continue
             event = js["data"]["event"]

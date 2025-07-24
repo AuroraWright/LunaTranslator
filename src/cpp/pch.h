@@ -3,6 +3,12 @@
 #define NOMINMAX
 #define _CRT_STDIO_ARBITRARY_WIDE_SPECIFIERS 1
 #include <windows.h>
+
+#ifndef E_BOUNDS
+#define E_BOUNDS _HRESULT_TYPEDEF_(0x8000000BL)
+#endif
+
+#include <winternl.h>
 #include <Shobjidl.h>
 #include <malloc.h>
 #include <initguid.h>
@@ -16,6 +22,7 @@
 #include <variant>
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 #include <functional>
@@ -45,9 +52,7 @@
 #include <winbase.h>
 #include <wincon.h>
 
-#include <sapi.h>
 #include <stdio.h>
-#include <sphelper.h>
 
 #include <windowsx.h>
 #include <commctrl.h>
@@ -75,11 +80,8 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
-#pragma comment(lib, "shlwapi.lib")
-#pragma comment(lib, "winmm.lib")
-#pragma comment(lib, "Psapi.lib")
-#pragma comment(lib, "Version.lib")
 
 #include "common.hpp"
+#include "common2.hpp"
 
 #define DECLARE_API extern "C" __declspec(dllexport)

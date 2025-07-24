@@ -12,22 +12,13 @@ from myutils.hwnd import grabwindow, getExeIcon
 from gui.usefulwidget import (
     saveposwindow,
     makesubtab_lazy,
+    request_delete_ok,
     mayberelpath,
     IconButton,
     auto_select_webview,
 )
 from gui.dynalang import LAction
 from gui.markdownhighlighter import MarkdownHighlighter
-
-
-class QMenuEx(QMenu):
-    def __init__(self, *a, **k):
-        super().__init__(*a, **k)
-        self.left = True
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        self.left = event.button() == Qt.MouseButton.LeftButton
-        super().mouseReleaseEvent(event)
 
 
 class HtmlPlainTextEdit(QTextEdit):
@@ -44,7 +35,7 @@ class HtmlPlainTextEdit(QTextEdit):
         custom_action.triggered.connect(self.handle_custom_action)
         menu.addAction(custom_action)
 
-        menu.exec_(event.globalPos())
+        menu.exec(event.globalPos())
 
     def handle_custom_action(self):
         self.insertPlainText(NativeUtils.ClipBoard.text)
@@ -52,13 +43,14 @@ class HtmlPlainTextEdit(QTextEdit):
     def __init__(self, ref: str):
         self.ref = os.path.dirname(ref)
         super().__init__()
+        try:
+            self.setTabStopDistance(self.fontMetrics().size(0, " ").width() * 8)
+        except:
+            self.setTabStopWidth(self.fontMetrics().size(0, " ").width() * 8)
         self.upper_shortcut = QShortcut(QKeySequence("Ctrl+Shift+V"), self)
         self.upper_shortcut.activated.connect(self.handle_custom_action)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.hl = MarkdownHighlighter(self)
-        fn = os.path.join(os.path.dirname(__file__), "markdownhighlighter.theme.json")
-        with open(fn, "r") as ff:
-            self.hl.setTheme(json.load(ff)["solarized"])
 
     def createMimeDataFromSelection(self) -> QMimeData:
         mime_data = super().createMimeDataFromSelection()
@@ -229,6 +221,20 @@ class editswitchTextBrowserEx(QWidget):
     def text(self):
         return self.editstack.toPlainText()
 
+    @property
+    def sourcefile(self):
+        if self.readoreditstack.currentIndex() == 1:
+            return self.cache
+        else:
+            return self.fn
+
+    def sourcefileopen(self):
+        f = self.sourcefile
+        if not os.path.isfile(f):
+            with open(f, "w") as ff:
+                pass
+        os.startfile(f)
+
 
 @Singleton
 class dialog_memory(saveposwindow):
@@ -248,18 +254,18 @@ class dialog_memory(saveposwindow):
         if os.path.isfile(rwpath):
             try:
                 os.rename(rwpath, os.path.join(self.rwpath, "0.html"))
-                self.config.append({"title": "0", "file": "0.html"})
+                self.config.append({"title": "  0  ", "file": "0.html"})
             except:
                 pass
 
     def createview(self, config: dict, i, lay: QHBoxLayout):
 
-        fn = os.path.join(self.rwpath, config.get("file", str(i) + ".html"))
+        fn = os.path.join(self.rwpath, config.get("file", str(i) + ".md"))
         showtext = editswitchTextBrowserEx(self, fn, config)
         lay.addWidget(showtext)
 
     def createnewconfig(self, i):
-        self.config.insert(i, {"file": str(i) + ".html", "title": str(i)})
+        self.config.insert(i, {"file": str(i) + ".md", "title": "  {}  ".format(i)})
         self.saveconfig()
         return self.config[i]
 
@@ -276,7 +282,7 @@ class dialog_memory(saveposwindow):
     def gameuid(self):
         if self._gameuid:
             return self._gameuid
-        return 0 if self.xx else gobject.baseobject.gameuid
+        return 0 if self.xx else gobject.base.gameuid
 
     def __init__(self, parent, x=False, gameuid=None) -> None:
         self.xx = x
@@ -287,6 +293,7 @@ class dialog_memory(saveposwindow):
             | Qt.WindowType.WindowMinMaxButtonsHint,
             poslist=globalconfig["memorydialoggeo"],
         )
+        self.show()
         self.setWindowTitle(
             "备忘录"
             + (
@@ -307,13 +314,20 @@ class dialog_memory(saveposwindow):
         self.buttonslayout.setSpacing(0)
         self.btnplus = IconButton(parent=self, icon="fa.plus")
         self.btnplus.clicked.connect(self._plus)
-        self.switch = IconButton(parent=self, icon="fa.edit", checkable=True)
+        self.switch = IconButton(
+            parent=self, icon="fa.edit", checkable=True, tips="编辑_/_查看"
+        )
         self.switch.setChecked(True)
         self.switch.clicked.connect(self.switchreadonly)
-        self.insertpicbtn = IconButton(parent=self, icon="fa.picture-o")
-        self.insertaudiobtn = IconButton(parent=self, icon="fa.music")
-        self.insertaudiobtnisrecoding = False
-        self.textbtn = IconButton(parent=self, icon="fa.text-height")
+        self.insertpicbtn = IconButton(
+            parent=self, icon="fa.picture-o", tips="插入图片"
+        )
+        self.insertaudiobtn = IconButton(parent=self, icon="fa.music", tips="插入音频")
+        self.textbtn = IconButton(parent=self, icon="fa.text-height", tips="插入文本")
+        openfile = IconButton(parent=self, icon="fa.external-link", tips="打开文件")
+        openfile.clicked.connect(lambda: self.editororview.sourcefileopen())
+        self.buttonslayout.addWidget(openfile)
+        self.buttonslayout.addWidget(IconButton(None))
         self.buttonslayout.addWidget(self.textbtn)
         self.buttonslayout.addWidget(self.insertaudiobtn)
         self.buttonslayout.addWidget(self.insertpicbtn)
@@ -328,6 +342,7 @@ class dialog_memory(saveposwindow):
                 for i, _ in enumerate(self.config)
             ),
         )
+        self.is_recording = False
         self.tab.setUpdatesEnabled(True)
         self.tab.currentChanged.connect(self._add_trace)
         self.tab.tabBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -336,13 +351,14 @@ class dialog_memory(saveposwindow):
         self.tab.setCornerWidget(self.btnplus, Qt.Corner.TopLeftCorner)
         self.setCentralWidget(self.tab)
         self._add_trace(0)
-        self.show()
 
-    def startorendrecord(self, btn: QPushButton, idx):
-        if idx:
+    def startorendrecord(self):
+        if not self.is_recording:
+            self.is_recording = True
             try:
 
                 def safestop(recored: loopbackrecorder):
+                    self.is_recording = False
                     recored.stop()
 
                 self.recorders = loopbackrecorder()
@@ -350,9 +366,9 @@ class dialog_memory(saveposwindow):
             except Exception as e:
                 self.recorders = None
                 QMessageBox.critical(self, _TR("错误"), str(e))
-                btn.click()
-                return
+                self.insertaudiobtn.click()
         else:
+            self.is_recording = False
             if not self.recorders:
                 return
             file = self.recorders.stop_save()
@@ -360,11 +376,10 @@ class dialog_memory(saveposwindow):
             self.audiocallback(file)
 
     def AudioSelect(self):
-        if self.insertaudiobtnisrecoding:
-            self.startorendrecord(self.insertaudiobtn, False)
-            self.insertaudiobtnisrecoding = False
+        if self.is_recording:
+            self.startorendrecord()
             return
-        menu = QMenuEx(self)
+        menu = QMenu(self)
         record = LAction("录音", menu)
         audio = LAction("音频", menu)
         record.setIcon(qtawesome.icon("fa.microphone"))
@@ -373,8 +388,7 @@ class dialog_memory(saveposwindow):
         menu.addAction(audio)
         action = menu.exec(QCursor.pos())
         if action == record:
-            self.insertaudiobtnisrecoding = True
-            self.startorendrecord(self.insertaudiobtn, True)
+            self.startorendrecord()
             self.insertaudiobtn.setIcon(qtawesome.icon("fa.stop"))
         elif action == audio:
             f = QFileDialog.getOpenFileName()
@@ -393,32 +407,42 @@ class dialog_memory(saveposwindow):
         self.editor.insertPlainText(html)
 
     def Picselect(self):
-        menu = QMenuEx(self)
+        menu = QMenu(self)
         crop = LAction("截图", menu)
-        crophwnd = LAction("窗口截图", menu)
+        crop2 = LAction("隐藏并截图", menu)
+        crophwnd = LAction("窗口截图_gdi", menu)
+        crophwnd2 = LAction("窗口截图_winrt", menu)
         select = LAction("图片", menu)
         crop.setIcon(qtawesome.icon("fa.crop"))
+        crop2.setIcon(qtawesome.icon("fa.crop"))
         crophwnd.setIcon(qtawesome.icon("fa.camera"))
+        crophwnd2.setIcon(qtawesome.icon("fa.camera"))
         select.setIcon(qtawesome.icon("fa.folder-open"))
         menu.addAction(crop)
+        menu.addAction(crop2)
         menu.addAction(crophwnd)
+        menu.addAction(crophwnd2)
         menu.addAction(select)
         action = menu.exec(QCursor.pos())
         if action == crop:
-            self.crophide(not menu.left)
+            self.crophide()
+        elif action == crop2:
+            self.crophide(s=True)
         elif action == crophwnd:
-            grabwindow(getimageformat(), self.cropcallback, usewgc=menu.left)
+            grabwindow(getimageformat(), self.cropcallback, usewgc=False)
+        elif action == crophwnd2:
+            grabwindow(getimageformat(), self.cropcallback, usewgc=True)
         elif action == select:
             f = QFileDialog.getOpenFileName(filter=getimagefilefilter())
             res = f[0]
             self.cropcallback(res)
 
     def crophide(self, s=False):
-        currpos = gobject.baseobject.translation_ui.pos()
+        currpos = gobject.base.translation_ui.pos()
         currpos2 = self.window().pos()
         if s:
             self.window().move(-9999, -9999)
-            gobject.baseobject.translation_ui.move(-9999, -9999)
+            gobject.base.translation_ui.move(-9999, -9999)
 
         def ocroncefunction(rect, img=None):
             if not img:
@@ -432,7 +456,7 @@ class dialog_memory(saveposwindow):
         def __ocroncefunction(rect, img=None):
             ocroncefunction(rect, img=img)
             if s:
-                gobject.baseobject.translation_ui.move(currpos)
+                gobject.base.translation_ui.move(currpos)
                 self.window().move(currpos2)
 
         rangeselct_function(__ocroncefunction)
@@ -455,14 +479,12 @@ class dialog_memory(saveposwindow):
         menu.addAction(origin_hira)
         action = menu.exec(QCursor.pos())
         if action == origin:
-            self.__wrap(gobject.baseobject.currenttext)
+            self.__wrap(gobject.base.currenttext)
         elif action == ts:
-            self.__wrap(gobject.baseobject.currenttranslate)
+            self.__wrap(gobject.base.currenttranslate)
         elif action == origin_hira:
             self.__wrap(
-                mecab.makerubyhtml(
-                    gobject.baseobject.parsehira(gobject.baseobject.currenttext)
-                )
+                mecab.makerubyhtml(gobject.base.parsehira(gobject.base.currenttext))
             )
 
     def __wrap(self, t: str):
@@ -486,7 +508,7 @@ class dialog_memory(saveposwindow):
     def _plus(self):
         index = self.tab.count()
         W = QWidget()
-        self.tab.addTab(W, str(index))
+        self.tab.addTab(W, "  {}  ".format(index))
         lay = QVBoxLayout(W)
         lay.setContentsMargins(0, 0, 0, 0)
         config = self.createnewconfig(index)
@@ -514,16 +536,26 @@ class dialog_memory(saveposwindow):
         if index == -1:
             return
         menu = QMenu(self)
+        openfile = LAction("打开文件", menu)
         rename = LAction("重命名", menu)
         rm = LAction("删除", menu)
+        file = self.config[index].get("file")
+        file = os.path.join(self.rwpath, file)
+        if not self.switch.isChecked():
+            file += ".cache.html"
+        if os.path.isfile(file):
+            menu.addAction(openfile)
         menu.addAction(rename)
         menu.addAction(rm)
         action = menu.exec(QCursor.pos())
         if action == rm:
-            self.config.pop(index)
-            self.tab.removeTab(index)
-            self.saveconfig()
+            if request_delete_ok(self, "6c747420-4d9a-4f0b-a428-13872da35597"):
+                self.config.pop(index)
+                self.tab.removeTab(index)
+                self.saveconfig()
 
+        elif action == openfile:
+            os.startfile(file)
         elif action == rename:
             before = self.tab.tabText(index)
             __d = {"k": before}

@@ -5,9 +5,13 @@
 #include <windows.foundation.collections.h>
 #include <windows.globalization.h>
 #include <windows.media.ocr.h>
+#else
+#include "../../xpundef/xp_winrt.hpp"
+#endif
+#include "hstring.hpp"
+
 using ABI::Windows::Foundation::AsyncStatus;
 using ABI::Windows::Foundation::GetActivationFactory;
-using ABI::Windows::Foundation::IAsyncOperation;
 using ABI::Windows::Foundation::IAsyncOperationCompletedHandler;
 using ABI::Windows::Foundation::Collections::IVectorView;
 using ABI::Windows::Globalization::ILanguage;
@@ -28,10 +32,7 @@ using ABI::Windows::Media::Ocr::OcrLine;
 using ABI::Windows::Media::Ocr::OcrResult;
 using ABI::Windows::Media::Ocr::OcrWord;
 using ABI::Windows::Storage::Streams::IRandomAccessStream;
-#else
-#include "xp.hpp"
-#endif
-#include "hstring.hpp"
+
 template <class OperationT, class HandlerT, class ResultT>
 struct CompleteCallback : ComImpl<HandlerT>
 {
@@ -61,8 +62,8 @@ HRESULT await(OperationT *pAsync, ResultT **ppResult)
 static HRESULT CreateLanguage(ILanguage **language, LPCWSTR Lang)
 {
     CComPtr<ILanguageFactory> language_factory;
-    CHECK_FAILURE(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Globalization_Language), &language_factory));
-    CHECK_FAILURE(language_factory->CreateLanguage(AutoHStringRef(Lang), language));
+    CHECK_FAILURE(GetActivationFactory(AutoHString(RuntimeClass_Windows_Globalization_Language), &language_factory));
+    CHECK_FAILURE(language_factory->CreateLanguage(AutoHString(Lang), language));
     return S_OK;
 }
 DECLARE_API bool winrt_OCR_check_language_valid(LPCWSTR Lang)
@@ -73,7 +74,7 @@ DECLARE_API bool winrt_OCR_check_language_valid(LPCWSTR Lang)
         CComPtr<ILanguage> language;
         CHECK_FAILURE(CreateLanguage(&language, Lang));
         CComPtr<IOcrEngineStatics> engine_factory;
-        CHECK_FAILURE(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Media_Ocr_OcrEngine), &engine_factory))
+        CHECK_FAILURE(GetActivationFactory(AutoHString(RuntimeClass_Windows_Media_Ocr_OcrEngine), &engine_factory))
         CHECK_FAILURE(engine_factory->IsLanguageSupported(language, &is_supported));
         return S_OK;
     }();
@@ -84,7 +85,7 @@ DECLARE_API bool winrt_OCR_check_language_valid(LPCWSTR Lang)
 DECLARE_API void winrt_OCR_get_AvailableRecognizerLanguages(void (*cb)(LPCWSTR, LPCWSTR))
 {
     CComPtr<IOcrEngineStatics> engine_factory;
-    CHECK_FAILURE_NORET(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Media_Ocr_OcrEngine), &engine_factory))
+    CHECK_FAILURE_NORET(GetActivationFactory(AutoHString(RuntimeClass_Windows_Media_Ocr_OcrEngine), &engine_factory))
     CComPtr<IVectorView<Language *>> languages;
     CHECK_FAILURE_NORET(engine_factory->get_AvailableRecognizerLanguages(&languages));
     UINT size;
@@ -93,7 +94,7 @@ DECLARE_API void winrt_OCR_get_AvailableRecognizerLanguages(void (*cb)(LPCWSTR, 
     {
         CComPtr<ILanguage> language;
         CHECK_FAILURE_CONTINUE(languages->GetAt(i, &language));
-        AutoHStringRef LanguageTag, DisplayName;
+        AutoHString LanguageTag, DisplayName;
         CHECK_FAILURE_CONTINUE(language->get_LanguageTag(&LanguageTag));
         CHECK_FAILURE_CONTINUE(language->get_DisplayName(&DisplayName));
         cb(LanguageTag, DisplayName);
@@ -104,7 +105,7 @@ DECLARE_API void winrt_OCR(const BYTE *ptr, size_t size, LPCWSTR lang, void (*cb
     CComPtr<ILanguage> language;
     CHECK_FAILURE_NORET(CreateLanguage(&language, lang));
     CComPtr<IOcrEngineStatics> engine_factory;
-    CHECK_FAILURE_NORET(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Media_Ocr_OcrEngine), &engine_factory))
+    CHECK_FAILURE_NORET(GetActivationFactory(AutoHString(RuntimeClass_Windows_Media_Ocr_OcrEngine), &engine_factory))
     CComPtr<IOcrEngine> ocrEngine;
     CHECK_FAILURE_NORET(engine_factory->TryCreateFromLanguage(language, &ocrEngine));
     auto ms = SHCreateMemStream(ptr, size);
@@ -115,24 +116,21 @@ DECLARE_API void winrt_OCR(const BYTE *ptr, size_t size, LPCWSTR lang, void (*cb
     CComPtr<IRandomAccessStream> memoryStream;
     CHECK_FAILURE_NORET(CreateRandomAccessStreamOverStream(mscom, BSOS_DEFAULT, IID_PPV_ARGS(&memoryStream)));
     CComPtr<IBitmapDecoderStatics> decoderfactory;
-    CHECK_FAILURE_NORET(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Graphics_Imaging_BitmapDecoder), &decoderfactory));
-    // CComPtr<IAsyncOperation<BitmapDecoder *>> decoder;
+    CHECK_FAILURE_NORET(GetActivationFactory(AutoHString(RuntimeClass_Windows_Graphics_Imaging_BitmapDecoder), &decoderfactory));
     CComPtr<__FIAsyncOperation_1_Windows__CGraphics__CImaging__CBitmapDecoder> decoder;
     CHECK_FAILURE_NORET(decoderfactory->CreateAsync(memoryStream, &decoder));
     CComPtr<IBitmapDecoder> imagedecoder;
-    CHECK_FAILURE_NORET((await<__FIAsyncOperation_1_Windows__CGraphics__CImaging__CBitmapDecoder, __FIAsyncOperationCompletedHandler_1_Windows__CGraphics__CImaging__CBitmapDecoder, IBitmapDecoder>(decoder.p, &imagedecoder)));
+    CHECK_FAILURE_NORET((await<__FIAsyncOperation_1_Windows__CGraphics__CImaging__CBitmapDecoder, IAsyncOperationCompletedHandler<BitmapDecoder *>, IBitmapDecoder>(decoder.p, &imagedecoder)));
     CComPtr<IBitmapFrameWithSoftwareBitmap> pBitmapFrameWithSoftwareBitmap;
     CHECK_FAILURE_NORET(imagedecoder.QueryInterface(&pBitmapFrameWithSoftwareBitmap));
-    // CComPtr<IAsyncOperation<SoftwareBitmap *>> pAsync2;
     CComPtr<__FIAsyncOperation_1_Windows__CGraphics__CImaging__CSoftwareBitmap> pAsync2;
     CHECK_FAILURE_NORET(pBitmapFrameWithSoftwareBitmap->GetSoftwareBitmapAsync(&pAsync2));
     CComPtr<ISoftwareBitmap> softwareBitmap;
-    CHECK_FAILURE_NORET((await<__FIAsyncOperation_1_Windows__CGraphics__CImaging__CSoftwareBitmap, __FIAsyncOperationCompletedHandler_1_Windows__CGraphics__CImaging__CSoftwareBitmap, ISoftwareBitmap>(pAsync2.p, &softwareBitmap)));
-    // CComPtr<IAsyncOperation<OcrResult *>> ocrResult;
+    CHECK_FAILURE_NORET((await<__FIAsyncOperation_1_Windows__CGraphics__CImaging__CSoftwareBitmap, IAsyncOperationCompletedHandler<SoftwareBitmap *>, ISoftwareBitmap>(pAsync2.p, &softwareBitmap)));
     CComPtr<__FIAsyncOperation_1_Windows__CMedia__COcr__COcrResult> ocrResult;
     CHECK_FAILURE_NORET(ocrEngine->RecognizeAsync(softwareBitmap, &ocrResult));
     CComPtr<IOcrResult> pOcrResult;
-    CHECK_FAILURE_NORET((await<__FIAsyncOperation_1_Windows__CMedia__COcr__COcrResult, __FIAsyncOperationCompletedHandler_1_Windows__CMedia__COcr__COcrResult, IOcrResult>(ocrResult.p, &pOcrResult)));
+    CHECK_FAILURE_NORET((await<__FIAsyncOperation_1_Windows__CMedia__COcr__COcrResult, IAsyncOperationCompletedHandler<OcrResult *>, IOcrResult>(ocrResult.p, &pOcrResult)));
     CComPtr<IVectorView<OcrLine *>> pOcrLines;
     CHECK_FAILURE_NORET(pOcrResult->get_Lines(&pOcrLines));
     uint32_t nlines;
@@ -144,7 +142,7 @@ DECLARE_API void winrt_OCR(const BYTE *ptr, size_t size, LPCWSTR lang, void (*cb
         CHECK_FAILURE_CONTINUE(pOcrLines->GetAt(i, &pOcrLine));
 
         CComPtr<IVectorView<OcrWord *>> pOcrWords;
-        AutoHStringRef htext;
+        AutoHString htext;
         CHECK_FAILURE_CONTINUE(pOcrLine->get_Words(&pOcrWords));
         CHECK_FAILURE_CONTINUE(pOcrLine->get_Text(&htext));
         uint32_t nwords;

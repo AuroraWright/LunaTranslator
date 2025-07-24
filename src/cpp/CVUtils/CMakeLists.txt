@@ -4,25 +4,27 @@
 #1.13.1 最后一个原生支持win7的版本
 #1.9.0 最早的可运行paddleocr的版本
 #1.10.0 体积比1.9.0还要小一点
-set(ort_version 1.10.0)
 #
-
+include(ExternalProject)
 include(FetchContent)
 
 FetchContent_Declare(clipper2 
     GIT_REPOSITORY https://github.com/AngusJohnson/Clipper2
-    GIT_TAG 3dd975ad6d6d770ed5be02e5b898a0937c21b806
+    GIT_TAG Clipper2_1.5.4
 )
+
+if(WIN10ABOVE)
+    set(mtmd "md")
+else()
+    set(mtmd "mt")
+endif()
+
 FetchContent_Declare(opencv 
-    URL https://github.com/RapidAI/OpenCVBuilder/releases/download/4.7.0/opencv-4.7.0-windows-vs2019-mt.7z
-    URL_HASH SHA1=fff392a1dab68b447c8ad06a60566e2967e7c04d
+    URL https://github.com/RapidAI/OpenCVBuilder/releases/download/4.7.0/opencv-4.7.0-windows-vs2019-${mtmd}.7z
     DOWNLOAD_EXTRACT_TIMESTAMP true
 )
-FetchContent_Declare(onnxruntime 
-    URL https://github.com/microsoft/onnxruntime/releases/download/v${ort_version}/onnxruntime-win-${platform}-${ort_version}.zip
-    DOWNLOAD_EXTRACT_TIMESTAMP true
-)
-FetchContent_MakeAvailable(onnxruntime opencv clipper2)
+
+FetchContent_MakeAvailable(opencv clipper2)
 
 #Clipper2
 file(GLOB Clipper2LibSrc ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/src/*.cpp)
@@ -37,31 +39,38 @@ file(GLOB OpenCV_LIBS_STATIC_LIBS "${opencv_SOURCE_DIR}/windows-${platform}/${pl
 target_link_libraries(libOpenCV INTERFACE "${OpenCV_LIBS_STATIC_LIBS}")
 ###
 
-#onnxruntime
-add_library(onnxruntime INTERFACE)
-target_include_directories(onnxruntime INTERFACE ${onnxruntime_SOURCE_DIR}/include)
-target_link_libraries(onnxruntime INTERFACE ${onnxruntime_SOURCE_DIR}/lib/onnxruntime.lib)
-###
+include(libonnxruntime.cmake)
 
 
-#由于onnxruntime无法被delayload，因此单独分离出来。
-add_library(OrtWrapper SHARED ortwrapper.cpp ${versioninfo})
-target_link_libraries(OrtWrapper onnxruntime) 
+add_library(CVUtils MODULE)
 if(WINXP)
-    target_compile_definitions(OrtWrapper PRIVATE _Frees_ptr_opt_=)
+    target_compile_definitions(CVUtils PRIVATE _Frees_ptr_opt_=)
 endif()
-target_precompile_headers(OrtWrapper REUSE_FROM pch)
-
-add_library(CVUtils SHARED)
 target_precompile_headers(CVUtils REUSE_FROM pch)
-target_sources(CVUtils PRIVATE similarity.cpp dbcrnn.cpp localocr.cpp ${versioninfo})
-target_link_libraries(CVUtils Clipper2Lib OrtWrapper libOpenCV NativeUtils)
-target_link_options(CVUtils PRIVATE "/DELAYLOAD:OrtWrapper.dll")
-if ((NOT WINXP) AND (NOT EXISTS ${CMAKE_FINAL_OUTPUT_DIRECTORY}/onnxruntime.dll))
+target_sources(CVUtils PRIVATE similarity.cpp ortwrapper.cpp dbcrnn.cpp localocr.cpp ${versioninfo})
+target_link_libraries(CVUtils PRIVATE Clipper2Lib libOpenCV onnxruntime dxgi version)
+if(NOT WINXP)
+    target_link_libraries(CVUtils PRIVATE d3d12)
+endif()
+if(MSVC)
+target_link_libraries(CVUtils PRIVATE ${YY_Thunks})
+target_link_options(CVUtils PRIVATE "/DELAYLOAD:d3d12.dll")
+target_link_options(CVUtils PRIVATE "/DELAYLOAD:dxgi.dll")
+target_link_options(CVUtils PRIVATE "/DELAYLOAD:onnxruntime.dll")
+endif()
+if (NOT WINXP)
     add_custom_command(TARGET CVUtils
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${onnxruntime_SOURCE_DIR}/lib/onnxruntime.dll
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${onnxruntime_DLL}
         ${CMAKE_FINAL_OUTPUT_DIRECTORY}/onnxruntime.dll
     )
+    if(WIN10ABOVE)
+        add_custom_command(TARGET CVUtils
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${directml_DLL}
+            ${CMAKE_FINAL_OUTPUT_DIRECTORY}/DirectML.dll
+        )
+    endif()
 endif()

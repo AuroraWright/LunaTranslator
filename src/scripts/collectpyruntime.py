@@ -3,13 +3,14 @@ import modulefinder, shutil, os, sys
 import builtins, platform
 import sys
 
+target = sys.argv[1]
 rootDir = os.path.dirname(__file__)
 if not rootDir:
     rootDir = os.path.abspath(".")
 else:
     rootDir = os.path.abspath(rootDir)
-rootthisfiledir=rootDir
-rootDir=os.path.abspath(os.path.join(rootDir,'../../src'))
+rootthisfiledir = rootDir
+rootDir = os.path.abspath(os.path.join(rootDir, "../../src"))
 pyversion = platform.python_version()
 pyversion2 = "".join(pyversion.split(".")[:2])
 x86 = platform.architecture()[0] == "32bit"
@@ -87,6 +88,8 @@ for _d, _, _fs in os.walk("./LunaTranslator"):
         print(base, f)
         got = get_dependencies(os.path.join(_d, f))
         all_dependencies = all_dependencies.union(set(got))
+got = get_dependencies("keeprefs.py")
+all_dependencies = all_dependencies.union(set(got))
 
 for dependency in all_dependencies:
     if dependency.startswith("./"):
@@ -114,69 +117,63 @@ copycheck(os.path.join(py37Path, "Dlls/sqlite3.dll"), runtime)
 
 copycheck(os.path.join(py37Path, "Lib/encodings"), runtime)
 copycheck(os.path.join(py37Path, "DLLs/libffi-7.dll"), runtime)
+copycheck(os.path.join(py37Path, "DLLs/libffi-8.dll"), runtime)
+
+try:
+    from PyQt5 import QtCore
+
+    qtver = "Qt5"
+except:
+    qtver = "Qt6"
+
+pyqtdir = os.path.join(py37Path, f"Lib/site-packages/Py{qtver}")
+pyqtbindir = os.path.join(pyqtdir, f"{qtver}/bin")
+pyqtplgdir = os.path.join(pyqtdir, f"{qtver}/plugins")
+
+targetpyqtdir = os.path.join(runtime, f"Py{qtver}")
+targetpyqtbindir = os.path.join(targetpyqtdir, f"{qtver}/bin")
+targetpyqtplgdir = os.path.join(targetpyqtdir, f"{qtver}/plugins")
 
 
-copycheck(rf"{downlevel}\ucrtbase.dll", runtime)
+if target == "win7":
+    copycheck(rf"{downlevel}\ucrtbase.dll", runtime)
 
-
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/vcruntime140.dll"),
-    os.path.join(runtime),
-)
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/vcruntime140_1.dll"),
-    os.path.join(runtime),
-)
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/msvcp140.dll"),
-    os.path.join(runtime),
-)
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/msvcp140_1.dll"),
-    os.path.join(runtime),
-)
-for _ in os.listdir(os.path.join(py37Path, "Lib/site-packages/PyQt5")):
+    copycheck(os.path.join(pyqtbindir, f"vcruntime140.dll"), runtime)
+    copycheck(os.path.join(pyqtbindir, f"vcruntime140_1.dll"), runtime)
+    copycheck(os.path.join(pyqtbindir, f"msvcp140.dll"), runtime)
+    copycheck(os.path.join(pyqtbindir, f"msvcp140_1.dll"), runtime)
+elif target == "win10":
+    # 动态链接CVUtils需要concrt140，否则不用
+    copycheck(r"c:\windows\system32\concrt140.dll", runtime)
+    copycheck(r"c:\windows\system32\vcruntime140.dll", runtime)
+    copycheck(r"c:\windows\system32\vcruntime140_1.dll", runtime)
+    copycheck(r"c:\windows\system32\msvcp140.dll", runtime)
+    copycheck(r"c:\windows\system32\msvcp140_1.dll", runtime)
+    copycheck(r"c:\windows\system32\msvcp140_2.dll", runtime)
+for _ in os.listdir(pyqtdir):
     if _.startswith("sip"):
-        copycheck(
-            os.path.join(py37Path, "Lib/site-packages/PyQt5", _),
-            os.path.join(runtime, "PyQt5"),
-        )
+        copycheck(os.path.join(pyqtdir, _), targetpyqtdir)
 
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/Qt5Core.dll"),
-    os.path.join(runtime, "PyQt5/Qt5/bin"),
-)
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/Qt5Svg.dll"),
-    os.path.join(runtime, "PyQt5/Qt5/bin"),
-)
-copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/Qt5Gui.dll"),
-    os.path.join(runtime, "PyQt5/Qt5/bin"),
-)
+copycheck(os.path.join(pyqtbindir, f"{qtver}Core.dll"), targetpyqtbindir)
+copycheck(os.path.join(pyqtbindir, f"{qtver}Svg.dll"), targetpyqtbindir)
+copycheck(os.path.join(pyqtbindir, f"{qtver}SvgWidgets.dll"), targetpyqtbindir)
+copycheck(os.path.join(pyqtdir, f"QtSvg.pyd"), targetpyqtdir)
+copycheck(os.path.join(pyqtbindir, f"{qtver}Gui.dll"), targetpyqtbindir)
 
+copycheck(os.path.join(pyqtbindir, f"{qtver}Widgets.dll"), targetpyqtbindir)
+
+copycheck(os.path.join(pyqtplgdir, f"iconengines"), targetpyqtplgdir)
+copycheck(os.path.join(pyqtplgdir, f"imageformats"), targetpyqtplgdir)
 copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/bin/Qt5Widgets.dll"),
-    os.path.join(runtime, "PyQt5/Qt5/bin"),
+    os.path.join(pyqtplgdir, f"platforms/qwindows.dll"),
+    os.path.join(targetpyqtplgdir, f"platforms"),
 )
 
 copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/plugins/iconengines"),
-    os.path.join(runtime, "PyQt5/Qt5/plugins"),
+    os.path.join(pyqtplgdir, f"styles/qmodernwindowsstyle.dll"),
+    os.path.join(targetpyqtplgdir, f"styles"),
 )
 copycheck(
-    os.path.join(py37Path, "Lib/site-packages/PyQt5/Qt5/plugins/imageformats"),
-    os.path.join(runtime, "PyQt5/Qt5/plugins"),
-)
-copycheck(
-    os.path.join(
-        py37Path, "Lib/site-packages/PyQt5/Qt5/plugins/platforms/qwindows.dll"
-    ),
-    os.path.join(runtime, "PyQt5/Qt5/plugins/platforms"),
-)
-copycheck(
-    os.path.join(
-        py37Path, "Lib/site-packages/PyQt5/Qt5/plugins/styles/qwindowsvistastyle.dll"
-    ),
-    os.path.join(runtime, "PyQt5/Qt5/plugins/styles"),
+    os.path.join(pyqtplgdir, f"styles/qwindowsvistastyle.dll"),
+    os.path.join(targetpyqtplgdir, f"styles"),
 )

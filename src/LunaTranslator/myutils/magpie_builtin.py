@@ -17,7 +17,7 @@ class AdapterService:
         ret = []
 
         def __(idx, vendorId, deviceId, description):
-            ret.append((idx, vendorId, deviceId, description))
+            ret.append([idx, vendorId, deviceId, description])
 
         NativeUtils.AdaptersServiceAdapterInfos(
             NativeUtils.AdaptersServiceAdapterInfos_Callback(__)
@@ -87,18 +87,27 @@ class MagpieBuiltin:
     def init(self):
         self.jspath = gobject.gettempdir("magpie.config.json")
         self.engine = NativeUtils.AutoKillProcess(
-            'files/plugins/Magpie/Magpie.Core.exe "{}"'.format(self.jspath),
-            "files/plugins/Magpie",
+            'files/Magpie/Magpie.Core.exe "{}"'.format(self.jspath),
+            "files/Magpie",
         )
+        self.__reload()
         waitsignal = "Magpie_notify_prepared_ok_" + str(self.engine.pid)
         windows.WaitForSingleObject(NativeUtils.SimpleCreateEvent(waitsignal))
+
+    @threader
+    def __reload(self):
+        windows.WaitForSingleObject(
+            windows.OpenProcess(windows.SYNCHRONIZE, False, self.engine.pid)
+        )
+        self.setuistatus(False)
+        self.init()
 
     def end(self):
         windows.SendMessage(
             windows.FindWindow("WNDCLS_Magpie_Core_CLI_Message", None),
             windows.RegisterWindowMessage("Magpie_Core_CLI_Message_Exit"),
         )
-        # gobject.baseobject.translation_ui.magpiecallback.disconnect()
+        # gobject.base.translation_ui.magpiecallback.disconnect()
 
     def changestatus(self, hwnd, full, windowmode):
         if full:

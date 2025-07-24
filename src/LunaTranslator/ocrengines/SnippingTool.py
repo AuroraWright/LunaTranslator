@@ -51,7 +51,6 @@ class question(QWidget):
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         }
 
         data = dict(type="PackageFamilyName", url=packageFamilyName)
@@ -76,10 +75,11 @@ class question(QWidget):
             saves.append((version, link, package))
         saves.sort(key=lambda _: _[0])
         url = saves[-1][1]
-        req = requests.head(url, proxies=getproxy())
-        size = int(req.headers["Content-Length"])
         file_size = 0
         req = requests.get(url, stream=True, proxies=getproxy())
+        size = int(req.headers["Content-Length"])
+        self.failedlink = lambda: url
+        self.skiplink2 = True
         target = gobject.gettempdir(saves[-1][2])
         with open(target, "wb") as ff:
             for _ in req.iter_content(chunk_size=1024 * 32):
@@ -94,8 +94,11 @@ class question(QWidget):
                 )
 
         self.progresssetval.emit(_TR("正在解压"), 10000)
+        self.unzipmsix(target)
+
+    def unzipmsix(self, file):
         namemsix = None
-        with zipfile.ZipFile(target) as ff:
+        with zipfile.ZipFile(file) as ff:
             for name in ff.namelist():
                 if name.startswith("SnippingTool") and name.endswith("_x64.msix"):
                     namemsix = name
@@ -128,6 +131,8 @@ class question(QWidget):
             try:
                 self.downloadofficial()
             except:
+                if self.skiplink2:
+                    raise Exception()
                 self.downloadx(url)
                 print_exc()
                 self.progresssetval.emit("……", 0)
@@ -137,10 +142,9 @@ class question(QWidget):
 
     def downloadx(self, url: str):
 
-        req = requests.head(url, verify=False, proxies=getproxy())
-        size = int(req.headers["Content-Length"])
         file_size = 0
         req = requests.get(url, verify=False, proxies=getproxy(), stream=True)
+        size = int(req.headers["Content-Length"])
         target = gobject.gettempdir(url.split("/")[-1])
         with open(target, "wb") as ff:
             for _ in req.iter_content(chunk_size=1024 * 32):
@@ -160,41 +164,17 @@ class question(QWidget):
             raise Exception()
 
     def _installsucc(self, succ, failreason):
+        self.formLayout.setRowVisible(0, succ)
+        self.formLayout.setRowVisible(1, not succ)
+        self.formLayout.setRowVisible(2, False)
         if succ:
-            self.progresssetval.emit(_TR("添加成功"), 10000)
             QMessageBox.information(self, _TR("成功"), _TR("添加成功"))
-            self.formLayout.setRowVisible(0, True)
-            self.formLayout.setRowVisible(1, False)
-            self.formLayout.setRowVisible(2, False)
         else:
-            self.progresssetval.emit(_TR("添加失败"), 0)
-            res = QMessageBox.question(
+            QMessageBox.critical(
                 self,
-                _TR("错误"),
-                failreason + "\n\n" + _TR("自动添加失败，是否手动添加？"),
+                _TR("添加失败"),
+                _TR("错误") + "\n" + failreason,
             )
-            if res == QMessageBox.StandardButton.Yes:
-                os.startfile(dynamiclink("/Resource/SnippingTool"))
-                f = QFileDialog.getOpenFileName(
-                    self,
-                    filter="SnippingTool.zip",
-                )
-                fn = f[0]
-                if fn:
-                    try:
-                        with zipfile.ZipFile(fn) as zipf:
-                            zipf.extractall(gobject.getcachedir())
-                        QMessageBox.information(self, _TR("成功"), _TR("添加成功"))
-                        self.formLayout.setRowVisible(0, True)
-                        self.formLayout.setRowVisible(1, False)
-                        self.formLayout.setRowVisible(2, False)
-                        return
-                    except:
-                        QMessageBox.information(self, _TR("错误"), _TR("添加失败"))
-                        print_exc()
-            self.formLayout.setRowVisible(0, False)
-            self.formLayout.setRowVisible(1, True)
-            self.formLayout.setRowVisible(2, False)
 
     def progresssetval_(self, text, val):
         self.downloadprogress.setValue(val)
@@ -203,6 +183,8 @@ class question(QWidget):
     def __init__(self, *argc, **kw):
         super().__init__(*argc, **kw)
         self.installsucc.connect(self._installsucc)
+        self.failedlink = lambda: dynamiclink("/Resource/SnippingTool")
+        self.skiplink2 = False
         formLayout = VisLFormLayout(self)
         formLayout.setContentsMargins(0, 0, 0, 0)
         lb = LLabel("已安装")
@@ -267,7 +249,7 @@ class OCR(baseocr):
         pipename = "\\\\.\\Pipe\\" + str(uuid.uuid4())
         waitsignal = str(uuid.uuid4())
         mapname = str(uuid.uuid4())
-        exepath = os.path.abspath("files/plugins/shareddllproxy64.exe")
+        exepath = os.path.abspath("files/shareddllproxy64.exe")
         self.engine = NativeUtils.AutoKillProcess(
             '"{}" SnippingTool {} {} {}'.format(
                 exepath,
@@ -294,7 +276,7 @@ class OCR(baseocr):
                 _unk=0,
                 step=qimage.bytesPerLine(),
             )
-            memmove(self.mem, int(qimage.bits()), qimage.byteCount())
+            memmove(self.mem, int(qimage.bits()), qimage.sizeInBytes())
             windows.WriteFile(self.hPipe, bytes(img_struct))
             cnt = c_longlong.from_buffer_copy(windows.ReadFile(self.hPipe, 8)).value
 

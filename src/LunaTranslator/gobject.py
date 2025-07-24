@@ -1,11 +1,13 @@
 import platform, os, sys
+from ctypes import windll, Structure, POINTER, pointer
+from ctypes.wintypes import DWORD, WCHAR
 
 
 def GetDllpath(_, base=None):
     isbit64 = platform.architecture()[0] == "64bit"
 
     if base is None:
-        base = os.path.abspath("files/plugins/DLL" + ("32", "64")[isbit64])
+        base = os.path.abspath("files/DLL" + ("32", "64")[isbit64])
     if isinstance(_, str):
         return os.path.join(base, _)
     elif isinstance(_, (list, tuple)):
@@ -51,12 +53,10 @@ try:
 except:
     pass
 if TYPE_CHECKING:
-    from LunaTranslator import MAINUI
-baseobject: "MAINUI" = None
-global_dialog_savedgame_new = None
-global_dialog_setting_game = None
+    from LunaTranslator import BASEOBJECT
+base: "BASEOBJECT" = None
 serverindex = 0
-edittrans = None
+istest = False
 
 
 class Consts:
@@ -65,7 +65,41 @@ class Consts:
     btnscale = 1.2
     toolwdivh = 4 / 3
     toolscale = 1.5
+    IconSizeHW = 1.1
 
 
-is_xp = tuple(sys.version_info)[:2] == (3, 4)
-is_bit_64 = platform.architecture()[0] == "64bit"
+runtime_bit_64 = platform.architecture()[0] == "64bit"
+runtime_for_xp = tuple(sys.version_info)[:2] == (3, 4)
+runtime_for_win10 = tuple(sys.version_info)[:2] >= (3, 9)
+
+if runtime_for_win10:
+    runtimedir = "runtime31264"
+elif runtime_for_xp:
+    runtimedir = "runtime3432"
+elif runtime_bit_64:
+    runtimedir = "runtime3764"
+else:
+    runtimedir = "runtime3732"
+runtimedir = "files/" + runtimedir
+sys_le_xp = int(platform.version().split(".")[0]) <= 5
+
+
+class RTL_OSVERSIONINFOW(Structure):
+    _fields_ = [
+        ("_1", DWORD),
+        ("_2", DWORD),
+        ("_3", DWORD),
+        ("dwBuildNumber", DWORD),
+        ("_4", DWORD),
+        ("_5", WCHAR * 128),
+    ]
+
+
+RtlGetVersion = windll.ntdll.RtlGetVersion
+RtlGetVersion.argtypes = (POINTER(RTL_OSVERSIONINFOW),)
+__version = RTL_OSVERSIONINFOW()
+RtlGetVersion(pointer(__version))
+sys_ge_win_11 = __version.dwBuildNumber >= 22000  # 21h2
+sys_ge_win8 = tuple(int(_) for _ in platform.version().split(".")[:2]) >= (6, 2)
+sys_le_win7 = tuple(int(_) for _ in platform.version().split(".")[:2]) <= (6, 1)
+sys_le_win81 = int(platform.version().split(".")[0]) <= 6

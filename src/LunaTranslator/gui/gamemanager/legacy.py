@@ -6,11 +6,13 @@ from gui.usefulwidget import (
     TableViewW,
     D_getsimpleswitch,
     D_getIconButton,
+    request_delete_ok,
     getIconButton,
+    manybuttonlayout,
     IconButton,
 )
 from gui.gamemanager.setting import dialog_setting_game
-from gui.dynalang import LPushButton, LStandardItemModel
+from gui.dynalang import LStandardItemModel
 from gui.gamemanager.common import (
     opendirforgameuid,
     startgamecheck,
@@ -104,6 +106,8 @@ class dialog_savedgame_legacy(QWidget):
         dialog_setting_game(self, k)
 
     def clicked2(self):
+        if not request_delete_ok(self, "bf4aa76a-41a5-4b07-a095-0c34c616ed2d"):
+            return
         try:
 
             idx = self.table.currentIndex().row()
@@ -130,14 +134,14 @@ class dialog_savedgame_legacy(QWidget):
         startgamecheck(
             self,
             savehook_new_list,
-            self.model.item(self.table.currentIndex().row(), 2).savetext,
+            self.model.item(self.table.currentIndex().row(), 3).data(self.KRole),
         )
 
     def delayloadicon(self, k):
         icon = getExeIcon(get_launchpath(k), cache=True)
         if icon.isNull():
             return
-        return getIconButton(functools.partial(opendirforgameuid, k), qicon=icon)
+        return getIconButton(functools.partial(opendirforgameuid, k), qicon=icon, fix=False)
 
     def callback_leuse(self, k, use):
         if use:
@@ -148,13 +152,11 @@ class dialog_savedgame_legacy(QWidget):
     KRole = Qt.ItemDataRole.UserRole + 1
 
     def newline(self, row, k):
-        keyitem = QStandardItem()
-        keyitem.savetext = k
         title = QStandardItem(savehook_new_data[k]["title"])
         title.setData(k, self.KRole)
         self.model.insertRow(
             row,
-            [QStandardItem(), QStandardItem(), keyitem, title],
+            [QStandardItem(), QStandardItem(), QStandardItem(), title],
         )
         self.table.setIndexWidget(
             self.model.index(row, 0),
@@ -171,7 +173,10 @@ class dialog_savedgame_legacy(QWidget):
 
         self.table.setIndexWidget(
             self.model.index(row, 2),
-            D_getIconButton(functools.partial(self.showsettingdialog, k)),
+            D_getIconButton(
+                functools.partial(self.showsettingdialog, k),
+                fix=False,
+            ),
         )
 
     def on_data_changed(self, idx, *_):
@@ -197,7 +202,7 @@ class dialog_savedgame_legacy(QWidget):
         model.dataChanged.connect(self.on_data_changed)
         table.horizontalHeader().setStretchLastSection(True)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode((QAbstractItemView.SelectionMode.SingleSelection))
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setWordWrap(False)
         self.table = table
         self.savelist = []
@@ -207,20 +212,13 @@ class dialog_savedgame_legacy(QWidget):
 
         showcountgame(self.parent_, len(self.savelist))
         self.table.starttraceir()
-        bottom = QHBoxLayout()
-
-        button = LPushButton("开始游戏")
-        self.button = button
-        button.clicked.connect(self.clicked)
-        button3 = LPushButton("添加游戏")
-
-        button3.clicked.connect(self.clicked3)
-        button2 = LPushButton("删除游戏")
-
-        button2.clicked.connect(self.clicked2)
-        bottom.addWidget(button)
-        bottom.addWidget(button2)
-        bottom.addWidget(button3)
+        bottom = manybuttonlayout(
+            (
+                ("开始游戏", self.clicked),
+                ("删除游戏", self.clicked2),
+                ("添加游戏", self.clicked3),
+            )
+        )
         btn = IconButton(None)
         btn.setStyleSheet("border:transparent;padding: 0px;background:transparent;")
         formLayout.addWidget(btn)

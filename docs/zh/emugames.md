@@ -11,7 +11,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 ::: details 支持的模拟器
 | 平台 | 模拟器 |
 | - | - |
-| NS | yuzu(&ge;1616), [sudachi](https://github.com/emuplace/sudachi.emuplace.app), [Citron](https://git.citron-emu.org/Citron/Citron) |
+| NS | yuzu(&ge;1616), [sudachi](https://github.com/emuplace/sudachi.emuplace.app), [Citron](https://git.citron-emu.org/Citron/Citron), [Eden](https://git.eden-emu.dev/eden-emu/eden) |
 | PSP | [PPSSPP](https://github.com/hrydgard/ppsspp) &ge;v1.15.0 |
 | PSV | [Vita3K](https://github.com/Vita3K/Vita3K) &ge;v0.1.9.3339 |
 | PS2 | [PCSX2](https://github.com/PCSX2/pcsx2) &ge;v1.7.4473 |
@@ -25,6 +25,32 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | 010096E021CF2000 | VIRTUAL GIRL @ WORLD'S END |
+|  | 01006660233C6000 | レッドベルの慟哭 (The Red Bells Lament) |
+|  | 010056401B548000 | シロガネｘスピリッツ！ |
+|  | 0100E7701A40C000 | 花咲ワークスプリング！ |
+|  | 01008D20101DE000 | ボク姫PROJECT |
+|  | 010022E00C9D8000 | リプキス |
+|  | 01003B900C9DC000 | 甘えかたは彼女なりに。 |
+|  | 0100D1A014A4A000 | かけぬけ★青春スパーキング！ |
+|  | 010050E012CB6000 | Paradigm Paradox |
+|  | 0100AA301A99E000 | 放課後シンデレラ２ |
+|  | 01009D3019684000 | はつゆきさくら |
+|  | 010045C0109F2000 | VARIABLE BARRICADE |
+|  | 010060A0161EC000 | 月の彼方で逢いましょう |
+|  | 01008DC019F7A000 | エヴァーメイデン ～堕落の園の乙女たち～ |
+|  | 01002AF019F88000 | ふゆから、くるる。 |
+|  | 0100D4800C476000 | 添いカノ ～ぎゅっと抱きしめて～ |
+|  | 01003FF010312000 | 軍靴をはいた猫 |
+|  | 01003080177CA000 | 冥契のルペルカリア |
+|  | 0100E920175B0000 | ――ｯ違う!!!+ |
+|  | 01009A60205DE000 | 数乱digit |
+|  | 0100D4601FD60000 | 蒼黒の楔 ～緋色の欠片 玉依姫奇譚～ |
+|  | 0100EC001DE7E000 | 緋色の欠片 玉依姫奇譚 ～おもいいろの記憶～ |
+|  | 0100C30020F70000 | BYAKKO ～四神部隊炎恋記～ |
+|  | 01007250089F8000 | LoveR Kiss |
+|  | 01001A4021670000 | あやかしごはん ～おおもりっ！～ for S |
+|  | 0100E9801CAC2000 | OVER REQUIEMZ |
 |  | 0100978013276000 | Memories Off |
 |  | 0100B4A01326E000 | Memories Off ～それから～ |
 |  | 0100D31013274000 | Memories Off 2nd |
@@ -40,14 +66,15 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100A460141B8000 | 白と黒のアリス |
 |  | 0100A460141B8000 | 白と黒のアリス -Twilight line- |
 |  | 0100A3A00CC7E000 | CLANNAD |
-|  | 010045C0109F2000 | VARIABLE BARRICADE NS |
-|  | 0100A1200CA3C000 | 蝶の毒 華の鎖 |
+|  | 0100A1200CA3C000 | 蝶の毒 華の鎖～大正艶恋異聞～ |
 |  | 0100C29017106000 | Live a Live |
 |  | 01006590155AC000 | さくらの雲＊スカアレットの恋 |
 |  | 01000200194AE000 | マジェスティック☆マジョリカル |
 |  | 0100EA001A626000 | マツリカの炯-kEi- 天命胤異伝 |
+|  | 0100F5A01EA12000 | 茉莉花之炯 天命胤異傳 |
 |  | 0100F7E00DFC8000 | キューピット・パラサイト |
 |  | 0100925014864000 | ラディアンテイル |
+|  | 010088B01A8FC000 | ラディアンテイル ～ファンファーレ！～ |
 |  | 01000130150FA000 | MUSICUS |
 |  | 0100936018EB4000 | Story of Seasons a Wonderful Life |
 |  | 0100982015606000 | 乙女ゲームの破滅フラグしかない悪役令嬢に転生してしまった… 〜波乱を呼ぶ海賊〜 |
@@ -71,8 +98,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100C49010598000 | 薄桜鬼 真改 銀星ノ抄 |
 |  | 0100E1E00E2AE000 | 薄桜鬼 真改 月影ノ抄 |
 |  | 0100D57014692000 | 薄桜鬼　黎明録 |
-|  | 01004EB01A328000 | 薄桜鬼SSL ～sweet school life～ for Nintendo Switch |
-|  | 010046601C024000 | 薄桜鬼 真改 遊戯録　隊士達の大宴会 for Nintendo Switch |
+|  | 01004EB01A328000 | 薄桜鬼SSL ～sweet school life～ |
+|  | 010046601C024000 | 薄桜鬼 真改 遊戯録　隊士達の大宴会 |
 |  | 0100AC20128AC000 | Chrono Cross: The Radical Dreamers Edition |
 |  | 0100ADC014DA0000 | AIR |
 |  | 0100AFA01750C000 | 死神と少女 |
@@ -95,9 +122,9 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100B0C016164000 | Etrian Odyssey II HD |
 |  | 0100D32015A52000 | Etrian Odyssey III HD |
 |  | 0100A6301214E000 | Fire Emblem Engage |
-|  | 0100B5700CDFC000 | AMNESIA LATER×CROWD for Nintendo Switch |
-|  | 0100A1E00BFEA000 | AMNESIA for Nintendo Switch |
-|  | 010099901461A000 | AMNESIA World for Nintendo Switch |
+|  | 0100B5700CDFC000 | AMNESIA LATER×CROWD |
+|  | 0100A1E00BFEA000 | AMNESIA |
+|  | 010099901461A000 | AMNESIA World |
 |  | 0100A8401A0A8000 | Natsumon! 20th Century Summer Vacation |
 |  | 0100BC0018138000 | Super Mario RPG |
 |  | 0100D7800E9E0000 | Trials of Mana |
@@ -130,8 +157,9 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100874017BE2000 | BUSTAFELLOWS シーズン2 |
 |  | 010094601D910000 | 5分後に意外な結末　モノクロームの図書館 |
 |  | 010024200E00A000 | うたの☆プリンスさまっ♪ Repeat LOVE |
-|  | 01000C7019E1C000 | ワンド オブ フォーチュン Ｒ～ for Nintendo Switch |
-|  | 010088A01A774000 | ワンド オブ フォーチュン Ｒ２ ～時空に沈む黙示録～ for Nintendo Switch |
+|  | 01000C7019E1C000 | ワンド オブ フォーチュン Ｒ～ |
+|  | 010088A01A774000 | ワンド オブ フォーチュン Ｒ２ ～時空に沈む黙示録～ |
+|  | 010051701A7BE000 | ワンド オブ フォーチュン Ｒ２ ＦＤ ～君に捧げるエピローグ～ |
 |  | 010086C00AF7C000 | Yo-kai Watch 4++ |
 |  | 010079C017B98000 | キューピット・パラサイト -Sweet & Spicy Darling.- |
 |  | 010061A01C1CE000 | DesperaDrops |
@@ -166,7 +194,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100E390145C8000 | 殺し屋とストロベリー |
 |  | 0100D9A01BD86000 | ときめきメモリアル Girl's Side |
 |  | 010079201BD88000 | ときめきメモリアル Girl’s Side 2nd Kiss |
-|  | 010091C01BD8A000 | ときめきメモリアル Girl's Side 3rd Story for Nintendo Switch |
+|  | 010091C01BD8A000 | ときめきメモリアル Girl's Side 3rd Story |
 |  | 0100B0100E26C000 | ときめきメモリアル Girl's Side 4th Heart |
 |  | 0100CC80140F8000 | Triangle Strategy |
 |  | 010074F013262000 | Xenoblade Chronicles 3 |
@@ -175,9 +203,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 01004D601B0AA000 | 終遠のヴィルシュ -EpiC:lycoris- |
 |  | 01003FE00E2F8000 | スペードの国のアリス ～Wonderful White World～ |
 |  | 0100AB100E2FA000 | スペードの国のアリス ～Wonderful Black World～ |
-|  | 01003D2017FEA000 | 十三支演義 偃月三国伝1・2 for Nintendo Switch |
+|  | 01003D2017FEA000 | 十三支演義 偃月三国伝1・2 |
 |  | 01002C0008E52000 | Tales of Vesperia: Definitive Edition |
-|  | 01002BB00A662000 | Nil Adminari no Tenbin Irodori Nadeshiko |
 |  | 01008DE00C022000 | 華ヤカ哉、我ガ一族 モダンノスタルジィ |
 |  | 0100B5500CA0C000 | 華ヤカ哉、我ガ一族 幻燈ノスタルジィ |
 |  | 0100F4401940A000 | 超探偵事件簿 レインコード |
@@ -198,7 +225,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 01002AE00F442000 | FLOWERS 四季 |
 |  | 01000A400AF2A000 | 最悪なる災厄人間に捧ぐ |
 |  | 01006B5014E2E000 | 神様のような君へ |
-|  | 01001B900C0E2000 | 猛獣使いと王子様 ～Flower ＆ Snow～ for Nintendo Switch |
+|  | 01001B900C0E2000 | 猛獣使いと王子様 ～Flower ＆ Snow～ |
 |  | 010007500F27C000 | Detective Pikachu Returns |
 |  | 0100217014266000 | Dragon Quest Treasures |
 |  | 010027100C79A000 | Rune Factory 4 Special |
@@ -220,13 +247,12 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 010095E01581C000 | even if TEMPEST 宵闇にかく語りき魔女 |
 |  | 010096000CA38000 | 大正×対称アリス all in one |
 |  | 0100B1F0123B6000 | 大正×対称アリス HEADS&TAILS |
-|  | 0100EC001DE7E000 | 緋色の欠片 玉依姫奇譚 ～おもいいろの記憶～ |
 |  | 010037500DF38000 | 幻想マネージュ |
 |  | 010079200C26E000 | 幻奏喫茶アンシャンテ |
 |  | 01002C00177AE000 | 天獄ストラグル -strayside- |
 |  | 0100EA100DF92000 | 明治活劇 ハイカラ流星組 －成敗しませう、世直し稼業－ |
 |  | 0100FA001E160000 | 7'scarlet |
-|  | 0100FA10185B0000 | SympathyKiss (JP) |
+|  | 0100FA10185B0000 | SympathyKiss |
 |  | 010021D01474E000 | 君は雪間に希う |
 |  | 010061300DF48000 | DAIROKU：AYAKASHIMORI |
 |  | 0100CEF0152DE000 | Charade Maniacs |
@@ -234,9 +260,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 01004E5017C54000 | Dance with Devils |
 |  | 01003BB01DF54000 | My9Swallows TOPSTARS LEAGUE |
 |  | 01005AF00E9DC000 | 時計仕掛けのアポカリプス |
-|  | 010088B01A8FC000 | ラディアンテイル ～ファンファーレ！～ |
 |  | 010032300C562000 | Lover Pretend |
-|  | 01001A500AD6A000 | NORN9 ~ノルン+ノネット~ LOFN for Nintendo Switch |
+|  | 01001A500AD6A000 | NORN9 ~ノルン+ノネット~ LOFN |
 |  | 010027300A660000 | 私立ベルばら学園 ～ベルサイユのばらRe*imagination～ |
 |  | 0100E4000F616000 | ひめひび Another Princess Days – White or Black – |
 |  | 0100F8D0129F4000 | ひめひび -Princess Days- |
@@ -254,13 +279,13 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 01006530151F0000 | 神々の悪戯 Unite Edition |
 |  | 01005A401D766000 | 新宿羅生門 ―Rashomon of Shinjuku― |
 |  | 01000E701DAE8000 | 夏空のモノローグ ～Another Memory～ |
-|  | 01008A001C79A000 | 真紅の焔 真田忍法帳 for Nintendo Switch |
+|  | 01008A001C79A000 | 真紅の焔 真田忍法帳 |
 |  | 0100612019F12000 | 神さまと恋ゴコロ |
-|  | 0100E8E016D82000 | KLAP!! for Nintendo Switch |
+|  | 0100E8E016D82000 | KLAP!! |
 |  | 0100A0001B9F0000 | PSYCHIC ECLIPSE-サイキックイクリプス- reload |
 |  | 01006CC015ECA000 | アイ★チュウ |
 |  | 0100E5200D1A2000 | カエル畑DEつかまえて☆彡 |
-|  | 0100EFE0159C6000 | カエル畑DEつかまえて・夏 千木良参戦! |
+|  | 0100EFE0159C6000 | カエル畑ＤＥつかまえて・夏　千木良参戦！ |
 |  | 01007FD00DB20000 | 片恋いコントラスト ―collection of branch― |
 |  | 010064701F37A000 | ジュエリー・ハーツ・アカデミア -We will wing wonder world- |
 |  | 01009E600FAF6000 | NG |
@@ -274,10 +299,10 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 01008BA00F172000 | EVE rebirth terror |
 |  | 01007BE0160D6000 | EVE ghost enemies |
 |  | 01002BB00A662000 | ニル・アドミラリの天秤 色ドリ撫子 |
-|  | 01002BB00A662000 | 其二 |
+|  | 01002BB00A662000 | ニル・アドミラリの天秤 クロユリ炎陽譚 |
 |  | 01007A901E728000 | 八剱伝 |
 |  | 0100509013040000 | 大正メビウスライン大全 |
-|  | 010035001D1B2000 | 猛獣たちとお姫様 for Nintendo Switch |
+|  | 010035001D1B2000 | 猛獣たちとお姫様 |
 |  | 010045F00BF64000 | BEAST Darling! ～けもみみ男子と秘密の寮～ |
 |  | 010052300F612000 | 恋の花咲く百花園 |
 |  | 0100CF90151E0000 | 東京24区 -祈- |
@@ -291,9 +316,12 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 010053F0128DC000 | シェルノサージュ ～失われた星へ捧ぐ詩～ DX |
 |  | 0100D8B019FC0000 | フローラル・フローラブ |
 |  | 01001BB01E8E2000 | FANTASIAN Neo Dimension |
+|  | 0100EC6017FA6000 | ハルキス |
+|  | 0100C800169E6000 | メルキス |
+|  | 01005A4015E66000 | アイキス |
 |  | 0100FD4016528000 | アイキス3cute |
 |  | 01002BE0118AE000 | OZMAFIA!! VIVACE |
-|  | 010091C01BD8A000 | ときめきメモリアル Girl's Side 3rd Story for Nintendo Switch |
+|  | 010091C01BD8A000 | ときめきメモリアル Girl's Side 3rd Story |
 |  | 0100AAF020664000 | アパシー 男子校であった怖い話 |
 |  | 0100BBA00B23E000 | 吉原彼岸花 |
 |  | 0100813014B3A000 | ラッキードッグ１ |
@@ -331,25 +359,39 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 010081E0161B2000 | D.C.4 Fortunate Departures ～ダ・カーポ4～ フォーチュネイトデパーチャーズ |
 |  | 010048101D49E000 | Re;quartz零度 |
 |  | 0100B6501FE4C000 | 喧嘩番長 乙女 ダブルパック |
-|  | 010008401AB4A000 | Yukar From The Abyss |
-|  | 010047E01E22A000 | Voice Love on Air |
+|  | 01004CA01D51E000 | 喧嘩番長 乙女 2nd Rumble !! |
+|  | 010008401AB4A000 | 深淵のユカラ (Yukar From The Abyss) |
+|  | 010047E01E22A000 | 純愛聲放送 - Voice Love on Air (Voice Love on Air) |
 |  | 010033401FE40000 | 罪ノ光ランデヴー |
 |  | 0100DA2019044000 | 結合男子 |
 |  | 0100EA9015126000 | 古書店街の橋姫 Hashihime of the Old Book Town append |
 |  | 0100273013ECA000 | Summer Pockets REFLECTION BLUE |
-|  | 010057C020702000 | Scarlet Snowfall |
+|  | 010057C020702000 | 緋染めの雪 (Scarlet Snowfall) |
+|  | 0100003020D46000 | StreamLove Voyage |
+|  | 01003A401F75A000 | ハイスピードエトワール パドックストーリーズ |
+|  | 0100EE5021C9E000 | たねつみの歌 (Seedsow Lullaby) |
+|  | 0100AC600EB4C000 | 幻想牢獄のカレイドスコープ |
+|  | 0100451020714000 | 幻想牢獄のカレイドスコープ２ |
+|  | 01002080191CE000 | 戦場の円舞曲 |
+|  | 010076902126E000 | DYNAMIC CHORD feat.[rēve parfait] |
+|  | 0100DC1021662000 | 夏目友人帳 ～葉月の記～ |
 
 == PSP
 
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | ULJM05962 | 花と乙女に祝福を　～春風の贈り物～　portable |
 |  | ULJM06207 | Starry☆Sky～After Spring～Portable |
 |  | ULJM06208 | Starry☆Sky～After Summer～Portable |
 |  | ULJM06209 | Starry☆Sky～After Autumn～Portable |
 |  | ULJM06210 | Starry☆Sky～After Winter～Portable |
 |  | ULJM06104 | アラビアンズ・ロスト |
 |  | ULJM05334 | MEMORIES OFF |
+|  | ULJM06286 | 恋花デイズ |
+|  | ULJS00216 | 雨格子の館 PORTABLE 一柳和、最初の受難 |
+|  | ULJS00230 | 奈落の城 PORTABLE 一柳和、2度目の受難 |
+|  | NPJH50186 | 氷の墓標　一柳和、３度目の受難 |
 |  | ULJM06192 | 黄昏のシンセミア portable |
 |  | NPJH50836 | 俺の彼女のウラオモテ ～Pure Sweet Heart～ |
 |  | NPJH50867 | 越えざるは紅い花　大河は未来を紡ぐ |
@@ -421,6 +463,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | ULJM06216 | ダイヤの国のアリス～Wonderful Wonder World～ |
 |  | ULJM06295 | ダイヤの国のアリス～ Wonderful Mirror World ～ |
 |  | NPJH50872 | ハートの国のアリス～Wonderful Twin World～ |
+|  | ULJM05995 | おもちゃ箱の国のアリス～Wonderful Wonder World～ |
 |  | ULJM06332 | 新装版 ハートの国のアリス～Wonderful Wonder World～ |
 |  | NPJH50894 | 新装版クローバーの国のアリス～Wonderful Wonder World～ |
 |  | ULJM06196 | Glass Heart Princess |
@@ -663,6 +706,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | PCSG00299 | 俺たちに翼はない |
+|  | PCSG01259 | シルヴァリオ トリニティ -Beyond the Horizon- |
 |  | PCSG01023 | 追放選挙 |
 |  | PCSG01282 | 死神と少女 |
 |  | PCSG01268 | 神凪ノ杜 五月雨綴り |
@@ -820,6 +865,168 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | SLPS-25468 | 永遠のアセリア −この大地の果てで− |
+|  | SLPM-65832 | IZUMO コンプリート |
+|  | SLPM-65867 | 新世紀エヴァンゲリオン 鋼鉄のガールフレンド2nd |
+|  | SLPM-65866 | 何処へ行くの、あの日 ～光る明日へ…～ |
+|  | SLPM-65895 | 月は切り裂く ～探偵 相楽恭一郎～ [限定版] |
+|  | SLPS-25483 | すい～とし～ずん |
+|  | SLPM-65771 | ナチュラル2 -DUO- 桜色の季節 DXパック |
+|  | SLPM-65941 | マビノ×スタイル |
+|  | SLPM-65918 | Dear My Friend ～Love like powdery snow～ |
+|  | SLPM-66026 | 初恋-first kiss- 初回限定版 |
+|  | SLPS-25506 | for Symphony ～with all one's heart～ |
+|  | SLPM-65962 | ホームメイド ～終の館～ [初回限定版] |
+|  | SLPM-65964 | まじかる☆ている ～ちっちゃな魔法使い～ [初回限定版] |
+|  | SLPM-65887 | Like Life an hour [通常版] |
+|  | SLPM-65968 | らぶドル ～Lovely Idol～ [初回限定版] |
+|  | SLPS-25540 | スクールランブル ねる娘は育つ。 |
+|  | SLPM-66052 | 巫女舞 ～永遠の想い～ |
+|  | SLPS-25482 | 雪語り リニューアル版 |
+|  | SLPM-66083 | ラムネ ～ガラスびんに映る海～ 初回限定版 |
+|  | SLPS-25543 | 双恋島 恋と水着のサバイバル！ |
+|  | SLPM-66086 | 極上生徒会 |
+|  | SLPM-66150 | しろがねの鳥籠 [通常版] |
+|  | SLPM-66225 | D.C.F.S. ～ダ・カーポ～ フォーシーズンズ DXパック |
+|  | SLPM-65937 | 星界の戦旗 |
+|  | SLPM-66112 | ふしぎの海のナディア [通常版] |
+|  | SLPM-66157 | ルーンプリンセス 初回限定版 |
+|  | SLPM-66069 | 式神の城 七夜月幻想曲 |
+|  | SLPM-66254 | ふぁいなりすと [通常版] |
+|  | SLPM-65552 | メタルウルフREV [初回限定版] |
+|  | SLPM-66245 | ジュエルスオーシャン Star of Sierra Leone |
+|  | SLPM-66296 | 闇夜にささやく ～探偵 相楽恭一郎～ [通常版] |
+|  | SLPM-66329 | 魔法先生ネギま！ 課外授業 乙女のドキドキ・ビーチサイド |
+|  | SLPS-25617 | e'tude prologue ～揺れ動く心のかたち～ |
+|  | SLPM-66331 | 高円寺女子サッカー 1st stage限定版 |
+|  | SLPM-66408 | つよきす ～Mighty Heart～ [通常版] |
+|  | SLPM-66357 | ローゼンメイデン ドゥエルヴァルツァ [通常版] |
+|  | SLPM-65296 & SLPM-65297 | F～ファナティック～ [初回限定版] |
+|  | SLPS-25257 | 想いのかけら ～Close to ～ |
+|  | SLPS-25508 | 舞-HiME 運命の系統樹 |
+|  | SLPM-66406 | 桜華 ～心輝かせる桜～ |
+|  | SLPM-66243 | ギャラクシーエンジェルⅡ ～絶対領域の扉～ [通常版] |
+|  | SLPM-66433 | 魂響 ～御霊送りの詩～ [通常版] |
+|  | SLPM-66457 | あそびにいくヨ！ ～ちきゅうぴんちのこんやくせんげん～ |
+|  | SLPS-25669 | スクールランブル二学期 恐怖の(?)夏合宿！ 洋館に幽霊現る！？ お宝を巡って真っ向勝負!!!の巻 [初回限定版] |
+|  | SLPM-66491 | あやかしびと -幻妖異聞録- [通常版] |
+|  | SLPS-25612 | Strawberry Panic！ [通常版] |
+|  | SLPM-66398 | パルフェ Chocolat Second Style |
+|  | SLPM-66239 | レッスルエンジェルス SURVIVOR |
+|  | SLPM-66460 | _summer## |
+|  | SLPS-25668 | 鳥篭の向こうがわ |
+|  | SLPM-66534 | 龍刻 Ryu-Koku [限定版] |
+|  | SLPM-66618 | 夢見師 [初回限定版] |
+|  | SLPM-66507 | 乙女の事情 [初回限定版] |
+|  | SLPM-66499 | 神様家族 応援願望 |
+|  | SLPM-66530 | Gift -prism- [通常版] |
+|  | SLPM-66495 | 女子高生 GAME'S-HIGH！ |
+|  | SLPM-66544 | 世界ノ全テ ～two of us～ |
+|  | SLPM-66607 | ホワイトブレス～絆～ [通常版] |
+|  | SLPM-66440 | 保健室へようこそ [通常版] |
+|  | SLPM-66570 | I”s Pure |
+|  | SLPM-66565 | REC☆ドキドキ声優パラダイス☆ [通常版] |
+|  | SLPM-66641 | すくぅ～る らぶっ！～恋と希望のメトロノーム～ |
+|  | SLPM-66470 | 「ラブ★コン ～パンチDEコント～」[通常版] |
+|  | SLPS-25749 | 蒼い空のネオスフィア ～ナノカ・フランカ発明工房記2～ [通常版] |
+|  | SLPM-66611 | 智代アフター ～It's a Wonderful Life～ CS Edition |
+|  | SLPS-25719 | はぴねす！でらっくす [初回限定版] |
+|  | SLPM-66620 | ひぐらしのなく頃に祭 |
+|  | SLPM-66734 | きると ～貴方と紡ぐ夢と恋のドレス～ [初回限定版] |
+|  | SLPS-25689 | シムーン 異薔薇戦争 封印のリ・マージョン [通常版] |
+|  | SLPM-66726 | お嬢様組曲 -Sweet Concert- [通常版] |
+|  | SLPS-25775 | まじしゃんず・あかでみい |
+|  | SLPM-66732 | 許嫁 [初回限定版] |
+|  | SLPM-66755 | 魔女っ娘ア・ラ・モードⅡ ～魔法と剣のストラグル～ [通常版] |
+|  | SLPM-66757 | Que ～エンシェントリーフの妖精～ [通常版] |
+|  | SLPM-66764 | IZUMO零 ～横濱あやかし絵巻～ |
+|  | SLPM-66598 | 夜刀姫斬鬼行 -剣の巻- |
+|  | SLPM-66605 | キャッスルファンタジア アリハト戦記 |
+|  | SLPM-66754 | 月面兎兵器ミーナ -ふたつのPROJECT M- [通常版] |
+|  | SLPM-66285 | プリンセスコンチェルト [通常版] |
+|  | SLPM-66826 | 妖鬼姫伝 ～あやかし幻灯話～ [限定版] |
+|  | SLPM-66879 | StarTRain -your past makes your future- [初回限定版] |
+|  | SLPM-66805 | カラフルアクアリウム～My Little Mermaid～ [通常版] |
+|  | SLPM-66861 | 熱帯低気圧少女 [通常版] |
+|  | SLPM-66890 | ぷりサガ～プリンセスをさがせ～ |
+|  | SLPM-66809 | 最終試験くじら−Alive− |
+|  | SLPM-66787 | 水夏A.S+ Eternal Name [通常版] |
+|  | SLPM-66918 | プリンセスメーカー5 |
+|  | SLPM-67015 | School Days L×H |
+|  | SLPM-66908 | IZUMO2 学園狂想曲 ダブルタクト |
+|  | SLPM-66933 | 君が主で執事が俺で～お仕え日記～ [初回限定版] |
+|  | SLPM-66942 | Φなる・あぷろーち 2 ～1st priority～ [初回限定版] |
+|  | SLPM-66901 | 12RIVEN - the Ψcliminal of integral - |
+|  | SLPM-66919 | 吸血奇譚 ムーンタイズ |
+|  | SLPM-66935 | true tears～トゥルーティアーズ～ |
+|  | SLPM-66846 | プリズム・アーク -AWAKE- |
+|  | SLPM-66997 | 終末少女幻想アリスマチック Apocalypse [通常版] |
+|  | SLPM-66969 | ほしがりエンプーサ |
+|  | SLPM-66920 | ほしフル～星の降る街～ |
+|  | SLPM-66921 | H2Oプラス |
+|  | SLPM-55009 | Lの季節2 ～Invisible Memories～ [通常版] |
+|  | SLPM-66958 | アオイシロ [初回限定版] |
+|  | SLPM-55016 | よつのは ～a journey of sincerity～ [通常版] |
+|  | SLPM-55026 | 白銀のソレイユ Contract to the future 未来への契約 [通常版] |
+|  | SLPM-55047 | Sugar+Spice！ ～あの子のステキな何もかも～ |
+|  | SLPM-55028 | シークレットゲーム -KILLER QUEEN- |
+|  | SLPM-55058 | レッスルエンジェルス サバイバー2 |
+|  | SLPM-55071 | 夢見白書 ～Second Dream～ [通常版] |
+|  | SLPM-55079 | Scarlett ～日常の境界線～ [通常版] |
+|  | SLPM-55098 | 恋する乙女と守護の楯 [通常版] |
+|  | SLPM-66441 | 大奥記 |
+|  | SLPM-55102 | Piaキャロットへようこそ！！G.P. ～学園プリンセス～ |
+|  | SLPM-55136 | Clear ～新しい風の吹く丘で～ |
+|  | SLPM-55159 | ヒャッコ よろずや事件簿！ |
+|  | SLPM-55052 | トリガーハート エグゼリカ エンハンスド |
+|  | SLPM-66352 | Memories Off ～それから again～ [限定版] |
+|  | SLPM-65857 | Memories Off AfterRain vol.1 折鶴 [SPECIAL EDITION] |
+|  | SLPM-65903 | Memories Off AfterRain Vol.2 想演 |
+|  | SLPM-66146 & SLPM-66147 | Memories Off #5 とぎれたフィルム |
+|  | SLPM-66791 | Memories Off #5 encore [通常版] |
+|  | SLPM-66988 | Memories Off 6 ～T-Wave～ [通常版] |
+|  | SLPM-55197 | Memories Off 6 Next Relation |
+|  | SLPM-55184 | メルティブラッド アクトレスアゲイン [通常版] |
+|  | SLPM-55154 | つよきす2学期 ～Swift Love～ [通常版] |
+|  | SLPM-55185 | Sweet Honey Coming [DXパック] |
+|  | SLPM-55220 | お掃除戦隊くりーんきーぱー H [通常版] |
+|  | SLPM-62784 | 顔のない月 Select story |
+|  | SLPM-55240 | ef - A Fairy Tale of the Two. [初回限定特別同梱版] |
+|  | SLPM-55243 | スズノネセブン！～Rebirth Knot～ |
+|  | SLPS-25896 | 萌え萌え2次大戦（略）☆デラックス |
+|  | SLPS-25956 | 萌え萌え2次大戦(略)2[chu～♪] [通常版] |
+|  | SLPM-55174 | ストライクウィッチーズ あなたとできること [通常版] |
+|  | SLPM-55068 | 恋姫†夢想 ～ドキッ☆乙女だらけの三国志演義～ [通常版] |
+|  | SLPM-55288 | 真・恋姫†夢想 ～乙女繚乱☆三国志演義～ [通常版] |
+|  | SLPM-66743 | 神曲奏界ポリフォニカ |
+|  | SLPM-66977 | 神曲奏界ポリフォニカ 0～4話フルパック |
+|  | SLPM-55095 | 神曲奏界ポリフォニカ THE BLACK -EPSODE 1 & 2 BOX EDITION- |
+|  | SLPM-66909 | 神曲奏界ポリフォニカ ３&４話完結編 |
+|  | SLPM-55270 | 神曲奏界ポリフォニカ アフタースクール |
+|  | SLPM-55225 | 戦極姫 ～戦乱に舞う乙女達～ |
+|  | SLPM-55278 | 戦極姫2・炎 ～百華、戦乱辰風の如く～ |
+|  | SLPM-55263 | 花と乙女に祝福を ～春風の贈り物～ |
+|  | SLPM-65682 | Monochrome (モノクローム) |
+|  | SLPS-25051 | Missing Blue [通常版] |
+|  | SLPS-25759 | 四八 （仮） |
+|  | SLPS-25135 | かまいたちの夜2 ～監獄島のわらべ唄～ [通常版] |
+|  | SLPM-66452 | かまいたちの夜x3 三日月島事件の真相 |
+|  | SLPM-55200 | 桃華月憚 ～光風の陵王～ |
+|  | SLPS-25026 | 夏色の砂時計 |
+|  | SLPM-65786 | なついろ ～星屑のメモリー～ |
+|  | SLPM-65355 | 夏色小町【一日千夏】 |
+|  | SLPS-25941 | SDガンダム - G GENERATION WARS |
+|  | SLPM-66458 | 風雨来記 |
+|  | SLPM-66163 | 風雨来記2 |
+|  | SLPM-62207 | SIMPLE2000シリーズ Vol.9 THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～ |
+|  | SLPM-55006 | あかね色に染まる坂 ぱられる |
+|  | SLPS-25581 | SIMPLE 2000シリーズ Vol.92 THE 呪いのゲーム |
+|  | SLPS-20196 | 赤川次郎ミステリー月の光　 ～沈める鐘の殺人～ |
+|  | SLPS-25081 | 最終電車 |
+|  | SLPS-25276 | 夏夢夜話 |
+|  | SLPM-65684 | マイネリーベ 優美なる記憶 |
+|  | SLPM-66247 | マイネリーベⅡ ～誇りと正義と愛～ |
+|  | SLPM-66298 | セパレイトハーツ (Separate Hearts) |
 |  | SLPM-65732 | アカイイト |
 |  | SLPM-65914 | Nana |
 |  | SLPM-66045 | My Merry May with be |
@@ -836,10 +1043,10 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | SLPS-20352 | 好きなものは好きだからしょうがない！！ -FIRST LIMIT & TARGET†NIGHTS- Sukisho！ Episode ＃01+＃02 |
 |  | SLPS-20394 | 好きなものは好きだからしょうがない！！ -RAIN- Sukisyo！ Episode #03 |
 |  | SLPS-25871 | ドラスティックキラー |
-|  | SLPM-66458 | 風雨来記 |
-|  | SLPS-25679 | うたわれるもの 散りゆく者への子守唄 |
+|  | SLPS-25678 & SLPS-25679 | うたわれるもの 散りゆく者への子守唄 |
 |  | SLPS-25150 | Only you リベルクルス ドラマCD付き |
 |  | SLPM-66905 | D.C. ～ダ・カーポ～ the Origin |
+|  | SLPM-55156 | D.C.I.F. ～ダ・カーポ～イノセント・フィナーレ～ [通常版] |
 |  | SLPM-66437 | Soul Link EXTENSION |
 |  | SLPM-65396 | デ・ジ・キャラット ファンタジー エクセレント |
 |  | SLPM-66272 | I/O |
@@ -847,7 +1054,10 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | SLPM-55269 | PANDORA ～君の名前を僕は知る～ |
 |  | SLPM-66293 | 学園アリス ～きらきら★メモリーキッス～ |
 |  | SLPM-65481 | After...～忘れえぬ絆～ |
+|  | SLPM-66858 | いつか、届く、あの空に。 ～陽の道と緋の昏と～ [通常版] |
+|  | SLPS-25830 | ゼロの使い魔 夢魔が紡ぐ夜風の幻想曲 [限定版] |
 |  | SLPS-25897 | ゼロの使い魔 迷子の終止符と幾千の交響曲 |
+|  | SLPS-25709 | ゼロの使い魔 小悪魔と春風の協奏曲 [通常版] |
 |  | SLPM-55170 | スキップ・ビート |
 |  | SLPM-66891 & SLPM-66892 | Myself;Yourself |
 |  | SLPM-55163 | Myself; Yourself それぞれのfinale |

@@ -31,6 +31,7 @@ from ctypes.wintypes import (
     MAX_PATH,
 )
 from windows import AutoHandle
+from xml.sax.saxutils import escape
 import gobject
 import platform, windows, functools, os, re, csv
 
@@ -51,7 +52,7 @@ _SAPI_List = utilsdll.SAPI_List
 _SAPI_List.argtypes = (c_uint, c_void_p)
 
 _SAPI_Speak = utilsdll.SAPI_Speak
-_SAPI_Speak.argtypes = (c_wchar_p, c_uint, c_uint, c_uint, c_uint, c_void_p)
+_SAPI_Speak.argtypes = (c_wchar_p, c_wchar_p, c_int, c_int, c_int, c_void_p)
 _SAPI_Speak.restype = c_bool
 
 
@@ -59,18 +60,24 @@ class SAPI:
     @staticmethod
     def List(v):
         ret = []
-        _SAPI_List(v, CFUNCTYPE(None, c_wchar_p)(ret.append))
+
+        def __(ret: list, _id, name):
+            ret.append((_id, name))
+
+        _SAPI_List(v, CFUNCTYPE(None, c_wchar_p, c_wchar_p)(functools.partial(__, ret)))
         return ret
 
     @staticmethod
-    def Speak(content, v, voiceid, rate, volume):
+    def Speak(content, voiceid, rate, pitch, volume=100):
         ret = []
 
         def _cb(ptr, size):
             ret.append(ptr[:size])
 
         fp = CFUNCTYPE(None, POINTER(c_char), c_size_t)(_cb)
-        succ = _SAPI_Speak(content, v, voiceid, int(rate), int(volume), fp)
+        succ = _SAPI_Speak(
+            escape(content), voiceid, int(rate), int(volume), int(pitch), fp
+        )
         if not succ:
             return None
         return ret[0]
@@ -199,7 +206,8 @@ def GetLnkTargetPath(lnk):
 
 
 _ExtractExeIconData = utilsdll.ExtractExeIconData
-_ExtractExeIconData.argtypes = c_bool, c_wchar_p, c_void_p
+_ExtractExeIconDataCB = CFUNCTYPE(None, POINTER(c_char), c_size_t)
+_ExtractExeIconData.argtypes = c_bool, c_wchar_p, _ExtractExeIconDataCB
 _ExtractExeIconData.restype = c_bool
 
 
@@ -213,7 +221,7 @@ def ExtractExeIconData(file, large=False):
     def cb(ptr, size):
         ret.append(ptr[:size])
 
-    cb = CFUNCTYPE(None, POINTER(c_char), c_size_t)(cb)
+    cb = _ExtractExeIconDataCB(cb)
     succ = _ExtractExeIconData(large, file, cb)
     if not succ:
         return None
@@ -244,7 +252,7 @@ def QueryVersion(exe):
 
 ClipBoardListenerStart = utilsdll.ClipBoardListenerStart
 ClipBoardListenerStop = utilsdll.ClipBoardListenerStop
-WindowMessageCallback_t = CFUNCTYPE(None, c_int, c_bool, c_wchar_p)
+WindowMessageCallback_t = CFUNCTYPE(None, c_int, c_void_p, c_void_p)
 WinEventHookCALLBACK_t = CFUNCTYPE(None, DWORD, HWND, LONG)
 globalmessagelistener = utilsdll.globalmessagelistener
 globalmessagelistener.argtypes = (
@@ -257,8 +265,9 @@ SetWindowExtendFrame = utilsdll.SetWindowExtendFrame
 SetWindowExtendFrame.argtypes = (HWND,)
 
 SetTheme = utilsdll.SetTheme
-SetTheme.argtypes = HWND, c_bool, c_int, c_bool
-
+SetTheme.argtypes = HWND, c_bool, c_int
+SetCornerNotRound = utilsdll.SetCornerNotRound
+SetCornerNotRound.argtypes = HWND, c_bool, c_bool
 
 _ListProcesses = utilsdll.ListProcesses
 _ListProcesses.argtypes = (c_void_p,)
@@ -344,12 +353,10 @@ def GdiCropImage(x1, y1, x2, y2, hwnd=None):
 
 MaximumWindow = utilsdll.MaximumWindow
 MaximumWindow.argtypes = (HWND,)
-SetWindowBackdrop = utilsdll.SetWindowBackdrop
-SetWindowBackdrop.argtypes = HWND, c_bool, c_bool
 setAeroEffect = utilsdll.setAeroEffect
 setAeroEffect.argtypes = (HWND, c_bool)
 setAcrylicEffect = utilsdll.setAcrylicEffect
-setAcrylicEffect.argtypes = (HWND, c_bool)
+setAcrylicEffect.argtypes = (HWND, c_bool, DWORD)
 clearEffect = utilsdll.clearEffect
 clearEffect.argtypes = (HWND,)
 
@@ -429,6 +436,8 @@ webview2_add_menu.argtypes = (
     c_void_p,
     c_void_p,
 )
+webview2_set_transparent = utilsdll.webview2_set_transparent
+webview2_set_transparent.argtypes = WebView2PTR, c_bool
 webview2_evaljs = utilsdll.webview2_evaljs
 webview2_evaljs_CALLBACK = CFUNCTYPE(None, c_wchar_p)
 webview2_evaljs.argtypes = WebView2PTR, c_wchar_p, c_void_p
@@ -548,12 +557,17 @@ def GetSelectedText():
     return ""
 
 
-SimpleCreateEvent = utilsdll.SimpleCreateEvent
-SimpleCreateEvent.argtypes = (LPCWSTR,)
-SimpleCreateEvent.restype = AutoHandle
-SimpleCreateMutex = utilsdll.SimpleCreateMutex
-SimpleCreateMutex.argtypes = (LPCWSTR,)
-SimpleCreateMutex.restype = AutoHandle
+GetSecurityAttributes = utilsdll.GetSecurityAttributes
+GetSecurityAttributes.restype = c_void_p
+
+
+def SimpleCreateEvent(name):
+    return windows.CreateEventW(GetSecurityAttributes(), False, False, name)
+
+
+def SimpleCreateMutex(name):
+    return windows.CreateMutexW(GetSecurityAttributes(), False, name)
+
 
 CreateAutoKillProcess = utilsdll.CreateAutoKillProcess
 CreateAutoKillProcess.argtypes = c_wchar_p, c_wchar_p, POINTER(DWORD)
@@ -562,7 +576,7 @@ CreateAutoKillProcess.restype = AutoHandle
 
 class _AutoKillProcess:
     def __init__(self, handle, pid):
-        self.handle = handle
+        self._refkep = handle
         self.pid = pid
 
 
@@ -683,8 +697,8 @@ GetParentProcessID.argtypes = (DWORD,)
 GetParentProcessID.restype = DWORD
 MouseMoveWindow = utilsdll.MouseMoveWindow
 MouseMoveWindow.argtypes = (HWND,)
-NeedUseSysMove = utilsdll.NeedUseSysMove
-NeedUseSysMove.restype = c_bool
+IsMultiDifferentDPI = utilsdll.IsMultiDifferentDPI
+IsMultiDifferentDPI.restype = c_bool
 
 AdaptersServiceUninitialize = utilsdll.AdaptersServiceUninitialize
 AdaptersServiceStartMonitor_Callback = CFUNCTYPE(None)
@@ -712,6 +726,21 @@ def GetPackagePathByPackageFamily(packagename: str):
     return None
 
 
+_FindPackages = utilsdll.FindPackages
+_FindPackages_CB = CFUNCTYPE(None, LPCWSTR, LPCWSTR)
+_FindPackages.argtypes = (_FindPackages_CB, LPCWSTR)
+
+
+def FindPackages(checkid):
+    ret: "list[tuple[str, str]]" = []
+
+    def __cb(ret: list, name, path):
+        ret.append((name, path))
+
+    _FindPackages(_FindPackages_CB(functools.partial(__cb, ret)), checkid)
+    return ret
+
+
 _Markdown2Html = utilsdll.Markdown2Html
 _Markdown2Html_cb = CFUNCTYPE(None, c_char_p)
 _Markdown2Html.argtypes = c_char_p, _Markdown2Html_cb
@@ -723,3 +752,23 @@ def Markdown2Html(md: str):
     if ret:
         return ret[0].decode("utf8")
     return md
+
+
+_ListEndpoints = utilsdll.ListEndpoints
+_ListEndpoints_CB = CFUNCTYPE(None, c_wchar_p, c_wchar_p)
+_ListEndpoints.argtypes = (c_bool, _ListEndpoints_CB)
+
+
+def ListEndpoints(isinput: bool):
+    ret = []
+
+    def __(name, _id):
+        ret.append((name, _id))
+
+    _ListEndpoints(isinput, _ListEndpoints_CB(__))
+    return ret
+
+
+GetDevicePixelRatioF = utilsdll.GetDevicePixelRatioF
+GetDevicePixelRatioF.argtypes = (HWND,)
+GetDevicePixelRatioF.restype = c_float

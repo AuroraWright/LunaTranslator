@@ -22,14 +22,18 @@ from ctypes import (
 import os
 from ctypes.wintypes import (
     MAX_PATH,
+    LPVOID,
     RECT,
     POINT,
     HWND,
     BOOL,
+    LCID,
+    LCTYPE,
     DWORD,
     LONG,
     HMONITOR,
     LPCVOID,
+    INT,
     LPWSTR,
     LPCWSTR,
     HANDLE,
@@ -95,6 +99,7 @@ SW_SHOWNORMAL = 1
 WS_EX_TOOLWINDOW = 128
 SWP_NOSIZE = 1
 SW_SHOW = 5
+WS_THICKFRAME = 0x00040000
 
 FILE_SHARE_READ = 0x00000001
 FILE_ATTRIBUTE_NORMAL = 0x80
@@ -175,6 +180,7 @@ _shell32 = windll.Shell32
 _kernel32 = windll.Kernel32
 _psapi = windll.Psapi
 _Advapi32 = windll.Advapi32
+_Shlwapi = windll.Shlwapi
 
 CloseHandle = _kernel32.CloseHandle
 CloseHandle.argtypes = (HANDLE,)
@@ -182,6 +188,8 @@ CloseHandle.restype = BOOL
 
 
 class AutoHandle(HANDLE):
+    def detach(self):
+        self.value = None
 
     def __del__(self):
         if self:
@@ -445,12 +453,28 @@ def _GetProcessFileName(hHandle):
     return check_maybe_unc_file(v)
 
 
-def GetProcessFileName(hHandle):
+def ___GetProcessFileName(hHandle):
     p = _GetProcessFileName(hHandle)
     if p:
         # GetModuleFileNameExW有可能莫名其妙得到短路径，导致部分路径无法匹配
         p = GetLongPathName(p)
     return p
+
+
+def GetProcessFileName(pid):
+    for _ in (
+        PROCESS_ALL_ACCESS,  # 如果能这个，那最好，因为一些特殊路径在这个权限下可以不需要处理
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,  # GetModuleFileNameExW
+        PROCESS_QUERY_INFORMATION,  # XP
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    ):
+        hproc = OpenProcess(_, False, pid)
+        if not hproc:
+            continue
+        name_ = ___GetProcessFileName(hproc)
+        if name_:
+            return name_
+    return None
 
 
 _CreateProcessW = _kernel32.CreateProcessW
@@ -698,19 +722,6 @@ SetProp.argtypes = HWND, LPCWSTR, HANDLE
 SetProp.restype = BOOL
 
 
-_GetEnvironmentVariableW = _kernel32.GetEnvironmentVariableW
-_GetEnvironmentVariableW.argtypes = c_wchar_p, c_wchar_p, DWORD
-_SetEnvironmentVariableW = _kernel32.SetEnvironmentVariableW
-_SetEnvironmentVariableW.argtypes = LPCWSTR, LPCWSTR
-
-
-def addenvpath(path):
-    path = os.path.abspath(path)
-    env = create_unicode_buffer(65535)
-    _GetEnvironmentVariableW("PATH", env, 65535)
-    _SetEnvironmentVariableW("PATH", env.value + ";" + path)
-
-
 GetModuleHandle = _kernel32.GetModuleHandleW
 GetModuleHandle.argtypes = (LPCWSTR,)
 GetModuleHandle.restype = HMODULE
@@ -740,10 +751,10 @@ _MapViewOfFile.restype = POINTER(c_char)
 
 def MapViewOfFile(
     hfmap,
+    size=1024 * 1024 * 16,
     acc=FILE_MAP_READ | FILE_MAP_WRITE,
     high=0,
     low=0,
-    size=1024 * 1024 * 16,
 ):
     return _MapViewOfFile(hfmap, acc, high, low, size)
 
@@ -814,9 +825,53 @@ GetClassNameW.argtypes = HWND, LPWSTR, c_int
 GetClassNameW.restype = c_int
 
 
-def GetClassName(hwnd):
+def GetClassName(hwnd: int) -> "str|None":
     buff = create_unicode_buffer(256)
     ret = GetClassNameW(hwnd, buff, 256)
     if not ret:
         return
+    return buff.value
+
+
+GetUserDefaultLCID = _kernel32.GetUserDefaultLCID
+GetUserDefaultLCID.restype = LCID
+GetLocaleInfoW = _kernel32.GetLocaleInfoW
+GetLocaleInfoW.argtypes = LCID, LCTYPE, LPCWSTR, c_int
+LOCALE_SISO639LANGNAME = 0x59
+LOCALE_SISO3166CTRYNAME = 0x5A
+
+
+def GetLocale() -> "tuple[str, str]":
+    lcid = GetUserDefaultLCID()
+    buff = create_unicode_buffer(10)
+    buff2 = create_unicode_buffer(10)
+    GetLocaleInfoW(lcid, LOCALE_SISO639LANGNAME, buff, 10)
+    GetLocaleInfoW(lcid, LOCALE_SISO3166CTRYNAME, buff2, 10)
+    return buff.value, buff2.value
+
+
+CreateEventW = _kernel32.CreateEventW
+CreateEventW.argtypes = LPCVOID, BOOL, BOOL, LPCWSTR
+CreateEventW.restype = AutoHandle
+
+CreateMutexW = _kernel32.CreateMutexW
+CreateMutexW.argtypes = LPCVOID, BOOL, LPCWSTR
+CreateMutexW.restype = AutoHandle
+
+
+StrCmpLogicalW = _Shlwapi.StrCmpLogicalW
+StrCmpLogicalW.argtypes = (LPCWSTR, LPCWSTR)
+StrCmpLogicalW.restype = INT
+
+LOCALE_NAME_MAX_LENGTH = 85
+
+
+def LCIDToLocaleName(lcid: int) -> str:
+    _LCIDToLocaleName = _kernel32.LCIDToLocaleName
+    _LCIDToLocaleName.argtypes = LCID, LPWSTR, c_int, DWORD
+    _LCIDToLocaleName.restype = c_int
+
+    buff = create_unicode_buffer(LOCALE_NAME_MAX_LENGTH)
+    if not _LCIDToLocaleName(lcid, buff, LOCALE_NAME_MAX_LENGTH, 0):
+        raise Exception(GetLastError())
     return buff.value

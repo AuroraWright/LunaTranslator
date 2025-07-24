@@ -50,8 +50,7 @@ export const en = defineConfig({
                         text: 'Translation interface settings', link: '/en/useapis/tsapi',
                         collapsed: true,
                         items: [
-                            { text: 'Large Model Online Translation', link: '/en/guochandamoxing' },
-                            { text: 'Large Model Offline Translation', link: '/en/offlinellm' },
+                            { text: 'Large Model Translation Interface', link: '/en/guochandamoxing' },
                             { text: 'Traditional online translation interface', link: '/en/useapis/tsapi' },
                         ]
                     },
@@ -63,9 +62,16 @@ export const en = defineConfig({
                             { text: 'Functions of Various Translation Optimizations', link: '/en/transoptimi' }
                         ]
                     },
-                    { text: 'Speech Synthesis', link: '/en/ttsofname' },
                     {
-                        text: 'Tokenization & Dictionary', link: '/en/qa1',
+                        text: 'Tổng hợp giọng nói', link: '/en/ttsengines',
+                        collapsed: true,
+                        items: [
+                            { text: 'Công cụ Tổng hợp Giọng nói', link: '/en/ttsengines' },
+                            { text: 'Using Different Voices for Different Characters', link: '/en/ttsofname' }
+                        ]
+                    },
+                    {
+                        text: 'Tokenization & Dictionary & Anki', link: '/en/qa1',
                         collapsed: true,
                         items: [
                             { text: 'Using Mecab for Tokenization & Part-of-Speech Color Annotation', link: '/en/qa1' },
@@ -75,6 +81,8 @@ export const en = defineConfig({
                     { text: 'Tool Buttons', link: '/en/alltoolbuttons' },
                     { text: 'Shortcut Keys', link: '/en/fastkeys' },
                     { text: 'Network Service', link: '/en/apiservice' },
+                    { text: 'Speech Recognition', link: '/en/sr' },
+
                 ]
             }
         ]

@@ -1,4 +1,4 @@
-#include "Elf.h"
+﻿#include "Elf.h"
 
 /**
  *  jichi 6/1/2014:
@@ -129,10 +129,7 @@ bool InsertElfHook()
   // reladdr = 0x2f9b0; // 愛姉妹4
   // reladdr = 0x2f0f0; // SEXヂ�ーチャー剛史 trial
   if (!addr)
-  {
-    ConsoleOutput("Elf: pattern not found");
     return false;
-  }
 
   enum : BYTE
   {
@@ -427,8 +424,11 @@ namespace
 {
   bool elf4()
   {
-    // WORDS WORTH【Windows10対応】
-    // elf3只能拿到人名，跳过
+    // https://vndb.org/v315
+    //  WORDS WORTH【Windows10対応】
+    //  elf3只能拿到人名，跳过
+    // https://vndb.org/v2307
+    // 愛のチカラ
     uint8_t bytes[] = {
         0x72, 0x02,
         0x8b, 0x36,
@@ -484,11 +484,71 @@ namespace
     hp.index = 0x10;
     return NewHook(hp, "Elf4");
   }
+  bool malunohuanzhe()
+  {
+    // 麻呂の患者はガテン系３完結編
+    BYTE sig[] = {
+        0x8b, 0x4e, 0x20,
+        0x83, 0xf9, 0x10,
+        0x72, 0x05,
+        0x8b, 0x46, 0x0c,
+        0xeb, 0x03,
+        0x8d, 0x46, 0x0c,
+        0x80, 0x3c, 0x18, 0x00,
+        0x0f, 0x84, XX4,
+        0x83, 0xf9, 0x10,
+        0x72, 0x05,
+        0x8b, 0x46, 0x0c,
+        0xeb, 0x03,
+        0x8d, 0x46, 0x0c,
+        0x8a, 0x04, 0x18,
+        0x3c, 0x81,
+        0x72, 0x04,
+        0x3c, 0x9f,
+        0x76, 0x06,
+        0x04, 0x20,
+        0x3c, 0x0f,
+        0x77, XX};
+    ULONG addr = MemDbg::findBytes(sig, sizeof(sig), processStartAddress, processStopAddress);
+    if (!addr)
+      return false;
+    addr = [addr]() -> uintptr_t
+    {
+      auto addr1 = MemDbg::findEnclosingAlignedFunction(addr);
+      if (!addr1)
+        return 0;
+      auto addr2 = findfuncstart(addr);
+      if (!addr2)
+        return 0;
+      if (addr2 == addr1)
+        return addr2;
+      return 0;
+    }();
+    if (!addr)
+      return false;
+    HookParam hp;
+    hp.address = addr;
+    hp.type = USING_STRING | EMBED_ABLE | EMBED_DYNA_SJIS;
+    hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+    {
+      auto a2 = context->stack[1];
+      auto text = (TextUnionA *)(a2 + 12);
+      buffer->from(text->view());
+    };
+    hp.embed_fun = [](hook_context *context, TextBuffer buffer)
+    {
+      auto a2 = context->stack[1];
+      auto text = (TextUnionA *)(a2 + 12);
+      text->setText(buffer.viewA());
+    };
+    hp.embed_hook_font = F_TextOutA;
+    return NewHook(hp, "elf5");
+  }
 }
 bool Elf::attach_function()
 {
 
-  auto _1 = InsertElfHook() || __() || elf4() || nvxijiazu() || elf3();
+  auto _1 = InsertElfHook() || __() || elf4() || nvxijiazu() || malunohuanzhe() || elf3();
   return ScenarioHook::attach(processStartAddress, processStopAddress) || _1;
 }
 
@@ -676,10 +736,55 @@ namespace
     hp.offset = regoffset(eax);
     return NewHook(hp, "Elf");
   }
+  bool deja()
+  {
+    // https://archive.org/details/deja-multipack
+    BYTE sig[] = {
+        // 0x66,0x8b,0x4d,0x24,0x0c
+        // 0x66,0x8b,0xc1
+        0x66, 0xc1, 0xe8, 0x08,
+        0x3c, 0x81,
+        XX,      // 0x57
+        XX, XX4, // 0xc6,0x44,0x24,0x11,0x00
+        XX, XX4, // 0xc6,0x44,0x24,0x12,0x00
+        0x72, 0x04,
+        0x3c, 0x9f,
+        0x76, 0x16,
+        0x3c, 0xe0,
+        0x72, 0x04,
+        0x3c, 0xef,
+        0x76, 0x0e,
+        0x3c, 0xfa,
+        0x72, 0x04,
+        0x3c, 0xfc,
+        0x76, 0x06};
+    ULONG addr2 = MemDbg::findBytes(sig, sizeof(sig), processStartAddress, processStopAddress);
+    if (!addr2)
+      return false;
+    ULONG addr = reverseFindBytes(sig, sizeof(sig), processStartAddress, processStopAddress);
+    if (!addr)
+      return false;
+    if (addr2 == addr)
+    {
+      return false;
+    }
+    addr = MemDbg::findEnclosingAlignedFunction(addr, 0x18);
+    if (!addr)
+      return false;
+    HookParam hp;
+    hp.address = addr;
+    hp.type = CODEC_ANSI_BE | USING_CHAR;
+    hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+    {
+      *split = context->stack[2] > 8;
+      buffer->from_t((WORD)context->stack[3]);
+    };
+    return NewHook(hp, "deja");
+  }
 }
 bool Elf2::attach_function()
 {
-  return elf2() || Elf2attach_function() || all() || el();
+  return elf2() || Elf2attach_function() || all() || el() || deja();
 }
 
 bool ElfFunClubFinal::attach_function()

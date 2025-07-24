@@ -13,7 +13,7 @@ from myutils.hwnd import clipboard_set_image
 from myutils.utils import get_time_stamp, getimageformatlist, targetmod
 from gui.inputdialog import autoinitdialog
 from gui.specialwidget import stackedlist, shrinkableitem, shownumQPushButton
-from gui.usefulwidget import pixmapviewer, makesubtab_lazy, tabadd_lazy
+from gui.usefulwidget import pixmapviewer, makesubtab_lazy, tabadd_lazy, request_delete_ok
 from gui.gamemanager.setting import dialog_setting_game_internal
 from gui.gamemanager.common import (
     getalistname,
@@ -238,6 +238,8 @@ class MyQListWidget(QListWidget):
                         if image.isNull():
                             item.setHidden(True)
                         else:
+                            if self.item(self.currentRow()).isHidden():
+                                self.setCurrentRow(row)
                             item.setIcon(QIcon(image))
         except:
             print_exc()
@@ -277,10 +279,10 @@ class previewimages(QWidget):
         first = (self.list.currentRow() + dx) % self.list.count()
         test = first
         while True:
-            self.list.setCurrentRow(test)
             if not self.list.item(test).isHidden():
+                self.list.setCurrentRow(test)
                 break
-            test = (test + 1) % self.list.count()
+            test = (test + dx) % self.list.count()
             if test == first:
                 break
 
@@ -304,7 +306,7 @@ class previewimages(QWidget):
                 self.list.addItem(item)
         self.list.blockSignals(False)
 
-    def setpixmaps(self, paths, currentpath):
+    def setpixmaps(self, paths: list, currentpath):
         self.list.setCurrentRow(-1)
         self.additems(paths)
         pixmapi = 0
@@ -593,6 +595,14 @@ class pixwrapper(QWidget):
 
 
 class dialog_savedgame_v3(QWidget):
+    def deleteLater(self):
+
+        if not isqt5:
+            try:
+                self.fuckqt6.fuckcombo.setEditable(False)
+            except:
+                pass
+        super().deleteLater()
 
     def viewitem(self, k):
         try:
@@ -601,15 +611,15 @@ class dialog_savedgame_v3(QWidget):
             currvis = self.righttop.currentIndex()
             if self.righttop.count() > 1:
                 self.righttop.removeTab(1)
-            tabadd_lazy(
-                self.righttop,
-                "设置",
-                lambda v: v.addWidget(
-                    dialog_setting_game_internal(
-                        self, k, keepindexobject=self.keepindexobject
-                    )
-                ),
-            )
+
+            def __(v: QLayout):
+                _ = dialog_setting_game_internal(
+                    self, k, keepindexobject=self.keepindexobject
+                )
+                self.fuckqt6 = _
+                v.addWidget(_)
+
+            tabadd_lazy(self.righttop, "设置", __)
             self.righttop.setCurrentIndex(currvis)
         except:
             print_exc()
@@ -999,7 +1009,8 @@ class dialog_savedgame_v3(QWidget):
     def shanchuyouxi(self):
         if not self.currentfocusuid:
             return
-
+        if not request_delete_ok(self, "bf4aa76a-41a5-4b07-a095-0c34c616ed2d"):
+            return
         try:
             uid = self.currentfocusuid
             idx2 = getreflist(self.reftagid).index(uid)

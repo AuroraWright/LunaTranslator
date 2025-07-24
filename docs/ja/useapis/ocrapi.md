@@ -181,9 +181,9 @@ https://ocr.space/
 
 == ローカルOCR
 
-日本語認識モデルが組み込まれています。
+組み込みでは、中国語・日本語・英語の軽量認識モデルが含まれています。他の言語を認識する必要がある場合は、`リソースダウンロード`で対応する言語モデルを追加してください。
 
-他の言語を認識する必要がある場合は、`リソースダウンロード`で対応する言語の認識モデルを追加してください。
+さらに、`リソースダウンロード`では、中国語・日本語・英語の高精度モデルも提供されています。Windows 10版のソフトウェアを使用している場合、またはシステムがWindows 11の場合、GPUを使用してモデルを実行するように設定することで、高精度モデルの認識効率を向上させることができます。
 
 == SnippingTool
 
@@ -218,7 +218,7 @@ WeChatまたは最新バージョンのQQのインストールが必要です
 
 サポートされているすべての言語パックの一覧を返すには、管理者として PowerShell を開き (右クリックし、[管理者として実行] を選択します)、次のコマンドを入力します。
 
-```
+```powershell
 Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*' }
 ```
 
@@ -247,8 +247,8 @@ State : NotPresent
 
 次のコマンドは、"en-US" 用の OCR パックをインストールします:
 
-```
-$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }`
+```powershell
+$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Add-WindowsCapability -Online
 ```
 
@@ -256,7 +256,7 @@ $Capability | Add-WindowsCapability -Online
 
 次のコマンドは、"en-US" の OCR パックを削除します:
 
-```
+```powershell
 $Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Remove-WindowsCapability -Online
 ```

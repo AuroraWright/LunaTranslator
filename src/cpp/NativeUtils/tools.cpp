@@ -2,6 +2,18 @@
 #include <mecab.h>
 #include <rapidfuzz/distance.hpp>
 #include <aes.hpp>
+#include "../fileversion.hpp"
+
+DECLARE_API bool QueryVersion(const wchar_t *exe, WORD *_1, WORD *_2, WORD *_3, WORD *_4)
+{
+    auto version = QueryVersion(exe);
+    if (!version)
+        return false;
+
+    std::tie(*_1, *_2, *_3, *_4) = version.value();
+    return true;
+}
+
 DECLARE_API size_t levenshtein_distance(size_t len1, const wchar_t *string1,
                                         size_t len2, const wchar_t *string2)
 {
@@ -19,7 +31,7 @@ DECLARE_API MeCab::Tagger *mecab_init(char *utf8path)
     MeCab::Tagger *tagger = MeCab::Tagger::create(ARRAYSIZE(argv), argv);
     if (!tagger)
     {
-        return 0;
+        return nullptr;
     }
     return tagger;
 }
@@ -29,15 +41,20 @@ DECLARE_API void mecab_end(MeCab::Tagger *tagger)
         return;
     delete tagger;
 }
-
+static std::mutex parseToNodelock;
 DECLARE_API bool mecab_parse(MeCab::Tagger *tagger, char *utf8string, void (*callback)(const char *, const char *))
 {
     if (!tagger)
         return false;
 
     std::string cstr = utf8string;
-    auto node = tagger->parseToNode(cstr.c_str());
-
+    const MeCab::Node *node = nullptr;
+    {
+        std::scoped_lock _(parseToNodelock);
+        node = tagger->parseToNode(cstr.c_str());
+    }
+    if (!node)
+        return false;
     while (node->next)
     {
         node = node->next;
@@ -95,3 +112,18 @@ DECLARE_API void Markdown2Html(const char *str, void (*cb)(const char *))
     md_html(str, strlen(str), process_output, &output, MD_DIALECT_GITHUB, 0);
     cb(output.c_str());
 }
+
+// 检查是否有窗口，有则重定向。
+// 这个freopen是vcrt内部的东西，每个vcrt运行时必须独立重定向。
+// 如果静态链接了exe，则exe内的freopen只会修改其内部的stdio，dll的vcrt无法受其影响。
+#ifdef WIN10ABOVE
+auto __ = []()
+{
+    if (GetConsoleWindow())
+    {
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+    }
+    return 0;
+}();
+#endif

@@ -1,7 +1,7 @@
 from qtsymbols import *
 import os, functools, uuid
 from traceback import print_exc
-import gobject, qtawesome
+import qtawesome
 from gui.inputdialog import autoinitdialog
 from gui.dynalang import LAction
 from gui.gamemanager.v3 import dialog_savedgame_v3
@@ -10,6 +10,8 @@ from gui.gamemanager.setting import dialog_setting_game, userlabelset
 from myutils.utils import targetmod
 from myutils.wrapper import Singleton, tryprint
 from gui.specialwidget import lazyscrollflow
+from functools import cmp_to_key
+import windows
 from myutils.config import (
     savehook_new_data,
     savegametaged,
@@ -23,7 +25,9 @@ from gui.usefulwidget import (
     IconButton,
     threeswitch,
     getsimplecombobox,
+    request_delete_ok,
     FQLineEdit,
+    getIconButton,
     FocusCombo,
 )
 from gui.gamemanager.common import (
@@ -58,7 +62,7 @@ class dialog_savedgame_integrated(saveposwindow):
             ][type]
             _old = self.internallayout.takeAt(0).widget()
             _old.hide()
-            _ = klass(self)
+            _: dialog_savedgame_new = klass(self)
             self.internallayout.addWidget(_)
             _.directshow()
             _old.deleteLater()
@@ -179,7 +183,7 @@ class TagWidget(QWidget):
         qw = tagitem(tag, _type=_type, refdata=refdata)
         qw.removesignal.connect(self.removeTag)
         qw.labelclicked.connect(self.tagclicked.emit)
-        layout = self.layout()
+        layout: QHBoxLayout = self.layout()
         layout.insertWidget(layout.count() - 2, qw)
         self.tag2widget[key] = qw
         self.lineEdit.setFocus()
@@ -384,6 +388,8 @@ class dialog_savedgame_new(QWidget):
         addgamebatch_x(self.addgame, self.reflist, files)
 
     def clicked2(self):
+        if not request_delete_ok(self, "bf4aa76a-41a5-4b07-a095-0c34c616ed2d"):
+            return
         try:
             game = self.currentfocusuid
             idx2 = self.reflist.index(game)
@@ -582,13 +588,14 @@ class dialog_savedgame_new(QWidget):
                 exec_=True,
             )
         elif action == dellist:
-            i = calculatetagidx(self.reftagid)
-            savegametaged.pop(i)
-            self.loadcombo(False)
-            self.reftagid = self.vislistcombo.getIndexData(
-                self.vislistcombo.currentIndex()
-            )
-            self.reflist = getreflist(self.reftagid)
+            if request_delete_ok(self, "90063a5b-1e96-4688-ac1c-ee3c1ba5d275"):
+                i = calculatetagidx(self.reftagid)
+                savegametaged.pop(i)
+                self.loadcombo(False)
+                self.reftagid = self.vislistcombo.getIndexData(
+                    self.vislistcombo.currentIndex()
+                )
+                self.reflist = getreflist(self.reftagid)
 
     def directshow(self):
         self.flow.directshow()
@@ -657,11 +664,52 @@ class dialog_savedgame_new(QWidget):
         )
         self.setStyleSheet(style)
 
+    reference = None
+
+    def sortgamecallback(self):
+        menu = QMenu(self)
+        sortbytime = LAction("按添加时间排序", menu)
+        sortbytime.setIcon(qtawesome.icon("fa.sort-numeric-asc"))
+        menu.addAction(sortbytime)
+        sortbytimede = LAction("按添加时间排序_降序", menu)
+        sortbytimede.setIcon(qtawesome.icon("fa.sort-numeric-desc"))
+        menu.addAction(sortbytimede)
+        sortbyname = LAction("按名称排序", menu)
+        sortbyname.setIcon(qtawesome.icon("fa.sort-alpha-asc"))
+        menu.addAction(sortbyname)
+        sortbynamedesc = LAction("按名称排序_降序", menu)
+        sortbynamedesc.setIcon(qtawesome.icon("fa.sort-alpha-desc"))
+        menu.addAction(sortbynamedesc)
+        action = menu.exec(QCursor.pos())
+
+        def unsafetrygettime(uid: str):
+            __ = savehook_new_data[uid]
+            t = __.get("createtime")
+            if not t:
+                try:
+                    t = float(uid.split("_")[0])
+                except:
+                    t = 0
+            return t
+
+        if action in (sortbytime, sortbytimede):
+            self.reflist.sort(key=unsafetrygettime, reverse=action != sortbytimede)
+            self.tagschanged(self.currtags)
+        elif action in (sortbyname, sortbynamedesc):
+            paircmp = lambda a, b: windows.StrCmpLogicalW(
+                savehook_new_data[a]["title"], savehook_new_data[b]["title"]
+            )
+            self.reflist.sort(
+                key=cmp_to_key(paircmp),
+                reverse=action == sortbynamedesc,
+            )
+            self.tagschanged(self.currtags)
+
     def __init__(self, parent) -> None:
         super().__init__(parent)
         self._parent = parent
         self.setstyle()
-        gobject.global_dialog_savedgame_new = self
+        dialog_savedgame_new.reference = self
         formLayout = QVBoxLayout(self)
         layout = QHBoxLayout()
         self.setAcceptDrops(True)
@@ -678,6 +726,9 @@ class dialog_savedgame_new(QWidget):
         self.___ = threeswitch(self, [None, None, None, None])
         self.___.setStyleSheet("background:transparent")
         layout.addWidget(self.tagswidget)
+        layout.addWidget(
+            getIconButton(icon="fa.sort-amount-asc", callback=self.sortgamecallback)
+        )
         layout.addWidget(self.___)
         formLayout.addLayout(layout)
         self.flow = QWidget()
@@ -694,18 +745,15 @@ class dialog_savedgame_new(QWidget):
             self.tagswidget.addTag(_TR("存在"), tagitem.TYPE_EXISTS)
         else:
             self.tagschanged(tuple())
+        self.installEventFilter(self)
 
-        class WindowEventFilter(QObject):
-            def eventFilter(__, obj, event):
-                try:
-                    if obj == self:
-                        gobject.global_dialog_setting_game.raise_()
-                except:
-                    pass
-                return False
-
-        self.__filter = WindowEventFilter()  # keep ref
-        self.installEventFilter(self.__filter)
+    def eventFilter(self, obj, _):
+        try:
+            if obj == self:
+                dialog_setting_game.reference.raise_()
+        except:
+            pass
+        return False
 
     def addtolist(self):
         getalistname(

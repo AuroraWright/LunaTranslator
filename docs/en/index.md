@@ -28,7 +28,7 @@ features:
     details: Some games also support directly embedding translations into the game for an immersive experience.
     link: ./embedtranslate
   - title: HOOK Emulator  
-    details: Supports HOOK emulators to directly extract text from most games on NS/PSP/PSV/PS3.
+    details: Supports HOOK emulators to directly extract text from most games on NS/PSP/PSV/PS2.
     link: ./emugames
   - title: OCR  
     details: Built-in high-precision OCR model, supporting many other online & offline OCR engines for flexible text extraction.  
@@ -41,5 +41,7 @@ features:
     link: ./qa1
   - title: Text-to-Speech  
     details: Supports a wide range of online & offline text-to-speech engines.  
-  - title: Highly Configurable  
-    details: Offers extensive configuration options to tailor the translation experience to your needs.  
+    link: ./ttsengines
+  - title: Speech Recognition
+    details: On Windows 10 and Windows 11, you can use Windows Speech Recognition.
+    link: ./sr

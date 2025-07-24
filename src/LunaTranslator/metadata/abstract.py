@@ -1,20 +1,20 @@
-import os, hashlib, queue, gobject
+import os, hashlib, queue, gobject, json
 from myutils.proxy import getproxy
-from threading import Thread
 from myutils.commonbase import proxysession
-from myutils.config import globalconfig, savehook_new_data, namemapcast, extradatas
+from myutils.config import globalconfig, savehook_new_data, extradatas
 from myutils.utils import getlangtgt
 from traceback import print_exc
 from requests import RequestException
+from myutils.wrapper import tryprint, threader
 
 
 class common:
     typename = None
 
-    def searchfordata(_id):
+    def searchfordata(_id) -> "dict[str,str]":
         return None
 
-    def refmainpage(_id):
+    def refmainpage(_id) -> str:
         return None
 
     def getidbytitle(title):
@@ -30,6 +30,10 @@ class common:
             return globalconfig["metadata"][self.typename]
         except:
             return {}
+
+    @property
+    def name(self):
+        return self.config_all.get("name", self.typename)
 
     @property
     def idname(self):
@@ -48,8 +52,8 @@ class common:
             self.__tasks_downloadimg.put(internal)
         for internal in globalconfig["metadata"][self.typename]["searchfordatatasks"]:
             self.__tasks_searchfordata.put(internal)
-        Thread(target=self.__tasks_downloadimg_thread).start()
-        Thread(target=self.__tasks_searchfordata_thread).start()
+        threader(self.__tasks_downloadimg_thread)()
+        threader(self.__tasks_searchfordata_thread)()
 
     def __safe_remove_task(self, name, pair):
         try:
@@ -75,7 +79,7 @@ class common:
             elif len(pair) == 3:
                 gameuid, vid, retrytime = pair
             remove = True
-            info = "{}: {} ".format(self.config_all["name"], vid)
+            info = "{}: {} ".format(self.name, vid)
             try:
                 self.__do_searchfordata(gameuid, vid)
                 vis = info + "data loaded success"
@@ -93,7 +97,7 @@ class common:
                     self.__tasks_searchfordata.put((gameuid, vid, retrytime - 1))
                 else:
                     self.__safe_remove_task("searchfordatatasks", pair[:2])
-            gobject.baseobject.translation_ui.displayglobaltooltip.emit(vis)
+            gobject.base.translation_ui.displayglobaltooltip.emit(vis)
 
     def __tasks_downloadimg_thread(self):
         while True:
@@ -120,8 +124,6 @@ class common:
             "sec-ch-ua": '"Microsoft Edge";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
             "Referer": "https://vndb.org/",
             "sec-ch-ua-mobile": "?0",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42",
-            "sec-ch-ua-platform": '"Windows"',
         }
 
         _content = self.proxysession.get(url, headers=headers).content
@@ -129,7 +131,7 @@ class common:
         with open(save, "wb") as ff:
             ff.write(_content)
 
-    def dispatchdownloadtask(self, url):
+    def dispatchdownloadtask(self, url: str):
         if not url:
             return None
         __routine = "cache/metadata/" + self.typename
@@ -149,15 +151,56 @@ class common:
     def __b64string(self, a: str):
         return hashlib.md5(a.encode("utf8")).hexdigest()
 
-    def __do_searchfordata(self, gameuid, vid):
+    def namemapcast(self, namemap: "dict[str,str]"):
+        bettermap = namemap.copy()
+        for k, v in namemap.items():
+            for sp in ["・", " "]:
+                spja = k.split(sp)
+                spen = v.split(sp if k == v else " ")
+                if len(spja) == len(spen) and len(spen) > 1:
+                    for i in range(len(spja)):
+                        if len(spja[i]) >= 2:
+                            bettermap[spja[i]] = spen[i]
+        return bettermap
 
-        data = self.searchfordata(vid)
+    @tryprint
+    def __tryinserttomemory(self, description, gameuid):
+        rwpath = gobject.getuserconfigdir("memory/{}".format(gameuid))
+        os.makedirs(rwpath, exist_ok=True)
+
+        try:
+            with open(os.path.join(rwpath, "config.json"), "r", encoding="utf8") as ff:
+                config = json.load(ff)
+        except:
+            config = []
+        filename = None
+        for _ in config:
+            if _.get("fromweb") == self.typename:
+                filename = _.get("file")
+        if not filename:
+            filename = self.typename + ".md"
+            config.append(
+                {"file": filename, "title": self.name, "fromweb": self.typename, "edit": False}
+            )
+            with open(os.path.join(rwpath, "config.json"), "w", encoding="utf8") as ff:
+                json.dump(config, ff)
+        with open(
+            os.path.join(rwpath, self.typename + ".md"), "w", encoding="utf8"
+        ) as ff:
+            ff.write(description)
+
+    def __do_searchfordata(self, gameuid, vid: str):
+
+        data: "dict[str,str]" = self.searchfordata(vid)
         title = data.get("title", None)
         namemap = data.get("namemap", None)
         developers = data.get("developers", [])
         webtags = data.get("webtags", [])
         images = data.get("images", [])
         description = data.get("description", None)
+        if description:
+            self.__tryinserttomemory(description, gameuid)
+        self.typename
         for _ in images:
             if not _:
                 continue
@@ -171,20 +214,11 @@ class common:
         if title:
             if not savehook_new_data[gameuid].get("istitlesetted", False):
                 savehook_new_data[gameuid]["title"] = title
-            _vis = globalconfig["metadata"][self.typename]["name"]
-            _url = self.refmainpage(vid)
-            _urls = [_[1] for _ in savehook_new_data[gameuid].get("relationlinks", [])]
-            if _url not in _urls:
-                if "relationlinks" not in savehook_new_data[gameuid]:
-                    savehook_new_data[gameuid]["relationlinks"] = []
-                savehook_new_data[gameuid]["relationlinks"].append((_vis, _url))
-        if description and not savehook_new_data[gameuid].get("description"):
-            savehook_new_data[gameuid]["description"] = description
         if namemap:
             dedump = set()
             for _ in savehook_new_data[gameuid].get("namemap2", []):
                 dedump.add(_.get("key", ""))
-            namemap = namemapcast(namemap)
+            namemap = self.namemapcast(namemap)
             usenamemap = getlangtgt() == "en"
             for name in namemap:
                 if name in dedump:

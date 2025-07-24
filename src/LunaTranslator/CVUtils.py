@@ -9,9 +9,12 @@ from ctypes import (
     c_bool,
     c_wchar_p,
     CFUNCTYPE,
+    c_uint64,
 )
 from qtsymbols import *
 import gobject
+import functools
+import locale
 
 
 class InvalidImage(Exception):
@@ -42,16 +45,14 @@ class cvMat(c_void_p):
     @staticmethod
     def fromQImage(image: QImage):
         _CVUtils = _DelayLoadCVUtils()
-        cvMatFromBGR888 = _CVUtils.cvMatFromBGR888
-        cvMatFromBGR888.argtypes = c_void_p, c_int, c_int, c_int
-        cvMatFromBGR888.restype = cvMat
-
-        if image.format() != QImage.Format.Format_BGR888:
-            image = image.convertToFormat(QImage.Format.Format_BGR888)
-        ptr: cvMat = cvMatFromBGR888(
+        cvMatFromRGB888 = _CVUtils.cvMatFromRGB888
+        cvMatFromRGB888.argtypes = c_void_p, c_int, c_int, c_int
+        cvMatFromRGB888.restype = cvMat
+        if image.format() != QImage.Format.Format_RGB888:
+            image = image.convertToFormat(QImage.Format.Format_RGB888)
+        ptr: cvMat = cvMatFromRGB888(
             int(image.bits()), image.width(), image.height(), image.bytesPerLine()
         )
-
         if not ptr:
             raise InvalidImage()
         return ptr
@@ -89,11 +90,35 @@ _OcrDetectCallback = CFUNCTYPE(
     c_float,
     c_char_p,
 )
+_error = CFUNCTYPE(None, c_char_p)
+
+
+def OcrIsDMLAvailable():
+    _CVUtils = _DelayLoadCVUtils()
+    OcrIsDMLAvailable = _CVUtils.OcrIsDMLAvailable
+    OcrIsDMLAvailable.restype = c_bool
+
+    return OcrIsDMLAvailable()
+
+
+def GetDeviceInfoD3D12():
+    _CVUtils = _DelayLoadCVUtils()
+    GetDeviceInfoD3D12 = _CVUtils.GetDeviceInfoD3D12
+    GetDeviceInfoD3D12_CB = CFUNCTYPE(None, c_uint64, c_wchar_p)
+    GetDeviceInfoD3D12.argtypes = (GetDeviceInfoD3D12_CB,)
+
+    ret = []
+
+    def __cb(ret: list, luid, name):
+        ret.append([luid, name])
+
+    GetDeviceInfoD3D12(GetDeviceInfoD3D12_CB(functools.partial(__cb, ret)))
+    return ret
 
 
 class LocalOCR:
 
-    def __init__(self, det, rec, key) -> None:
+    def __init__(self, det, rec, key, thread: int, gpu: bool, luid) -> None:
 
         _CVUtils = _DelayLoadCVUtils()
         OcrLoadRuntime = _CVUtils.OcrLoadRuntime
@@ -103,15 +128,46 @@ class LocalOCR:
 
         self._OcrInit = _CVUtils.OcrInit
         self._OcrInit.restype = c_void_p
-        self._OcrInit.argtypes = c_wchar_p, c_wchar_p, c_wchar_p, c_int32
+        self._OcrInit.argtypes = (
+            c_wchar_p,
+            c_wchar_p,
+            c_wchar_p,
+            c_int32,
+            c_bool,
+            c_uint64,
+            _error,
+        )
 
         self._OcrDetect = _CVUtils.OcrDetect
-        self._OcrDetect.argtypes = (c_void_p, cvMat, c_int32, _OcrDetectCallback)
+        self._OcrDetect.argtypes = (
+            c_void_p,
+            cvMat,
+            c_int32,
+            _OcrDetectCallback,
+            _error,
+        )
 
         OcrDestroy = _CVUtils.OcrDestroy
         OcrDestroy.argtypes = (c_void_p,)
 
-        self.pOcrObj = _unique_ptr(self._OcrInit(det, rec, key, 4), OcrDestroy)
+        error: "list[bytes]" = []
+
+        self.pOcrObj = _unique_ptr(
+            self._OcrInit(
+                det,
+                rec,
+                key,
+                thread,
+                gpu,
+                luid,
+                _error(error.append),
+            ),
+            OcrDestroy,
+        )
+        if error:
+            raise Exception(
+                error[0].decode(locale.getpreferredencoding(), errors="ignore")
+            )
         if not self.pOcrObj:
             raise ModelLoadFailed()
 
@@ -125,5 +181,12 @@ class LocalOCR:
             texts.append(text.decode("utf8"))
 
         mat = cvMat.fromQImage(image)
-        self._OcrDetect(self.pOcrObj, mat, mode, _OcrDetectCallback(cb))
+        error: "list[bytes]" = []
+        self._OcrDetect(
+            self.pOcrObj, mat, mode, _OcrDetectCallback(cb), _error(error.append)
+        )
+        if error:
+            raise Exception(
+                error[0].decode(locale.getpreferredencoding(), errors="ignore")
+            )
         return pss, texts

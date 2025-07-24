@@ -1,4 +1,4 @@
-#include "Leaf.h"
+﻿#include "Leaf.h"
 
 /** jichi 12/25/2014: Leaf/AQUAPLUS
  *  Sample game: [141224] [AQUAPLUS] WHITE ALBUM2 ミニアフタースト�リー
@@ -640,7 +640,7 @@ namespace
     {
       static std::unordered_map<uintptr_t, std::string> last;
       auto ret = context->stack[0];
-      if (last.find(ret) == last.end())
+      if (!last.count(ret))
         last[ret] = "";
       auto current = std::string((char *)context->stack[13]);
       if (last[ret] == current)

@@ -15,6 +15,8 @@ from myutils.config import (
     globalconfig,
     static_data,
 )
+from myutils.wrapper import tryprint
+from myutils.utils import autosql
 from gui.dialog_memory import dialog_memory
 from myutils.localetools import getgamecamptools, maycreatesettings
 from myutils.hwnd import getExeIcon
@@ -40,28 +42,28 @@ from gui.usefulwidget import (
     TableViewW,
     automakegrid,
     D_getspinbox,
-    FlowWidget,
     FocusFontCombo,
     getsimpleswitch,
     getsimplepatheditor,
     getboxlayout,
     NQGroupBox,
     clearlayout,
+    getcenterX,
     getsimplecombobox,
     D_getIconButton,
     D_getsimpleswitch,
     getspinbox,
+    ClickableLabel,
     getIconButton,
     makesubtab_lazy,
     getsimpleswitch,
-    threebuttons,
+    manybuttonlayout,
     getspinbox,
     CollapsibleBox,
     getsmalllabel,
     listediterline,
-    editswitchTextBrowser,
     FocusCombo,
-    VisLFormLayout,
+    VisGridLayout,
 )
 from gui.dynalang import (
     LFormLayout,
@@ -76,71 +78,6 @@ from gui.gamemanager.common import tagitem
 from gui.inputdialog import postconfigdialog_
 
 
-@Singleton
-class favorites(LDialog):
-
-    def __init__(self, parent, gameuid=None) -> None:
-        super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
-        if gameuid:
-            self.setWindowIcon(getExeIcon(get_launchpath(gameuid), cache=True))
-        self.setWindowTitle("收藏夹")
-        self.gameuid = gameuid
-        if gameuid:
-            if "relationlinks" not in savehook_new_data[self.gameuid]:
-                savehook_new_data[self.gameuid]["relationlinks"] = []
-        self.reflist = (
-            savehook_new_data[self.gameuid]["relationlinks"]
-            if gameuid
-            else globalconfig["relationlinks"]
-        )
-        model = LStandardItemModel()
-        model.setHorizontalHeaderLabels(["名称", "链接"])
-        formLayout = QVBoxLayout(self)
-        table = TableViewW(self, copypaste=True, updown=True)
-        table.setModel(model)
-        table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Interactive
-        )
-        table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Interactive
-        )
-        table.horizontalHeader().setStretchLastSection(True)
-        for item in self.reflist:
-            model.appendRow([QStandardItem(item[0]), QStandardItem(item[1])])
-
-        table.insertplainrow = lambda row: model.insertRow(
-            row,
-            [
-                QStandardItem(),
-                QStandardItem(),
-            ],
-        )
-        formLayout.addWidget(table)
-        self.table = table
-        button = threebuttons(texts=["添加行", "删除行", "上移", "下移", "立即应用"])
-        button.btn1clicked.connect(functools.partial(table.insertplainrow, 0))
-        button.btn2clicked.connect(table.removeselectedrows)
-        button.btn5clicked.connect(self.apply)
-        button.btn3clicked.connect(functools.partial(table.moverank, -1))
-        button.btn4clicked.connect(functools.partial(table.moverank, 1))
-        self.button = button
-        formLayout.addWidget(button)
-        self.resize(QSize(600, 400))
-        self.show()
-
-    def apply(self):
-        self.reflist.clear()
-        self.table.dedumpmodel(1)
-        for row in range(self.table.model().rowCount()):
-            k = self.table.getdata(row, 0)
-            v = self.table.getdata(row, 1)
-            self.reflist.append((k, v))
-
-    def closeEvent(self, a0: QCloseEvent) -> None:
-        self.button.setFocus()
-        self.apply()
-
-
 def maybehavebutton(self, gameuid, post):
     save_text_process_info = savehook_new_data[gameuid]["save_text_process_info"]
     if post == "_11":
@@ -153,6 +90,7 @@ def maybehavebutton(self, gameuid, post):
                 save_text_process_info["mypost"],
                 ismypost=True,
             ),
+            fix=False,
         )
     else:
         if post not in postprocessconfig:
@@ -195,6 +133,58 @@ def maybehavebutton(self, gameuid, post):
             return None
 
 
+class FlowWidget(QWidget):
+    def __init__(self, parent=None, groups=3):
+        super().__init__(parent)
+        self.margin = QMargins(5, 5, 5, 5)
+        self.spacing = 5
+        self._item_list: "list[list[QWidget]]" = [[] for _ in range(groups)]
+
+    def insertWidget(self, group: int, index, w: QWidget):
+        w.setParent(self)
+        w.show()
+        self._item_list[group].insert(index, w)
+        self.doresize()
+
+    def addWidget(self, group, w: QWidget):
+        self.insertWidget(group, len(self._item_list[group]), w)
+
+    def removeWidget(self, w: QWidget):
+        for _ in self._item_list:
+            if w in _:
+                _.remove(w)
+                w.deleteLater()
+                self.doresize()
+                break
+
+    def doresize(self):
+        line_height = 0
+        spacing = self.spacing
+        y = self.margin.left()
+        for listi in self._item_list:
+            x = self.margin.top()
+            for i, item in enumerate(listi):
+
+                next_x = x + item.sizeHint().width() + spacing
+                if (
+                    next_x - spacing + self.margin.right() > self.width()
+                    and line_height > 0
+                ):
+                    x = self.margin.top()
+                    y = y + line_height + spacing
+                    next_x = x + item.sizeHint().width() + spacing
+
+                size = item.sizeHint()
+                item.setGeometry(QRect(QPoint(x, y), size))
+                line_height = max(line_height, size.height())
+                x = next_x
+            y = y + line_height + spacing
+        self.setFixedHeight(y + self.margin.bottom() - spacing)
+
+    def resizeEvent(self, a0):
+        self.doresize()
+
+
 def userlabelset(key="usertags"):
     s = set()
     for gameuid in savehook_new_data:
@@ -227,10 +217,6 @@ class dialog_setting_game_internal(QWidget):
                         callback=self.selectexe,
                         clearable=False,
                         icons=("fa.gear",),
-                    ),
-                    getIconButton(
-                        lambda: favorites(self, gameuid),
-                        icon="fa.heart",
                     ),
                     getIconButton(
                         lambda: dialog_memory(self, gameuid=gameuid),
@@ -274,6 +260,7 @@ class dialog_setting_game_internal(QWidget):
                 if (self.keepindexobject is not None)
                 else None
             ),
+            fast=True,
         )
         vbox.addLayout(formLayout)
         vbox.addWidget(methodtab)
@@ -303,7 +290,7 @@ class dialog_setting_game_internal(QWidget):
         functs = [
             ("元数据", functools.partial(self.___tabf, self.metadataorigin)),
             ("统计", functools.partial(self.___tabf2, self.getstatistic)),
-            ("信息", functools.partial(self.___tabf2, self.getlabelsetting)),
+            ("标签", functools.partial(self.___tabf2, self.getlabelsetting)),
         ]
         methodtab, do = makesubtab_lazy(
             [_[0] for _ in functs],
@@ -314,6 +301,7 @@ class dialog_setting_game_internal(QWidget):
                 if (self.keepindexobject is not None)
                 else None
             ),
+            fast=True,
         )
         vbox.addWidget(methodtab)
         do()
@@ -338,6 +326,7 @@ class dialog_setting_game_internal(QWidget):
                 if (self.keepindexobject is not None)
                 else None
             ),
+            fast=True,
         )
 
         self.methodtab = methodtab
@@ -351,30 +340,17 @@ class dialog_setting_game_internal(QWidget):
             print_exc()
 
     def metadataorigin(self, formLayout: LFormLayout, gameuid):
-        vislf = VisLFormLayout()
+        vislf = VisGridLayout()
         formLayout.addRow(vislf)
-        combo = getsimplecombobox(
-            ["无"] + list(targetmod.keys()),
-            globalconfig,
-            "primitivtemetaorigin",
-            internal=[None] + list(targetmod.keys()),
-        )
-        vislf.addRow("首选的", combo)
+        vislf.setColumnStretch(0, 0)
+        vislf.setColumnStretch(1, 1)
 
-        def valid(idx, x):
-            if x:
-                if combo.currentIndex() == 0:
-                    combo.setCurrentIndex(idx + 1)
-            else:
-                if combo.currentIndex() == idx + 1:
-                    combo.setCurrentIndex(0)
-            combo.setRowVisible(idx + 1, x)
-
-        linei = 1
+        linei = 0
         notvislineis = []
         for i, key in enumerate(targetmod):
             try:
                 idname = targetmod[key].idname
+                name = targetmod[key].name
 
                 vndbid = QLineEdit()
                 vndbid.setText(str(savehook_new_data[gameuid].get(idname, "")))
@@ -388,13 +364,10 @@ class dialog_setting_game_internal(QWidget):
                 vndbid.returnPressed.connect(
                     functools.partial(gamdidchangedtask, key, idname, gameuid)
                 )
-                if not globalconfig["metadata"][key]["auto"]:
-                    combo.setRowVisible(i + 1, False)
                 _vbox_internal = [
                     getsimpleswitch(
                         globalconfig["metadata"][key],
                         "auto",
-                        callback=functools.partial(valid, i),
                     ),
                     vndbid,
                     getIconButton(
@@ -415,7 +388,7 @@ class dialog_setting_game_internal(QWidget):
                     functools.partial(__settting, gameuid), self, margin0=False
                 )
 
-                def _revert(c, li):
+                def _revert(c: CollapsibleBox, li):
                     vis = c.isVisible()
                     vislf.setRowVisible(li, not vis)
                     c.toggle(not vis)
@@ -424,23 +397,43 @@ class dialog_setting_game_internal(QWidget):
                     2,
                     getIconButton(functools.partial(_revert, coll, linei + 1)),
                 )
-                vislf.addRow(
-                    key,
-                    getboxlayout(_vbox_internal),
-                )
-                vislf.addRow(coll)
+                vislf.addWidget(self.getrenameablellabel(key, name), linei, 0)
+                vislf.addLayout(getboxlayout(_vbox_internal), linei, 1)
+                vislf.addWidget(coll, linei + 1, 0, 1, 2)
                 notvislineis.append(linei + 1)
                 linei += 2
             except:
-                vislf.addRow(
-                    key,
-                    getboxlayout(_vbox_internal),
-                )
+                vislf.addWidget(self.getrenameablellabel(key, name), linei, 0)
+                vislf.addLayout(getboxlayout(_vbox_internal), linei, 1)
                 linei += 1
         for _ in notvislineis:
             vislf.setRowVisible(_, False)
 
-    def doaddtab(self, wfunct, exe, layout):
+    def renameapi(self, qlabel: QLabel, apiuid):
+        menu = QMenu(qlabel)
+        useproxy = LAction("使用代理", menu)
+        useproxy.setCheckable(True)
+
+        menu.addAction(useproxy)
+        useproxy.setChecked(globalconfig["metadata"][apiuid].get("useproxy", True))
+        pos = QCursor.pos()
+        action = menu.exec(pos)
+
+        if action == useproxy:
+            globalconfig["metadata"][apiuid]["useproxy"] = useproxy.isChecked()
+
+    def getrenameablellabel(self, key, name):
+
+        def checkclickable(name: ClickableLabel):
+            name.setClickable(globalconfig["useproxy"])
+
+        name = ClickableLabel(name)
+        fn = functools.partial(self.renameapi, name, key)
+        name.clicked.connect(fn)
+        name.beforeEnter.connect(functools.partial(checkclickable, name))
+        return name
+
+    def doaddtab(self, wfunct, exe, layout: QLayout):
         w, do = wfunct(exe)
         layout.addWidget(w)
         do()
@@ -495,6 +488,22 @@ class dialog_setting_game_internal(QWidget):
 
         __launch_method.currentIndexChanged.emit(__launch_method.currentIndex())
 
+    @tryprint
+    def __refresh(self):
+        _filename, _ = os.path.splitext(os.path.basename(uid2gamepath[self.gameuid]))
+        sqlitef = gobject.gettranslationrecorddir(
+            "{}_{}.sqlite".format(_filename, self.gameuid)
+        )
+        if not os.path.exists(sqlitef):
+            return
+        sql = autosql(sqlitef, check_same_thread=False, isolation_level=None)
+        cnt = 0
+        for (_,) in sql.execute("SELECT source FROM artificialtrans").fetchall():
+            cnt += len(_)
+        savehook_new_data[self.gameuid]["statistic_wordcount"] = max(
+            cnt, savehook_new_data[self.gameuid]["statistic_wordcount"]
+        )
+
     def getstatistic(self, formLayout: QVBoxLayout, gameuid):
         chart = chartwidget()
         chart.xtext = lambda x: (
@@ -511,7 +520,16 @@ class dialog_setting_game_internal(QWidget):
         self._timelabel.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
-        formLayout.addLayout(getboxlayout(["文字计数", self._wordlabel]))
+        formLayout.addLayout(
+            getboxlayout(
+                [
+                    "文字计数",
+                    getboxlayout(
+                        [self._wordlabel, getIconButton(self.__refresh, "fa.refresh")]
+                    ),
+                ]
+            )
+        )
 
         t = QTimer(self)
         formLayout.addLayout(
@@ -572,7 +590,7 @@ class dialog_setting_game_internal(QWidget):
         return lists
 
     def refresh(self):
-        __ = gobject.baseobject.playtimemanager.querytraceplaytime(self.gameuid)
+        __ = gobject.base.playtimemanager.querytraceplaytime(self.gameuid)
         _cnt = sum([_[1] - _[0] for _ in __])
         self._timelabel.setText(self.formattime(_cnt))
         self._wordlabel.setText(
@@ -630,7 +648,9 @@ class dialog_setting_game_internal(QWidget):
 
         def safeaddtags(_):
             try:
-                gobject.global_dialog_savedgame_new.tagswidget.addTag(*_)
+                from gui.gamemanager.dialog import dialog_savedgame_new
+
+                dialog_savedgame_new.reference.tagswidget.addTag(*_)
             except:
                 NativeUtils.ClipBoard.text = _[0]
                 QToolTip.showText(QCursor.pos(), _TR("已复制到剪贴板"), self)
@@ -666,23 +686,23 @@ class dialog_setting_game_internal(QWidget):
 
         for i in range(len(self.tagtypes)):
             createflows(self.tagtypes_zh[i], self.tagtypes[i], self.tagtypes_1[i], i)
-        flowwidget.addWidget(3, LLabel("简介"))
-        edit = editswitchTextBrowser()
-        edit.settext(savehook_new_data[gameuid].get("description", ""))
-
-        def __(t: str):
-            if not t.strip():
-                savehook_new_data[gameuid]["description"] = ""
-            else:
-                savehook_new_data[gameuid]["description"] = t.strip()
-
-        edit.textChanged.connect(__)
-        flowwidget.addWidget(3, edit)
 
         button = LPushButton("添加")
         typecombo = getsimplecombobox(self.tagtypes_zh, default=2)
         combo = FocusCombo()
         combo.setEditable(True)
+        self.fuckcombo = combo
+
+        def closeEventFucker(origin, e):
+            try:
+                combo.setEditable(False)
+            except:
+                pass
+            return origin(e)
+
+        origin = self.window().closeEvent
+        if not isqt5:
+            self.window().closeEvent = functools.partial(closeEventFucker, origin)
 
         def __(idx):
             t = combo.currentText()
@@ -783,12 +803,13 @@ class dialog_setting_game_internal(QWidget):
                 savehook_new_data[gameuid]["tts_repair_regex"],
                 "语音修正",
                 ["正则", "转义", "原文", "替换"],
+                extraX=savehook_new_data[gameuid],
             )
 
         automakegrid(
             formLayout2,
             [
-                ["", "", "", "", "继承默认", ""],
+                ["", "", "", "", getcenterX("继承默认"), ""],
                 [
                     getsmalllabel("语音指定"),
                     D_getsimpleswitch(
@@ -798,8 +819,10 @@ class dialog_setting_game_internal(QWidget):
                     ),
                     D_getIconButton(callback=__delay1),
                     "",
-                    D_getsimpleswitch(
-                        savehook_new_data[gameuid], "tts_skip_merge", default=False
+                    getcenterX(
+                        D_getsimpleswitch(
+                            savehook_new_data[gameuid], "tts_skip_merge", default=False
+                        ),
                     ),
                 ],
                 [
@@ -811,8 +834,12 @@ class dialog_setting_game_internal(QWidget):
                     ),
                     D_getIconButton(callback=__delay2),
                     "",
-                    D_getsimpleswitch(
-                        savehook_new_data[gameuid], "tts_repair_merge", default=False
+                    getcenterX(
+                        D_getsimpleswitch(
+                            savehook_new_data[gameuid],
+                            "tts_repair_merge",
+                            default=False,
+                        )
                     ),
                 ],
             ],
@@ -858,7 +885,7 @@ class dialog_setting_game_internal(QWidget):
             formLayout,
             klass=QGridLayout,
         )
-        vbox.addWidget(LLabel("继承默认"), 0, 4)
+        vbox.addLayout(getcenterX("继承默认")(), 0, 4)
         vbox.addWidget(QLabel(), 0, 5)
 
         for i, item in enumerate(static_data["transoptimi"]):
@@ -890,12 +917,14 @@ class dialog_setting_game_internal(QWidget):
                     2,
                 )
                 vbox.addWidget(QLabel(), i + 1, 3)
-                vbox.addWidget(
-                    getsimpleswitch(
-                        savehook_new_data[gameuid],
-                        name + "_merge",
-                        default=False,
-                    ),
+                vbox.addLayout(
+                    getcenterX(
+                        getsimpleswitch(
+                            savehook_new_data[gameuid],
+                            name + "_merge",
+                            default=False,
+                        )
+                    )(),
                     i + 1,
                     4,
                 )
@@ -921,7 +950,7 @@ class dialog_setting_game_internal(QWidget):
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode((QAbstractItemView.SelectionMode.SingleSelection))
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setWordWrap(False)
 
         table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -934,17 +963,15 @@ class dialog_setting_game_internal(QWidget):
         ):
             self.__checkaddnewmethod(row, k)
         vbox.addWidget(table)
-        buttons = threebuttons(texts=["添加行", "删除行", "上移", "下移"])
-        buttons.btn1clicked.connect(self.__privatetextproc_btn1)
-        buttons.btn2clicked.connect(self.removerows)
-        buttons.btn3clicked.connect(
-            functools.partial(self.__privatetextproc_moverank, -1)
+        button = manybuttonlayout(
+            [
+                ("添加行", self.__privatetextproc_btn1),
+                ("删除行", self.removerows),
+                ("上移", functools.partial(self.__privatetextproc_moverank, -1)),
+                ("下移", functools.partial(self.__privatetextproc_moverank, 1)),
+            ]
         )
-        buttons.btn4clicked.connect(
-            functools.partial(self.__privatetextproc_moverank, 1)
-        )
-        vbox.addWidget(buttons)
-        vbox.addWidget(buttons)
+        vbox.addRow(button)
 
     def __privatetextproc_showmenu(self, p):
         r = self.__textprocinternaltable.currentIndex().row()
@@ -1116,7 +1143,7 @@ class dialog_setting_game_internal(QWidget):
             savehook_new_data[gameuid],
             "embed_follow_default",
             formLayout,
-            callback=lambda: gobject.baseobject.textsource.flashembedsettings(),
+            callback=lambda: gobject.base.textsource.flashembedsettings(),
         )
         formLayout2.addRow(
             "清除游戏内显示的文字",
@@ -1124,7 +1151,7 @@ class dialog_setting_game_internal(QWidget):
                 savehook_new_data[gameuid]["embed_setting_private"],
                 "clearText",
                 default=globalconfig["embedded"]["clearText"],
-                callback=lambda _: gobject.baseobject.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.flashembedsettings(),
             ),
         )
 
@@ -1135,7 +1162,7 @@ class dialog_setting_game_internal(QWidget):
                 savehook_new_data[gameuid]["embed_setting_private"],
                 "displaymode",
                 default=globalconfig["embedded"]["displaymode"],
-                callback=lambda _: gobject.baseobject.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.flashembedsettings(),
             ),
         )
         formLayout2.addRow(
@@ -1173,7 +1200,7 @@ class dialog_setting_game_internal(QWidget):
                         savehook_new_data[gameuid]["embed_setting_private"],
                         "changefont",
                         default=globalconfig["embedded"]["changefont"],
-                        callback=lambda _: gobject.baseobject.textsource.flashembedsettings(),
+                        callback=lambda _: gobject.base.textsource.flashembedsettings(),
                     ),
                     functools.partial(self.creategamefont_comboBox, gameuid),
                 ]
@@ -1210,7 +1237,7 @@ class dialog_setting_game_internal(QWidget):
                 "changefont_font", x
             )
             try:
-                gobject.baseobject.textsource.flashembedsettings()
+                gobject.base.textsource.flashembedsettings()
             except:
                 pass
 
@@ -1226,12 +1253,6 @@ class dialog_setting_game_internal(QWidget):
 
     def gethooktab_internal(self, formLayout: LFormLayout, gameuid):
 
-        formLayout.addRow(
-            "延迟注入_(ms)",
-            getspinbox(
-                0, 1000000, savehook_new_data[gameuid], "inserthooktimeout", default=500
-            ),
-        )
         box = LGroupBox()
         box.setTitle("额外的钩子")
         settinglayout = LFormLayout(box)
@@ -1243,8 +1264,8 @@ class dialog_setting_game_internal(QWidget):
                 "insertpchooks_string",
                 callback=lambda _: (
                     (
-                        gobject.baseobject.textsource.InsertPCHooks(0),
-                        gobject.baseobject.textsource.InsertPCHooks(1),
+                        gobject.base.textsource.InsertPCHooks(0),
+                        gobject.base.textsource.InsertPCHooks(1),
                     )
                     if _
                     else None
@@ -1269,7 +1290,7 @@ class dialog_setting_game_internal(QWidget):
             savehook_new_data[gameuid],
             "hooksetting_follow_default",
             settinglayout,
-            lambda: gobject.baseobject.textsource.setsettings(),
+            lambda: gobject.base.textsource.setsettings(),
         )
         formLayout2.addRow(
             "代码页",
@@ -1277,7 +1298,7 @@ class dialog_setting_game_internal(QWidget):
                 static_data["codepage_display"],
                 savehook_new_data[gameuid]["hooksetting_private"],
                 "codepage_value",
-                lambda _: gobject.baseobject.textsource.setsettings(),
+                lambda _: gobject.base.textsource.setsettings(),
                 default=globalconfig["codepage_value"],
                 internal=static_data["codepage_real"],
             ),
@@ -1290,7 +1311,7 @@ class dialog_setting_game_internal(QWidget):
                 10000,
                 savehook_new_data[gameuid]["hooksetting_private"],
                 "textthreaddelay",
-                callback=lambda _: gobject.baseobject.textsource.setsettings(),
+                callback=lambda _: gobject.base.textsource.setsettings(),
                 default=globalconfig["textthreaddelay"],
             ),
         )
@@ -1301,7 +1322,7 @@ class dialog_setting_game_internal(QWidget):
                 1000000,
                 savehook_new_data[gameuid]["hooksetting_private"],
                 "maxBufferSize",
-                callback=lambda _: gobject.baseobject.textsource.setsettings(),
+                callback=lambda _: gobject.base.textsource.setsettings(),
                 default=globalconfig["maxBufferSize"],
             ),
         )
@@ -1312,8 +1333,14 @@ class dialog_setting_game_internal(QWidget):
                 1000000000,
                 savehook_new_data[gameuid]["hooksetting_private"],
                 "maxHistorySize",
-                callback=lambda _: gobject.baseobject.textsource.setsettings(),
+                callback=lambda _: gobject.base.textsource.setsettings(),
                 default=globalconfig["maxHistorySize"],
+            ),
+        )
+        formLayout2.addRow(
+            "延迟注入_(ms)",
+            getspinbox(
+                0, 1000000, savehook_new_data[gameuid], "inserthooktimeout", default=250
             ),
         )
         if savehook_new_data[gameuid].get("removeforeverhook"):
@@ -1361,24 +1388,24 @@ class embeddisabler(LDialog):
         name,
         lst,
         closecallback=None,
-        **useless,
+        **_,
     ) -> None:
         super().__init__(parent)
         self.setWindowFlags(
             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
         )
-        self.lst = lst
+        self.lst: list = lst
         self.closecallback = closecallback
 
         self.setWindowTitle(name)
-        model = LStandardItemModel()
+        model = QStandardItemModel()
         self.hcmodel = model
-        table = TableViewW()
+        table = QTableView()
         table.horizontalHeader().setVisible(False)
         table.horizontalHeader().setStretchLastSection(True)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode((QAbstractItemView.SelectionMode.SingleSelection))
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setWordWrap(False)
         table.setModel(model)
 
@@ -1388,43 +1415,39 @@ class embeddisabler(LDialog):
         for row, k in enumerate(lst):
             item = QStandardItem(str(k))
             self.hcmodel.insertRow(row, [item])
-        self.buttons = threebuttons(texts=["删除行"])
-        self.buttons.btn1clicked.connect(self.clicked2)
-        formLayout.addWidget(self.buttons)
+        btn = LPushButton("删除行")
+        btn.clicked.connect(self.clicked2)
+        formLayout.addWidget(btn)
         self.resize(600, self.sizeHint().height())
         self.show()
         self.changed = False
 
     def clicked2(self):
-        skip = self.hctable.removeselectedrows()
-        for row in skip:
-            self.lst.pop(row)
-            self.changed = True
+        idx = self.hctable.currentIndex()
+        if not idx.isValid():
+            return
+        self.lst.pop(idx.row())
+        self.hctable.model().removeRow(idx.row())
+        self.changed = True
 
-    def closeEvent(self, a0):
+    def closeEvent(self, _):
         self.closecallback(self.changed)
-
-
-def calculate_centered_rect(original_rect: QRect, size: QSize) -> QRect:
-    original_center = original_rect.center()
-    new_left = original_center.x() - size.width() // 2
-    new_top = original_center.y() - size.height() // 2
-    new_rect = QRect(new_left, new_top, size.width(), size.height())
-    return new_rect
 
 
 @Singleton
 class dialog_setting_game(QDialog):
+    reference: "dialog_setting_game" = None
 
     def __init__(self, parent, gameuid, setindexhook=0) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
-        gobject.global_dialog_setting_game = self
+        dialog_setting_game.reference = self
 
         self.setWindowTitle(savehook_new_data[gameuid]["title"])
 
         self.setWindowIcon(getExeIcon(get_launchpath(gameuid), cache=True))
-        _ = dialog_setting_game_internal(self, gameuid)
-        _.methodtab.setCurrentIndex(setindexhook)
+        _ = dialog_setting_game_internal(
+            self, gameuid, keepindexobject={"gamesetting": setindexhook}
+        )
         _.setMinimumWidth(600)
         l = QHBoxLayout(self)
         l.addWidget(_)

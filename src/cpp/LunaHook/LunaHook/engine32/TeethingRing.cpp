@@ -1,4 +1,4 @@
-#include "TeethingRing.h"
+﻿#include "TeethingRing.h"
 
 bool TeethingRing_attach_function()
 {
@@ -27,7 +27,7 @@ bool TeethingRing_attach_function()
   hp.type = USING_STRING | NO_CONTEXT | FULL_STRING;
   hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
   {
-    auto _this = (void *)context->THISCALLTHIS;
+    auto _this = (void *)context->argof_thiscall(0);
     auto a2 = (DWORD *)context->argof(1);
 
     auto v2 = *a2;
@@ -48,9 +48,9 @@ bool TeethingRing_attach_function()
   hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
   {
     // #F【琉星】#F
-    if (all_ascii((char *)buffer->buff, buffer->size))
-      return buffer->clear();
     auto str = buffer->strA();
+    if (all_ascii(str))
+      return buffer->clear();
     strReplace(str, "#F");
     buffer->from(str);
   };
@@ -86,7 +86,7 @@ bool TeethingRing_attach_function2()
   hp.type = USING_STRING | NO_CONTEXT | FULL_STRING;
   hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
   {
-    auto _this = (DWORD *)context->THISCALLTHIS;
+    auto _this = (DWORD *)context->argof_thiscall(0);
     auto v13 = _this[6];
     auto v14 = _this + 1;
     DWORD *v16;
@@ -100,9 +100,9 @@ bool TeethingRing_attach_function2()
   };
   hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
   {
-    if (all_ascii((char *)buffer->buff, buffer->size))
-      return buffer->clear();
     auto str = buffer->strA();
+    if (all_ascii(str))
+      return buffer->clear();
     strReplace(str, "#F");
     // 俺はこのアクシデントが、何か幸#<さい>先#<さき>のいいもののように思えて、鞄を抱え直してギルドへの階段を昇り始めた。
     str = re::sub(str, "#<(.*?)>");

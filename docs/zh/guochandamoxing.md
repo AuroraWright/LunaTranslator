@@ -1,16 +1,18 @@
-# 大模型在线翻译
+# 大模型翻译接口
+
+## 大模型在线翻译
 
 ::: details 同时使用多个大模型接口？
 如果只是有多个不同的密钥想要轮询，只需用|分割就可以了。
 
 但有时想要同时使用多个不同的api接口地址/prompt/model/参数等来对比翻译效果。方法是：
 
-点击右下方的“+”按钮
-![img](https://image.lunatranslator.org/zh/damoxing/extraapi1.png)
-弹出一个窗口，选择大模型通用接口，并为之取个名字。这样会复制一份当前大模型通用接口的设置和api。
-![img](https://image.lunatranslator.org/zh/damoxing/extraapi2.png)
-激活复制的接口，并可以进行单独设置。复制的接口可以和原接口一起运行，从而使用多个不同的设置来运行。
-![img](https://image.lunatranslator.org/zh/damoxing/extraapi3.png)
+1. 点击上方的“+”按钮
+    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi1.png)
+1. 弹出一个窗口，选择大模型通用接口，并为之取个名字。这样会复制一份当前大模型通用接口的设置和api。
+    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi2.png)
+1. 激活复制的接口，并可以进行单独设置。复制的接口可以和原接口一起运行，从而使用多个不同的设置来运行。
+    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi3.png)
 :::
 
 ::: info
@@ -148,3 +150,20 @@
 **API Key** https://platform.minimaxi.com/document/Fast%20access?key=66701cf51d57f38758d581b2
 
 :::
+
+
+## 大模型离线翻译
+
+### Sakura大模型
+
+::: tip
+推荐使用，配置简单，效果好，也可以纯cpu运行轻量模型 
+:::
+
+部署方法可参考 https://github.com/SakuraLLM/SakuraLLM/wiki
+
+### 大模型通用接口
+
+也可以使用[llama.cpp](https://github.com/ggerganov/llama.cpp) 、[ollama](https://github.com/ollama/ollama)、[one-api](https://github.com/songquanpeng/one-api)之类的工具进行模型的部署，然后将地址和模型填入。
+
+也可以使用Kaggle之类的平台来把模型部署到云端，这时可能会需要用到SECRET_KEY，其他时候可以无视SECRET_KEY参数。

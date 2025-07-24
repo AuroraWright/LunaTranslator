@@ -189,7 +189,7 @@ def getallgamelabels(yearinfos):
 
 
 def yearsummary(self, basel: QHBoxLayout):
-    allinfos = gobject.baseobject.playtimemanager.all()  # {uid:[[s,e]]}
+    allinfos = gobject.base.playtimemanager.all()  # {uid:[[s,e]]}
     yearinfos = getthisyearinfo(allinfos)  # {uid:[[s,e]]}
     alleverytimes = calc_uid_times(allinfos)  # {uid:time}
     everytimes = calc_uid_times(yearinfos)  # {uid:time}
@@ -206,7 +206,7 @@ def yearsummary(self, basel: QHBoxLayout):
     for m, info in everymonth_uid_time.items():
         tu_m[m] = getimages(info)
     developer, webtags = getallgamelabels(yearinfos)
-    with open("files/html/yearsummary/yearsummary.value.js", "w", encoding="utf8") as ff2:
+    with open(r"LunaTranslator\htmlcode/yearsummary/yearsummary.value.js", "w", encoding="utf8") as ff2:
         ff2.write(
             r"""
 GAMES_YEAR_PLAYED={GAMES_YEAR_PLAYED}
@@ -231,7 +231,7 @@ webtags={webtags}
             )
         )
 
-    link = os.path.abspath("files/html/yearsummary/yearsummary.html")
+    link = os.path.abspath(r"LunaTranslator\htmlcode/yearsummary/yearsummary.html")
     try:
         _ = WebviewWidget(self)
         _.navigate(link)

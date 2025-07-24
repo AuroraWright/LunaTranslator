@@ -28,7 +28,7 @@ features:
     details: 一部のゲームでは、翻訳を直接ゲームに組み込むことができ、没入感のある体験を提供します。
     link: ./embedtranslate
   - title: HOOKエミュレータ  
-    details: NS/PSP/PSV/PS3のほとんどのゲームでHOOKエミュレータをサポートし、直接ゲームテキストを読み取ります。
+    details: NS/PSP/PSV/PS2のほとんどのゲームでHOOKエミュレータをサポートし、直接ゲームテキストを読み取ります。
     link: ./emugames
   - title: OCR  
     details: 高精度のOCRモデルを内蔵し、多くの他のオンライン＆オフラインOCRエンジンをサポートし、柔軟にテキストを読み取ります。  
@@ -41,5 +41,7 @@ features:
     link: ./qa1
   - title: 音声合成  
     details: 多数のオンライン＆オフライン音声合成エンジンをサポートします。  
-  - title: 高度なカスタマイズ  
-    details: 豊富な設定オプションを提供し、翻訳体験を個人のニーズに合わせてカスタマイズできます。  
+    link: ./ttsengines
+  - title: 音声認識
+    details: Windows 10とWindows 11では、Windows音声認識を使用できます。
+    link: ./sr

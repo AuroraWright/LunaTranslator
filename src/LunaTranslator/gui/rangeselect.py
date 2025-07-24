@@ -46,16 +46,16 @@ class SideGrip(QWidget):
         height = max(window.minimumHeight(), window.height() + delta.y())
         window.resize(window.width(), height)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.mousePos = event.pos()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         if self.mousePos is not None:
             delta = event.pos() - self.mousePos
             self.resizeFunc(delta)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, _):
         self.mousePos = None
 
 
@@ -65,7 +65,7 @@ class Mainw(QMainWindow):
     def __init__(self, x):
         QMainWindow.__init__(self, x)
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | self.windowFlags())
 
         self.sideGrips = [
             SideGrip(self, Qt.Edge.LeftEdge),
@@ -78,7 +78,7 @@ class Mainw(QMainWindow):
         # alternatively, widget.raise_() can be used
         self.cornerGrips = [QSizeGrip(self) for i in range(4)]
         for s in self.cornerGrips:
-            s.setStyleSheet(""" background-color: transparent;  """)
+            s.setStyleSheet("background-color: transparent;")
 
     @property
     def gripSize(self):
@@ -140,8 +140,8 @@ class rangeadjust(Mainw):
         self.tracepos = self.geometry().topLeft()
         self.traceposstart = pos
 
-    def traceoffset(self, curr):
-        hwnd = gobject.baseobject.hwnd
+    def traceoffset(self, curr: QPoint):
+        hwnd = gobject.base.hwnd
         if not hwnd:
             self.tracepos = QPoint()
             return
@@ -200,12 +200,21 @@ class rangeadjust(Mainw):
         for s in self.cornerGrips:
             s.raise_()
 
-    def showmenu(self, p):
+    def showmenu(self, _):
         menu = QMenu(self)
         close = LAction("关闭", menu)
+        mousetransp = LAction("鼠标穿透窗口", menu)
+        menu.addAction(mousetransp)
         menu.addAction(close)
         action = menu.exec(QCursor.pos())
-        if action == close:
+        if action == mousetransp:
+            windows.SetWindowLong(
+                int(self.winId()),
+                windows.GWL_EXSTYLE,
+                windows.GetWindowLong(int(self.winId()), windows.GWL_EXSTYLE)
+                | windows.WS_EX_TRANSPARENT,
+            )
+        elif action == close:
             self._rect = None
             self.close()
 
@@ -215,25 +224,25 @@ class rangeadjust(Mainw):
             % (globalconfig["ocrrangewidth"], globalconfig["ocrrangecolor"], 1 / 255)
         )
 
-    def mouseMoveEvent(self, e):
+    def mouseMoveEvent(self, e: QMouseEvent):
         if self._isTracking:
             self._endPos = e.pos() - self._startPos
             _geo = self.geometry()
             _geo.translate(self._endPos)
             self.setGeometry(*_geo.getRect())
 
-    def mousePressEvent(self, e):
+    def mousePressEvent(self, e: QMouseEvent):
         if e.button() == Qt.MouseButton.LeftButton:
             self._isTracking = True
-            self._startPos = QPoint(e.x(), e.y())
+            self._startPos = QPoint(e.pos().x(), e.pos().y())
 
-    def mouseReleaseEvent(self, e):
+    def mouseReleaseEvent(self, e: QMouseEvent):
         if e.button() == Qt.MouseButton.LeftButton:
             self._isTracking = False
             self._startPos = None
             self._endPos = None
 
-    def rectoffset(self, rect):
+    def rectoffset(self, rect: QRect):
         r = self.devicePixelRatioF()
         r = int(globalconfig["ocrrangewidth"] * r)
         _ = [(rect.left() + r, rect.top() + r), (rect.right() - r, rect.bottom() - r)]
@@ -246,14 +255,14 @@ class rangeadjust(Mainw):
         rect = windows.GetWindowRect(int(self.winId()))
         return QRect(rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1])
 
-    def moveEvent(self, e):
+    def moveEvent(self, _):
         if self._rect:
             self._rect = self.rectoffset(self.geometry())
 
-    def enterEvent(self, QEvent):
+    def enterEvent(self, _):
         self.drag_label.setStyleSheet("background-color:rgba(0,0,0, 0.1)")
 
-    def leaveEvent(self, QEvent):
+    def leaveEvent(self, _):
         self.drag_label.setStyleSheet("background-color:none")
 
     def resizeEvent(self, a0):
@@ -282,9 +291,14 @@ class rangeadjust(Mainw):
         # 由于使用movewindow而非qt函数，导致内部执行绪有问题。
 
 
+screen_shot_ui = None
+
+
 class rangeselect(QMainWindow):
 
     def closeEvent(self, a0):
+        global screen_shot_ui
+        screen_shot_ui = None
         self.deleteLater()
         windows.SetForegroundWindow(self.originhwnd)
         return super().closeEvent(a0)
@@ -308,10 +322,10 @@ class rangeselect(QMainWindow):
         self.reset()
 
     def reset(self):
-        if len(QApplication.screens()) == 1:
-            self.setGeometry(QRect(QPoint(0, 0), QApplication.screens()[0].size()))
-        else:
+        if len(QApplication.screens()) != 1:
             NativeUtils.MaximumWindow(int(self.winId()))
+        else:
+            self.setGeometry(QRect(QPoint(0, 0), QApplication.screens()[0].size()))
         self.once = True
         self.is_drawing = False
         self.start_point = QPoint()
@@ -328,13 +342,11 @@ class rangeselect(QMainWindow):
         )
 
     def resizeEvent(self, e: QResizeEvent):
-        if len(QApplication.screens()) == 1:
-            pass
-        else:
+        if len(QApplication.screens()) != 1:
             NativeUtils.MaximumWindow(int(self.backlabel.winId()))
         self.backlabel.resize(e.size())
 
-    def paintEvent(self, event):
+    def paintEvent(self, _):
 
         if self.is_drawing:
 
@@ -356,16 +368,13 @@ class rangeselect(QMainWindow):
             )
             self.rectlabel.setGeometry(QRect(_sp, _ep))
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.RightButton:
-            self.once = False
-            self.close()
-        elif event.button() == Qt.MouseButton.LeftButton:
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
             self.end_point = self.start_point = event.pos()
             self.is_drawing = True
             self.__start = self.__end = windows.GetCursorPos()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
 
         if not self.is_drawing:
             self.is_drawing = True
@@ -391,7 +400,7 @@ class rangeselect(QMainWindow):
 
         return ((x1, y1), (x2, y2))
 
-    def callbackfunction(self, event):
+    def callbackfunction(self, event: QMouseEvent):
         if not self.once:
             return
         self.once = False
@@ -403,9 +412,17 @@ class rangeselect(QMainWindow):
         except:
             print_exc()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.callbackfunction(event)
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.once = False
+            self.close()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+        return super().keyPressEvent(event)
 
 
 class rangeselect_1(QMainWindow):
@@ -461,7 +478,7 @@ class rangeselect_1(QMainWindow):
         self.backlabel.resize(e.size())
         self.backlabel2.resize(e.size())
 
-    def paintEvent(self, event):
+    def paintEvent(self, _):
 
         if self.is_drawing:
 
@@ -483,15 +500,12 @@ class rangeselect_1(QMainWindow):
             )
             self.rectlabel.setGeometry(QRect(_sp, _ep))
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.RightButton:
-            self.once = False
-            self.close()
-        elif event.button() == Qt.MouseButton.LeftButton:
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
             self.end_point = self.start_point = event.pos()
             self.is_drawing = True
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
 
         if not self.is_drawing:
             self.is_drawing = True
@@ -512,7 +526,7 @@ class rangeselect_1(QMainWindow):
 
         return ((int(x1), int(y1)), (int(x2), int(y2)))
 
-    def callbackfunction(self, event):
+    def callbackfunction(self, event: QMouseEvent):
         if not self.once:
             return
         self.once = False
@@ -529,24 +543,43 @@ class rangeselect_1(QMainWindow):
         except:
             print_exc()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.callbackfunction(event)
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.once = False
+            self.close()
 
     def closeEvent(self, a0):
+        global screen_shot_ui
+        screen_shot_ui = None
         self.deleteLater()
         windows.SetForegroundWindow(self.originhwnd)
         return super().closeEvent(a0)
 
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+        return super().keyPressEvent(event)
+
 
 def rangeselct_function(callback, x=True):
-    if len(QApplication.screens()) == 1:
-        screen_shot_ui = rangeselect_1(gobject.baseobject.translation_ui, x)
+    global screen_shot_ui
+    if screen_shot_ui:
+        screen_shot_ui.close()
+    p = gobject.base.translation_ui
+    if not p.isVisible():
+        p = None
+    if (len(QApplication.screens()) == 1) or globalconfig[
+        "range_select_multi_dpi_capture_force"
+    ]:
+        screen_shot_ui = rangeselect_1(p, x)
     else:
-        screen_shot_ui = rangeselect(gobject.baseobject.translation_ui)
+        screen_shot_ui = rangeselect(p)
     screen_shot_ui.originhwnd = windows.GetForegroundWindow()
     screen_shot_ui.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
     screen_shot_ui.show()
     screen_shot_ui.reset()
     screen_shot_ui.callback = callback
     windows.SetFocus(int(screen_shot_ui.winId()))
+    windows.SetForegroundWindow(int(screen_shot_ui.winId()))

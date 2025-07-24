@@ -7,7 +7,7 @@ from qtsymbols import *
 from metadata.abstract import common
 from gui.gamemanager.dialog import getreflist, getalistname
 from myutils.wrapper import threader
-from gui.usefulwidget import threebuttons
+from gui.usefulwidget import manybuttonlayout
 
 
 def saferequestvndb(proxy, method, url, json=None, headers=None):
@@ -299,20 +299,33 @@ class vndbsettings(QFormLayout):
         vbox.addWidget(s)
         vbox.addWidget(self.lbinfo)
         self.addRow("Token", vbox)
-        btn = threebuttons(["上传游戏", "上传游戏列表", "获取游戏列表"])
-        btn.btn1clicked.connect(
-            functools.partial(self.singleupload_existsoverride, gameuid)
-        )
-        btn.btn2clicked.connect(
-            functools.partial(
-                getalistname, btn, self.getalistname_upload, title="上传游戏列表"
+        btn = manybuttonlayout(
+            (
+                (
+                    "上传游戏",
+                    functools.partial(self.singleupload_existsoverride, gameuid),
+                ),
+                (
+                    "上传游戏列表",
+                    functools.partial(
+                        getalistname,
+                        ww,
+                        self.getalistname_upload,
+                        title="上传游戏列表",
+                    ),
+                ),
+                (
+                    "获取游戏列表",
+                    functools.partial(
+                        getalistname,
+                        ww,
+                        self.getalistname_download,
+                        title="添加到列表",
+                    ),
+                ),
             )
         )
-        btn.btn3clicked.connect(
-            functools.partial(
-                getalistname, btn, self.getalistname_download, title="添加到列表"
-            )
-        )
+
         fl2.addRow(btn)
         self.addRow(ww)
 
@@ -337,7 +350,6 @@ class searcher(common):
             "sec-ch-ua": '"Microsoft Edge";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
             "Referer": "https://vndb.org/",
             "sec-ch-ua-mobile": "?0",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42",
             "sec-ch-ua-platform": '"Windows"',
         }
 
@@ -360,9 +372,5 @@ class searcher(common):
             "images": [infos["img"]] + self.getreleasecvfromhtml(_vid) + infos["sc"],
             "webtags": infos["tags"],
             "developers": infos["dev"],
-            "description": (
-                infos["description"].replace("\n", "<br>")
-                if infos["description"]
-                else None
-            ),
+            "description": infos["description"]
         }

@@ -41,11 +41,6 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
     Ý nghĩa thực tế là đọc văn bản một lần từ clipboard bất kể nguồn đầu vào văn bản mặc định hiện tại và chuyển nó đến quá trình dịch/tts/... tiếp theo
 
     Nhấp chuột phải vào nút sẽ thêm văn bản đã đọc vào văn bản hiện tại.
-1. #### <i class="fa fa-heart"></i> <i class="fa fa-icon fa-rotate-right"></i> Yêu thích
-    Có thể tạo một thư mục yêu thích nhỏ cho mỗi trò chơi. Nó bao gồm tự động truy vấn siêu dữ liệu cho các trang liên quan đến trò chơi như vndb/bangumi/dlsite/, và bạn cũng có thể thêm thủ công một số trang web liên quan đến trò chơi (chẳng hạn như các trang chiến lược trò chơi) để dễ dàng xem. Nó tiết kiệm rắc rối của việc tạo và quản lý dấu trang trong trình duyệt.
-
-    Nhấp chuột phải vào nút sẽ hiển thị menu liệt kê các trang web yêu thích, trong khi nhấp chuột trái vào nút sẽ hiển thị cửa sổ cho phép chỉnh sửa nội dung yêu thích.
-
 1. #### <i class="fa fa-futbol"></i> <i class="fa fa-icon fa-rotate-right"></i> Cài đặt trò chơi
     Khi sử dụng chế độ HOOK để kết nối với trò chơi, hoặc sử dụng chế độ OCR để liên kết cửa sổ trò chơi, bạn có thể trực tiếp mở cửa sổ cài đặt trò chơi hiện tại thông qua nút này
 1. #### <i class="fa fa-mouse-pointer"></i> <i class="btnstatus2 fa fa-mouse-pointer"></i> Cửa sổ xuyên chuột
@@ -141,7 +136,7 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
   
     Việc đọc này sẽ bỏ qua `Bỏ qua` (nếu trong `Cài đặt giọng nói`, mục tiêu văn bản hiện tại được khớp là `Bỏ qua`, thì việc sử dụng nút để đọc sẽ bỏ qua bỏ qua và buộc đọc).
 1. #### <i class="fa fa-copy"></i> <i class="fa fa-icon fa-rotate-right"></i> Sao chép vào clipboard
-    Sao chép văn bản hiện tại đã được trích xuất vào clipboard một lần. Nếu bạn muốn tự động trích xuất vào clipboard, bạn nên kích hoạt `Đầu vào văn bản` -> `Đầu ra văn bản` -> `Clipboard` -> `Đầu ra tự động`.
+    Sao chép văn bản hiện tại đã được trích xuất vào clipboard một lần. Nếu muốn tự động trích xuất vào clipboard, bật `Nhập văn bản` → `Clipboard` → `Tự động xuất` → `Tự động xuất văn bản`.
 1. #### <i class="fa fa-rotate-left"></i> <i class="fa fa-icon fa-rotate-right"></i> Hiển thị/Ẩn văn bản lịch sử  
     Mở hoặc đóng cửa sổ văn bản lịch sử.
 1. #### <i class="fa fa-gamepad"></i> <i class="fa fa-icon fa-rotate-right"></i> Quản lý trò chơi
@@ -177,9 +172,6 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
     Làm cho văn bản trong khu vực văn bản của cửa sổ dịch có thể chọn được.
 
     Nếu nhấp chuột phải trong khi kích hoạt, kéo các khu vực không phải văn bản để di chuyển cửa sổ sẽ bị cấm.
-
-1. #### <i class="fa fa-italic"></i> <i class="btnstatus2 fa fa-italic"></i> chỉnh sửa
-    WebView2 chỉ hoạt động khi nó được hiển thị. Làm cho văn bản bên trong cửa sổ có thể chỉnh sửa được.
 
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> Tra cứu
     Nếu hiện tại có văn bản được chọn, văn bản đã chọn sẽ được truy vấn và một cửa sổ tìm kiếm từ khóa sẽ được mở. Nếu không, nó sẽ chỉ mở hoặc đóng cửa sổ tìm kiếm từ khóa.

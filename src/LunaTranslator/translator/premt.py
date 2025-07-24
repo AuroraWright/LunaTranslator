@@ -11,7 +11,7 @@ import NativeUtils
 class TS(basetrans):
     def unsafegetcurrentgameconfig(self):
         try:
-            gameuid = gobject.baseobject.gameuid
+            gameuid = gobject.base.gameuid
             _path = savehook_new_data[gameuid]["gamesqlitefile"]
             return _path
         except:
@@ -22,10 +22,10 @@ class TS(basetrans):
             self.sql = None
             if p:
                 if os.path.exists(p):
-                    self.sql = autosql(sqlite3.connect(p, check_same_thread=False))
+                    self.sql = autosql(p, check_same_thread=False)
             if p1:
                 if os.path.exists(p1):
-                    self.sql = autosql(sqlite3.connect(p1, check_same_thread=False))
+                    self.sql = autosql(p1, check_same_thread=False)
             self.paths = (p1, p)
 
     def init(self):
@@ -41,7 +41,7 @@ class TS(basetrans):
         )
         if self.sql is None:
             try:
-                sql = gobject.baseobject.textsource.sqlwrite2
+                sql = gobject.base.textsource.sqlwrite2
             except:
                 return {}
         else:

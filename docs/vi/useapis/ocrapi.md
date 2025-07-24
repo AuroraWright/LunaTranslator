@@ -181,9 +181,9 @@ Giống như [Dịch thuật](/en/guochandamoxing.html)
 
 == Local OCR
 
-Gói tích hợp sẵn bao gồm một mô hình nhận dạng tiếng Nhật.
+Mô hình nhận dạng nhẹ tích hợp sẵn bao gồm tiếng Trung, tiếng Nhật và tiếng Anh. Nếu bạn cần nhận dạng ngôn ngữ khác, vui lòng tải thêm mô hình ngôn ngữ tương ứng trong mục `Tải tài nguyên`.  
 
-Nếu bạn cần nhận dạng các ngôn ngữ khác, bạn phải tải xuống mô hình nhận dạng ngôn ngữ tương ứng từ `Tải xuống Tài nguyên`.
+Ngoài ra, `Tải tài nguyên` cũng cung cấp mô hình độ chính xác cao cho tiếng Trung, tiếng Nhật và tiếng Anh. Nếu bạn đang sử dụng phiên bản Windows 10, Hoặc hệ thống là Windows 11, bạn có thể thiết lập sử dụng GPU để chạy mô hình, giúp tăng hiệu suất nhận dạng của mô hình độ chính xác cao.  
 
 == SnippingTool
 
@@ -218,7 +218,7 @@ Yêu cầu cài đặt WeChat hoặc phiên bản mới nhất của QQ
 
 Để trả về danh sách tất cả các gói ngôn ngữ được hỗ trợ, mở PowerShell với quyền Quản trị viên (nhấp chuột phải, sau đó chọn "Chạy với quyền Quản trị viên") và nhập lệnh sau:
 
-```
+```powershell
 Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*' }
 ```
 
@@ -247,8 +247,8 @@ Ngôn ngữ và vị trí được viết tắt, vì vậy "en-US" sẽ là "Ti�
 
 Các lệnh sau đây cài đặt gói OCR cho "en-US":
 
-```
-$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }`
+```powershell
+$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Add-WindowsCapability -Online
 ```
 
@@ -256,7 +256,7 @@ $Capability | Add-WindowsCapability -Online
 
 Các lệnh sau đây gỡ bỏ gói OCR cho "en-US":
 
-```
+```powershell
 $Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Remove-WindowsCapability -Online
 ```

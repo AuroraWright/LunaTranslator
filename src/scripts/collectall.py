@@ -3,19 +3,26 @@ import platform
 import sys
 from importanalysis import importanalysis
 
-x86 = platform.architecture()[0] == "32bit"
-if sys.argv[1] == "32":
-    targetdir = r"build\LunaTranslator_x86"
-    launch = "../src/cpp/builds/_x86"
+arch = sys.argv[1]
+target = sys.argv[2]
+
+if target == "winxp":
+    os.system("python scripts/generate_xp_code.py")
+    os.system("git clone --depth 1 https://github.com/HIllya51/py3.4_pyqt5.5.1")
+    os.rename("py3.4_pyqt5.5.1/Python34", "runtime")
+    pyrt = "runtime"
+else:
+    pyrt = f"../build/pyrt_{arch}_{target}/runtime"
+launch = f"../src/cpp/builds/_{arch}"
+launch += f"_{target}"
+targetdir = rf"build\LunaTranslator_{arch}_{target}"
+
+if arch == "x86":
     baddll = "DLL64"
-    pyrt = "../build/pyrt_x86/runtime"
-    downlevel = r"C:\Windows\SysWOW64\downlevel"
 else:
     baddll = "DLL32"
-    launch = "../src/cpp/builds/_x64"
-    targetdir = r"build\LunaTranslator"
-    pyrt = "../build/pyrt_x64/runtime"
-    downlevel = r"C:\Windows\system32\downlevel"
+
+os.makedirs(targetdir, exist_ok=True)
 
 
 def copycheck(src, tgt):
@@ -47,8 +54,17 @@ pause"""
 copycheck("./LunaTranslator", targetdir)
 copycheck(r".\files", targetdir)
 copycheck(pyrt, targetdir + "/files")
+if target == "win10":
+    runtimedir = "runtime31264"
+elif target == "winxp":
+    runtimedir = "runtime3432"
+elif arch == "x64":
+    runtimedir = "runtime3764"
+else:
+    runtimedir = "runtime3732"
+os.rename(targetdir + "/files/runtime", targetdir + "/files/" + runtimedir)
 try:
-    shutil.rmtree(rf"{targetdir}\files\plugins\{baddll}")
+    shutil.rmtree(rf"{targetdir}\files\{baddll}")
 except:
     pass
 shutil.copy(r"..\LICENSE", targetdir)
@@ -57,8 +73,8 @@ collect = []
 for _dir, _, fs in os.walk(targetdir):
     for f in fs:
         collect.append(os.path.join(_dir, f))
-
-collectapisets = set()
+if target in ("win10", "winxp"):
+    collect.clear()
 for f in collect:
     if f.endswith(".pyc") or f.endswith("Thumbs.db"):
         os.remove(f)
@@ -73,14 +89,29 @@ for f in collect:
         with open(f, "rb") as ff:
             bs = bytearray(ff.read())
         for _dll, offset in imports:
-            if _dll.lower() == "api-ms-win-core-shlwapi-legacy-l1-1-0.dll":
+            low = _dll.lower()
+            if low in (
+                # "api-ms-win-core-synch-l1-2-0.dll",
+                "api-ms-win-core-winrt-string-l1-1-0.dll",
+                "api-ms-win-core-winrt-l1-1-0.dll",
+                "api-ms-win-core-path-l1-1-0.dll",
+            ):
+                continue
+            elif low == "api-ms-win-core-com-l1-1-0.dll":
+                _target = "Ole32.dll"
+            elif low == "api-ms-win-core-shlwapi-legacy-l1-1-0.dll":
                 _target = "Shlwapi.dll"
-            elif _dll.lower() == "api-ms-win-eventing-provider-l1-1-0.dll":
+            elif low in (
+                "api-ms-win-eventing-provider-l1-1-0.dll",
+                "api-ms-win-security-base-l1-1-0.dll",
+            ):
                 _target = "Advapi32.dll"
-            elif _dll.lower().startswith("api-ms-win-core"):
+            elif low in ("api-ms-win-ntuser-sysparams-l1-1-0.dll",):
+                _target = "User32.dll"
+            elif low.startswith("api-ms-win-core"):
                 # 其实对于api-ms-win-core-winrt-XXX实际上是到ComBase.dll之类的，不过此项目中不包含这些
-                _target = "kernel32.dll"
-            elif _dll.lower().startswith("api-ms-win-crt"):
+                _target = "Kernel32.dll"
+            elif low.startswith("api-ms-win-crt"):
                 _target = "ucrtbase.dll"
             else:
                 continue
@@ -93,10 +124,7 @@ for f in collect:
             # print(len(bs))
         with open(f, "wb") as ff:
             ff.write(bs)
-#         for _dll, _ in imports:
-#             collectapisets.add(_dll)
-# for api in collectapisets:
-#     copycheck(rf"{downlevel}\{api}", targetdir + "/files/runtime")
+
 target = os.path.basename(targetdir)
 os.chdir(os.path.dirname(targetdir))
 if os.path.exists(rf"{target}.zip"):

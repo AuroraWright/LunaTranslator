@@ -93,8 +93,7 @@ export const vi = defineConfig({
                       text: 'Cài đặt giao diện dịch thuật', link: '/vi/useapis/tsapi',
                       collapsed: true,
                       items: [
-                          { text: 'Dịch mô hình lớn trực tuyến', link: '/vi/guochandamoxing' },
-                          { text: 'Dịch mô hình lớn ngoại tuyến', link: '/vi/offlinellm' },
+                          { text: 'Giao diện dịch mô hình lớn', link: '/vi/guochandamoxing' },
                           { text: 'Giao diện dịch thuật trực tuyến truyền thống', link: '/vi/useapis/tsapi' },
                       ]
                   },
@@ -106,9 +105,16 @@ export const vi = defineConfig({
                           { text: 'Chức năng của các tối ưu hóa dịch thuật', link: '/vi/transoptimi' }
                       ]
                   },
-                  { text: 'Tổng hợp giọng nói', link: '/vi/ttsofname' },
+                    {
+                        text: '语音合成', link: '/vi/ttsengines',
+                        collapsed: true,
+                        items: [
+                            { text: '语音合成引擎', link: '/vi/ttsengines' },
+                            { text: 'Sử dụng giọng nói khác nhau cho từng nhân vật', link: '/vi/ttsofname' }
+                        ]
+                    },
                   {
-                      text: 'Phân đoạn & Từ điển', link: '/vi/qa1',
+                      text: 'Phân đoạn & Từ điển & Anki', link: '/vi/qa1',
                       collapsed: true,
                       items: [
                           { text: 'Sử dụng Mecab để phân đoạn & tô màu theo loại từ', link: '/vi/qa1' },
@@ -118,6 +124,8 @@ export const vi = defineConfig({
                   { text: 'Nút công cụ', link: '/vi/alltoolbuttons' },
                   { text: 'Phím tắt', link: '/vi/fastkeys' },
                   { text: 'Dịch vụ mạng', link: '/vi/apiservice' },
+                  { text: 'Nhận dạng giọng nói', link: '/vi/sr' },
+
               ]
           }
       ]

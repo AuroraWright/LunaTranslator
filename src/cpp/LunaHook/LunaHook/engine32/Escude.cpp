@@ -1,4 +1,4 @@
-#include "Escude.h"
+﻿#include "Escude.h"
 /** jichi 7/23/2015 Escude
  *  Sample game: Re;Lord ��ルフォルト�魔女とぬぁ�るみ *  See: http://capita.tistory.com/m/post/210
  *
@@ -152,14 +152,10 @@ namespace
    */
   void EscudeFilter(TextBuffer *buffer, HookParam *)
   {
-    auto text = reinterpret_cast<LPSTR>(buffer->buff);
-
-    StringCharReplacer(buffer, TEXTANDLEN("<r>"), '\n');
-    if (cpp_strnstr(text, "<ruby", buffer->size))
-    {
-      StringFilter(buffer, TEXTANDLEN("</ruby>"));
-      StringFilterBetween(buffer, TEXTANDLEN("<ruby"), TEXTANDLEN("'>"));
-    }
+    auto s = buffer->strA();
+    strReplace(s, "<r>", "\n");
+    s = re::sub(s, "<ruby(.*?)>(.*?)</ruby>", "$2");
+    buffer->from(s);
   }
   LPCSTR _escudeltrim(LPCSTR text)
   {

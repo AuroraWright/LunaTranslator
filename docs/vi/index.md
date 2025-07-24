@@ -28,7 +28,7 @@ features:
     details: Một số trò chơi cũng hỗ trợ nhúng trực tiếp bản dịch vào trò chơi để có trải nghiệm nhập vai.  
     link: ./embedtranslate
   - title: Trình giả lập HOOK  
-    details: Hỗ trợ trình giả lập HOOK để trích xuất văn bản trực tiếp từ hầu hết các trò chơi trên NS/PSP/PSV/PS3.  
+    details: Hỗ trợ trình giả lập HOOK để trích xuất văn bản trực tiếp từ hầu hết các trò chơi trên NS/PSP/PSV/PS2.  
     link: ./emugames
   - title: OCR  
     details: Mô hình OCR tích hợp có độ chính xác cao, hỗ trợ nhiều công cụ OCR trực tuyến & ngoại tuyến khác để trích xuất văn bản linh hoạt.  
@@ -41,5 +41,7 @@ features:
     link: ./qa1
   - title: Chuyển văn bản thành giọng nói  
     details: Hỗ trợ nhiều công cụ chuyển văn bản thành giọng nói trực tuyến & ngoại tuyến.  
-  - title: Tùy chỉnh cao  
-    details: Cung cấp nhiều tùy chọn cấu hình để điều chỉnh trải nghiệm dịch theo nhu cầu của bạn.  
+    link: ./ttsengines
+  - title: Nhận dạng giọng nói
+    details: Trên Windows 10 và Windows 11, bạn có thể sử dụng tính năng Nhận dạng giọng nói của Windows.
+    link: ./sr

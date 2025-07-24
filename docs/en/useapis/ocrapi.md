@@ -181,9 +181,9 @@ Same as [Translation](/en/guochandamoxing.html)
 
 == Local OCR
 
-The built-in package includes a Japanese recognition model. 
+The built-in system includes lightweight recognition models for Chinese, Japanese, and English. If you need to recognize other languages, you can download the corresponding language models from the `Resource Download` section.
 
-If you need to recognize other languages, you must download the corresponding language recognition model from `Resource Download`.
+Additionally, high-precision models for Chinese, Japanese, and English are also available in `Resource Download`. If you are using the Windows 10 version of the software, or the system is Windows 11, you can enable GPU acceleration to improve the recognition efficiency of high-precision models.
 
 == SnippingTool
 
@@ -219,7 +219,7 @@ Requires installation of WeChat or the latest version of QQ
 
 To return the list of all supported language packs, open PowerShell as an Administrator (right-click, then select "Run as Administrator") and enter the following command:
 
-```
+```powershell
 Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*' }
 ```
 
@@ -248,8 +248,8 @@ The language and location is abbreviated, so "en-US" would be "English-United St
 
 The following commands install the OCR pack for "en-US":
 
-```
-$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }`
+```powershell
+$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Add-WindowsCapability -Online
 ```
 
@@ -257,7 +257,7 @@ $Capability | Add-WindowsCapability -Online
 
 The following commands remove the OCR pack for "en-US":
 
-```
+```powershell
 $Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Remove-WindowsCapability -Online
 ```

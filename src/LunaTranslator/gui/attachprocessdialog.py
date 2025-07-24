@@ -5,7 +5,6 @@ from NativeUtils import GetProcessFirstWindow
 from myutils.config import globalconfig, _TR
 from myutils.wrapper import Singleton
 from myutils.hwnd import (
-    getpidexe,
     ListProcess,
     mouseselectwindow,
     getExeIcon,
@@ -25,7 +24,7 @@ class AttachProcessDialog(saveposwindow):
             return mouseselectwindow(self.setcurrentpidpnamesignal.emit)
         self.setEnabled(True)
         self.button.setText("点击此按钮后点击游戏窗口"),
-        name = getpidexe(pid)
+        name = windows.GetProcessFileName(pid)
         if not name:
             QMessageBox.critical(
                 self, _TR("错误"), _TR("权限不足，请以管理员权限运行！")
@@ -42,11 +41,15 @@ class AttachProcessDialog(saveposwindow):
         self.testifneedadmin()
 
     def closeEvent(self, e):
-        gobject.baseobject.AttachProcessDialog = None
+        gobject.base.AttachProcessDialog = None
         super().closeEvent(e)
 
     def __init__(self, parent, callback, hookselectdialog=None):
-        super().__init__(parent, poslist=globalconfig["attachprocessgeo"])
+        super().__init__(
+            parent,
+            poslist=globalconfig["attachprocessgeo"],
+            flags=Qt.WindowType.WindowStaysOnTopHint,
+        )
         self.setcurrentpidpnamesignal.connect(self.selectwindowcallback)
 
         self.iconcache = {}
@@ -129,7 +132,9 @@ class AttachProcessDialog(saveposwindow):
         self.buttonBox.rejected.connect(self.close)
         self.processList.clicked.connect(self.selectedfunc)
         self.processIdEdit.textEdited.connect(self.editpid)
-        self.processIdEdit.setValidator(QRegExpValidator(QRegExp("([0-9]+,)*")))
+        self.processIdEdit.setValidator(
+            QRegularExpressionValidator(QRegularExpression("([0-9]+,)*"))
+        )
         # self.processEdit.setReadOnly(True)
         self.processEdit.textEdited.connect(self.filterproc)
 
@@ -183,6 +188,7 @@ class AttachProcessDialog(saveposwindow):
         if self.hookselectdialog:
             self.hookselectdialog.realshowhide.emit(False)
         self.refreshfunction()
+        return super().showEvent(e)
 
     def safesplit(self, process):
         try:
@@ -196,7 +202,7 @@ class AttachProcessDialog(saveposwindow):
             self.windowtext.clear()
             self.processEdit.clear()
             return
-        self.selectedp = (pids, getpidexe(pids[0]), self.guesshwnd(pids))
+        self.selectedp = (pids, windows.GetProcessFileName(pids[0]), self.guesshwnd(pids))
         self.testifneedadmin()
         self.windowtext.setText(windows.GetWindowText(self.selectedp[-1]))
         self.processEdit.setText(self.selectedp[1])

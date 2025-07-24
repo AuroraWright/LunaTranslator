@@ -3,27 +3,6 @@ from myutils.config import _TR, _TRL
 from qtsymbols import *
 
 
-class LMessageBox(QMessageBox):
-    def __init__(self, *a, **kw):
-        self.title_ = None
-        self.text_ = None
-        super().__init__(*a, **kw)
-
-    def setWindowTitle(self, title):
-        self.title_ = title
-        super().setWindowTitle(_TR(self.title_))
-
-    def setText(self, text):
-        self.text_ = text
-        super().setText(_TR(self.text_))
-
-    def updatelangtext(self):
-        if self.text_:
-            super().setText(_TR(self.text_))
-        if self.title_:
-            super().setWindowTitle(_TR(self.title_))
-
-
 class LLabel(QLabel):
     def __init__(self, *argc):
         self.__s = None
@@ -178,7 +157,7 @@ class LDialog(QDialog):
 
     def __init__(self, *argc, **kwarg):
         super().__init__(*argc, **kwarg)
-        if self.parent() == gobject.baseobject.commonstylebase:
+        if self.parent() == gobject.base.commonstylebase:
             if traceonepostion.get(self.parent(), None):
                 self.move(traceonepostion.get(self.parent(), None))
         self._title = None
@@ -195,7 +174,7 @@ class LDialog(QDialog):
 class LMainWindow(QMainWindow):
 
     def __init__(self, *argc, **kwarg):
-        super().__init__(*argc, **kwarg)
+        QMainWindow.__init__(self, *argc, **kwarg)
         self._title = None
 
     def setWindowTitle(self, t):

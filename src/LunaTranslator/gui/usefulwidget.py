@@ -1,10 +1,12 @@
 from qtsymbols import *
-import os, re, functools, hashlib, json, math, csv, io, pickle
+import os, functools, hashlib, json, math, csv, io, pickle
 from traceback import print_exc
-import windows, qtawesome, NativeUtils, gobject, platform, threading
-from myutils.config import _TR, globalconfig, mayberelpath
-from myutils.wrapper import Singleton, threader
+import windows, qtawesome, NativeUtils, gobject
+from gobject import runtime_for_xp
+from myutils.config import _TR, _TRL, globalconfig, mayberelpath
+from myutils.wrapper import Singleton, threader, tryprint
 from myutils.utils import nowisdark, checkisusingwine
+from myutils.hwnd import getcurrexe
 from ocrengines.baseocrclass import OCRResult
 from gui.dynalang import (
     LLabel,
@@ -21,9 +23,14 @@ from gui.dynalang import (
 
 
 class FocusCombo(QComboBox):
-    def __init__(self, parent: QWidget = None) -> None:
+    def __init__(self, parent: QWidget = None, sizeX=False) -> None:
         super().__init__(parent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        if sizeX:
+            self.setSizeAdjustPolicy(
+                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+            )
+            self.view().setTextElideMode(Qt.TextElideMode.ElideRight)
 
     def wheelEvent(self, e: QWheelEvent) -> None:
 
@@ -38,13 +45,17 @@ class SuperCombo(FocusCombo):
     Visoriginrole = Qt.ItemDataRole.UserRole + 1
     Internalrole = Visoriginrole + 1
 
-    def __init__(self, parent=None, static=False) -> None:
-        super().__init__(parent)
-        self.mo = QStandardItemModel()
+    def __init__(self, parent=None, static=False, sizeX=False) -> None:
+        super().__init__(parent=parent, sizeX=sizeX)
         self.static = static
-        self.setModel(self.mo)
-        self.vu = QListView()
-        self.setView(self.vu)
+
+    @property
+    def mo(self) -> QStandardItemModel:
+        return self.model()
+
+    @property
+    def vu(self) -> QListView:
+        return self.view()
 
     def addItem(self, item, internal=None, icon=None):
         text = _TR(item) if not self.static else item
@@ -96,6 +107,8 @@ class SuperCombo(FocusCombo):
 
     def getIndexData(self, index):
         item = self.mo.item(index, 0)
+        if not item:
+            return
         return item.data(self.Internalrole)
 
     def setRowVisible(self, row, vis):
@@ -133,7 +146,166 @@ class FocusDoubleSpin(QDoubleSpinBox, FocusSpinBase):
     pass
 
 
-class TableViewW(QTableView):
+class DelayLoadScrollArea(QAbstractScrollArea):
+    def eventFilter(self, obj, event: QEvent):
+        if event.type() == QEvent.Type.Resize:
+            self._updateVisibleArea_1()
+
+        return False
+
+    def __init__(self, *a, **k):
+        QAbstractScrollArea.__init__(self, *a, **k)
+        self.verticalScrollBar().valueChanged.connect(self._updateVisibleArea_1)
+        self.installEventFilter(self)
+
+    def _updateVisibleArea_1(self):
+        viewport_rect = self.viewport().rect()
+        self._updateVisibleArea(viewport_rect)
+
+    def _updateVisibleArea(self, area: QRect):
+        raise NotImplementedError()
+
+
+class DelayLoadTableView(QTableView, DelayLoadScrollArea):
+    __delayloadfunction = Qt.ItemDataRole.UserRole + 100
+    __switchwidget = __delayloadfunction + 1
+    ValRole = __switchwidget + 1
+
+    def __switchcallback(self, item: QStandardItem, _):
+        self.setIndexData(item.index(), _)
+
+    def createIndexWidget(self, index: QModelIndex):
+        wf = index.data(self.__delayloadfunction)
+        if not wf:
+            return
+        val = index.data(self.ValRole)
+        if isinstance(val, bool):
+            model: QStandardItemModel = self.model()
+            item = model.itemFromIndex(index)
+            w = getsimpleswitch(
+                {None: val},
+                None,
+                callback=functools.partial(self.__switchcallback, item),
+            )
+        else:
+            w = wf()
+        self.model().setData(index, None, self.__delayloadfunction)
+        self.model().setData(index, w, self.__switchwidget)
+        return w
+
+    def setIndexData(self, index: QModelIndex, data):
+        if isinstance(data, bool):
+            self.model().setData(index, data, self.ValRole)
+            self.model().setData(index, 1, self.__delayloadfunction)
+            if self.isstartObserveInserted:
+                self.updateVisibleArea()
+
+    def updateIndex(self, index: QModelIndex):
+        w: MySwitch = index.data(self.__switchwidget)
+        val: bool = index.data(self.ValRole)
+        if isinstance(w, MySwitch) and isinstance(val, bool):
+            w.setChecked(val)
+
+    def __init__(self, *a, **k):
+        QTableView.__init__(self)
+        DelayLoadScrollArea.__init__(self)
+        self.isstartObserveInserted = False
+
+    def setIndexWidget_1(self, index: QModelIndex, w: QWidget):
+
+        if not w:
+            return
+        __w = QWidget()
+        __l = QHBoxLayout(__w)
+        __l.setContentsMargins(0, 0, 0, 0)
+        __l.addWidget(w)
+        super().setIndexWidget(index, __w)
+        if self.rowHeight(index.row()) < w.height():
+            self.setRowHeight(index.row(), w.height())
+
+    def setIndexWidget(self, index: QModelIndex, w: QWidget):
+        if not index.isValid():
+            return
+        if not w:
+            return
+        if isinstance(w, QWidget):
+            self.setIndexWidget_1(index, w)
+        elif callable(w):
+            if self.__index_visual(index):
+                self.setIndexWidget_1(index, w())
+            else:
+                self.model().setData(index, w, self.__delayloadfunction)
+
+    def __index_visual(self, index: QModelIndex):
+        if not index.isValid():
+            return False
+        rect = self.visualRect(index)
+        if rect.isEmpty():
+            return False
+        viewport_rect = self.viewport().rect()
+
+        return viewport_rect.intersects(rect)
+
+    def _updateVisibleArea(self, area: QRect):
+        r1, c1, r2, c2 = (
+            self.rowAt(area.top()),
+            self.columnAt(area.left()),
+            self.rowAt(area.bottom()),
+            self.columnAt(area.right()),
+        )
+        if r1 == -1:
+            r1 = 0
+        if r2 == -1:
+            r2 = self.model().rowCount() - 1
+        if c1 == -1:
+            c1 = 0
+        if c2 == -1:
+            c2 = self.model().columnCount() - 1
+
+        def __(index: QModelIndex):
+            if self.indexWidget(index):
+                return
+            if self.visualRect(index).isEmpty():
+                return
+            w = self.createIndexWidget(index)
+            if not w:
+                return
+            self.setIndexWidget(index, w)
+
+        self.__loopallindex(r1, c1, r2, c2, __)
+
+    def setModel(self, model):
+        super().setModel(model)
+        model.dataChanged.connect(self.__updateIndexWidget)
+
+    def startObserveInserted(self):
+        self.isstartObserveInserted = True
+        self.model().rowsInserted.connect(self.updateVisibleArea)
+
+    def __loopallindex(self, r1, c1, r2, c2, do):
+        for row in range(r1, r2 + 1):
+            for col in range(c1, c2 + 1):
+                index = self.model().index(row, col)
+                if not index.isValid():
+                    continue
+                do(index)
+
+    def updateVisibleArea(self, *_):
+        viewport_rect = self.viewport().rect()
+        self._updateVisibleArea(viewport_rect)
+
+    def __updateIndexWidget(self, topLeft: QModelIndex, bottomRight: QModelIndex):
+
+        self.__loopallindex(
+            topLeft.row(),
+            topLeft.column(),
+            bottomRight.row(),
+            bottomRight.column(),
+            self.updateIndex,
+        )
+
+
+class TableViewW(DelayLoadTableView):
     def __init__(self, *argc, updown=False, copypaste=False) -> None:
         super().__init__(*argc)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ContiguousSelection)
@@ -266,17 +438,6 @@ class TableViewW(QTableView):
         else:
             event.accept()
 
-    def setIndexWidget(self, index: QModelIndex, w: QWidget):
-        if w is None:
-            return
-        __w = QWidget()
-        __l = QHBoxLayout(__w)
-        __l.setContentsMargins(0, 0, 0, 0)
-        __l.addWidget(w)
-        super().setIndexWidget(index, __w)
-        if self.rowHeight(index.row()) < w.height():
-            self.setRowHeight(index.row(), w.height())
-
     def updatelangtext(self):
         m = self.model()
         if isinstance(m, LStandardItemModel):
@@ -349,72 +510,91 @@ class TableViewW(QTableView):
             if len(my_list) == 1 and len(my_list[0]) == 1:
                 self.setindexdata(current, my_list[0][0])
                 return
+            self.model().insertRows(current.row() + 1, len(my_list))
             for j, line in enumerate(my_list):
-                self.insertplainrow(current.row() + 1)
-            for j, line in enumerate(my_list):
-                for i in range(len(line)):
+                for _ in range(max(0, self.model().columnCount() - len(line))):
+                    line.insert(0, "")
+                for i in range(0, self.model().columnCount()):
                     data = line[i]
-                    c = current.column() + i
-                    if c >= self.model().columnCount():
-                        continue
                     self.setindexdata(
-                        self.model().index(current.row() + 1 + j, c), data
+                        self.model().index(current.row() + 1 + j, i), data
                     )
         except:
             print_exc()
             self.setindexdata(current, string)
 
 
-def findnearestscreen(rect: QRect):
-    # QScreen ,distance
-    # -1时，是有交集
-    # -2时，是被包围
-    # >=0时，是不在任何屏幕内
-    mindis = 9999999999
-    usescreen = QApplication.primaryScreen()
-    for screen in QApplication.screens():
-        rect1, rect2 = screen.geometry(), rect
-        if rect1.contains(rect2):
-            return screen, -2
-        if rect1.intersects(rect2):
-            r = rect1.intersected(rect2)
-            area = r.width() * r.width()
-            dis = -area
-        else:
-            distances = []
-            distances.append(abs(rect1.right() - rect2.left()))
-            distances.append(abs(rect1.left() - rect2.right()))
-            distances.append(abs(rect1.bottom() - rect2.top()))
-            distances.append(abs(rect1.top() - rect2.bottom()))
-            dis = min(distances)
-        if dis < mindis:
-            mindis = dis
-            usescreen = screen
-    if mindis < 0:
-        mindis = -1
-    return usescreen, mindis
-
-
 class saveposwindow(LMainWindow):
+    screengeochanged = pyqtSignal()
+
+    def setWindowTitleWithVersion(self, t):
+        version = NativeUtils.QueryVersion(getcurrexe())
+        if version:
+            vs = ".".join(str(_) for _ in version)
+            if vs.endswith(".0"):
+                vs = vs[:-2]
+            versionstring = ("v{}").format(vs)
+            t += "{}[[{}]]".format("_", versionstring)
+        return super().setWindowTitle(t)
+
     def __init__(self, parent, poslist=None, flags=None) -> None:
+        LMainWindow.__init__(self, parent)
         if flags:
-            super().__init__(parent, flags=flags)
-        else:
-            super().__init__(parent)
+            self.setWindowFlags(self.windowFlags() | flags)
 
         self.poslist = poslist
         if self.poslist:
-            usescreen, mindis = findnearestscreen(QRect(poslist[0], poslist[1], 1, 1))
-            poslist[2] = max(0, min(poslist[2], usescreen.size().width()))
-            poslist[3] = max(0, min(poslist[3], usescreen.size().height()))
-            if mindis != -2:
-                poslist[0] = min(
-                    max(poslist[0], 0), usescreen.size().width() - poslist[2]
-                )
-                poslist[1] = min(
-                    max(poslist[1], 0), usescreen.size().height() - poslist[3]
-                )
-            self.setGeometry(*poslist)
+            self.setGeometry(QRect(poslist[0], poslist[1], poslist[2], poslist[3]))
+        self.adjust_window_to_screen_bounds(self.screen().geometry())
+        self.___firstshow = True
+
+    def showEvent(self, a0):
+        if self.___firstshow:
+            self.___firstshow = False
+            self.windowHandle().screenChanged.connect(self.__screenChanged)
+            self.__screenChanged(self.screen())
+        return super().showEvent(a0)
+
+    @tryprint
+    def _changed(self, _id: str, geo: QRect):
+        try:
+            if _id != self.screen().serialNumber():
+                return
+        except:
+            pass
+        self.adjust_window_to_screen_bounds(geo)
+        self.screengeochanged.emit()
+
+    @tryprint
+    def __screenChanged(self, screen: QScreen):
+        screen.geometryChanged.connect(
+            functools.partial(self._changed, screen.serialNumber())
+        )
+
+    @tryprint
+    def adjust_window_to_screen_bounds(self, screen_rect: QRect):
+        window_rect = self.geometry()
+        new_x = window_rect.x()
+        new_y = window_rect.y()
+        new_width = window_rect.width()
+        new_height = window_rect.height()
+
+        if new_width > screen_rect.width():
+            new_width = screen_rect.width()
+        if new_height > screen_rect.height():
+            new_height = screen_rect.height()
+        if new_x + new_width > screen_rect.right() + 1:
+            new_x = screen_rect.right() + 1 - new_width
+        if new_y + new_height > screen_rect.bottom() + 1:
+            new_y = screen_rect.bottom() + 1 - new_height
+        if new_x < screen_rect.left():
+            new_x = screen_rect.left()
+        if new_y < screen_rect.top():
+            new_y = screen_rect.top()
+
+        new_window_rect = QRect(new_x, new_y, new_width, new_height)
+        if new_window_rect != window_rect:
+            self.setGeometry(new_window_rect)
 
     def __checked_savepos(self):
         if not self.poslist:
@@ -495,11 +675,12 @@ class MySwitch(QAbstractButton):
         sz = QSizeF(1.62 * h * gobject.Consts.btnscale, h * gobject.Consts.btnscale)
         self.setFixedSize(sz.toSize())
 
-    def __init__(self, parent=None, sign=True, enable=True):
+    def __init__(self, parent=None, sign=True, enable=True, isplaceholder=False):
         super().__init__(parent)
+        self.isplaceholder = isplaceholder
         self.setCheckable(True)
         super().setChecked(sign)
-        super().setEnabled(enable)
+        super().setEnabled(enable and not isplaceholder)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.clicksignal.connect(self.click)
         self.__currv = 0
@@ -576,6 +757,8 @@ class MySwitch(QAbstractButton):
         )
 
     def paintEvent(self, _):
+        if self.isplaceholder:
+            return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
@@ -602,11 +785,14 @@ class resizableframeless(saveposwindow):
     cursorSet = pyqtSignal(Qt.CursorShape)
     isDragging = pyqtSignal(bool)
 
+    @property
+    def _padding(self):
+        return 8
+
     def __init__(self, parent, flags, poslist) -> None:
-        super().__init__(parent, poslist, flags)
+        saveposwindow.__init__(self, parent, poslist, flags)
         self.setMouseTracking(True)
         # WS_THICKFRAME可以让无边框窗口可resize，但不兼容透明窗口
-        self._padding = 5
         self.usesysmove = False
         self.resetflags()
 
@@ -691,7 +877,7 @@ class resizableframeless(saveposwindow):
             # 用系统拖放有时会有问题。有时会和游戏竞争鼠标，导致窗口位置抖动。
             # 那么尽量不使用系统拖放，以避免触发这个问题，暂时没办法解决。
             # 检查DPI，仅当多屏幕且DPI不一致时才使用系统移动。
-            self.usesysmove = NativeUtils.NeedUseSysMove()
+            self.usesysmove = NativeUtils.IsMultiDifferentDPI()
             if self.usesysmove:
                 NativeUtils.MouseMoveWindow(int(self.winId()))
             self._move_drag = True
@@ -726,12 +912,13 @@ class resizableframeless(saveposwindow):
         if self._right_drag:
             self.resize(pos.x(), self.height())
         elif self._corner_drag_youshang:
-            self.setGeometry(
+            _, y, w, h = self.calculatexywh(
                 self.x(),
                 (gpos - self.startxp).y(),
                 pos.x(),
                 self.starth - (gpos.y() - self.starty),
             )
+            self.setGeometry(self.x(), y, w, h)
         elif self._corner_drag_zuoshang:
             self.setgeokeepminsize(
                 (gpos - self.startxp).x(),
@@ -816,19 +1003,16 @@ def getsimplecombobox(
     internal=None,
     static=False,
     default=None,
+    sizeX=False,
 ):
     if d is None:
         d = {}
     initvar = d.get(k, default)
-    s = SuperCombo(static=static)
+    s = SuperCombo(static=static, sizeX=sizeX)
     s.addItems(lst, internal)
 
     if internal:
-        if len(internal):
-            if (k not in d) or (initvar not in internal):
-                initvar = internal[0]
-
-            s.setCurrentIndex(internal.index(initvar))
+        s.setCurrentData(initvar)
         s.currentIndexChanged.connect(
             functools.partial(comboboxcallbackwrap, s, d, k, callback)
         )
@@ -845,9 +1029,11 @@ def getsimplecombobox(
 
 
 def D_getsimplecombobox(
-    lst, d, k, callback=None, fixedsize=False, internal=None, static=False
+    lst, d, k, callback=None, fixedsize=False, internal=None, static=False, sizeX=False
 ):
-    return lambda: getsimplecombobox(lst, d, k, callback, fixedsize, internal, static)
+    return lambda: getsimplecombobox(
+        lst, d, k, callback, fixedsize, internal, static, sizeX=sizeX
+    )
 
 
 def getlineedit(d, key, callback=None, readonly=False):
@@ -859,7 +1045,7 @@ def getlineedit(d, key, callback=None, readonly=False):
 
 
 def getspinbox(
-    mini, maxi, d: dict, key: str, double=False, step=1, callback=None, default=None
+    mini, maxi, d: dict, key: str, double=False, step=1, callback=None, default=0
 ):
     initvar = d.get(key, default)
     if double:
@@ -876,16 +1062,21 @@ def getspinbox(
     return s
 
 
-def D_getspinbox(mini, maxi, d, key, double=False, step=1, callback=None, default=None):
+def D_getspinbox(mini, maxi, d, key, double=False, step=1, callback=None, default=0):
     return lambda: getspinbox(mini, maxi, d, key, double, step, callback, default)
 
 
 def getIconButton(
-    callback=None, icon="fa.gear", enable=True, qicon=None, callback2=None, fix=True
+    callback=None,
+    icon="fa.gear",
+    enable=True,
+    qicon=None,
+    callback2=None,
+    fix=True,
+    tips=None,
 ):
 
-    b = IconButton(icon, enable, qicon, fix=fix)
-
+    b = IconButton(icon, enable, qicon, fix=fix, tips=tips)
     if callback:
         b.clicked_1.connect(callback)
     if callback2:
@@ -895,10 +1086,16 @@ def getIconButton(
 
 
 def D_getIconButton(
-    callback=None, icon="fa.gear", enable=True, qicon=None, callback2=None, fix=True
+    callback=None,
+    icon="fa.gear",
+    enable=True,
+    qicon=None,
+    callback2=None,
+    fix=True,
+    tips=None,
 ):
     return lambda: getIconButton(
-        callback, icon, enable, qicon, callback2=callback2, fix=fix
+        callback, icon, enable, qicon, callback2=callback2, fix=fix, tips=tips
     )
 
 
@@ -944,30 +1141,36 @@ def check_grid_append(grids):
     return notx
 
 
-def getcolorbutton(parent, d, key, callback=None, alpha=False):
+def getcolorbutton(
+    parent, d, key, callback=None, alpha=False, tips=None, cantzeroalpha=False
+):
     qicon = qtawesome.icon("fa.paint-brush", color=d[key])
-    b = IconButton(None, qicon=qicon)
-    cb = functools.partial(__selectcolor, parent, b, d, key, callback, alpha=alpha)
-    b.clicked.connect(cb)
-    return b
-
-
-def D_getcolorbutton(parent, d, key, callback, alpha=False):
-    return lambda: getcolorbutton(
+    b = IconButton(None, qicon=qicon, tips=tips)
+    cb = functools.partial(
+        __selectcolor,
         parent,
+        b,
         d,
         key,
         callback,
         alpha=alpha,
+        cantzeroalpha=cantzeroalpha,
     )
+    b.clicked.connect(cb)
+    return b
+
+
+def D_getcolorbutton(parent, d, key, callback, alpha=False, tips=None):
+    return lambda: getcolorbutton(parent, d, key, callback, alpha=alpha, tips=tips)
 
 
 def yuitsu_switch(parent, configdict, dictobjectn, key, callback, checked):
     dictobject = getattr(parent, dictobjectn)
     if checked:
-        for k in dictobject:
+        for k in configdict:
             configdict[k]["use"] = k == key
-            dictobject[k].setChecked(k == key)
+            if k in dictobject:
+                dictobject[k].setChecked(k == key)
     if callback:
         callback(key, checked)
 
@@ -980,7 +1183,7 @@ def getsimpleswitch(
     name=None,
     pair=None,
     parent=None,
-    default=None,
+    default=False,
 ):
     initvar = d.get(key, default)
     b = MySwitch(sign=initvar, enable=enable)
@@ -1006,8 +1209,37 @@ def getsmalllabel(text=""):
     return lambda: __getsmalllabel(text)
 
 
+def __getcenterX(w, widget=False):
+    if isinstance(w, str):
+        w = LLabel(w)
+        w.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    if isinstance(w, QLayout):
+        _ = w
+    elif isinstance(w, QWidget):
+        _ = QHBoxLayout()
+        _.addWidget(w)
+    else:
+        __ = w()
+        if isinstance(__, QLayout):
+            _ = __
+        elif isinstance(__, QWidget):
+            _ = QHBoxLayout()
+            _.addWidget(__)
+    _.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    if widget:
+        __ = QWidget()
+        __.setLayout(_)
+        _ = __
+    return _
+
+
+def getcenterX(w, widget=False):
+    return lambda: __getcenterX(w, widget=widget)
+
+
 def D_getsimpleswitch(
-    d, key, enable=True, callback=None, name=None, pair=None, parent=None, default=None
+    d, key, enable=True, callback=None, name=None, pair=None, parent=None, default=False
 ):
     return lambda: getsimpleswitch(
         d, key, enable, callback, name, pair, parent, default
@@ -1016,9 +1248,10 @@ def D_getsimpleswitch(
 
 def getColor(color, parent, alpha=False):
 
-    color_dialog = QColorDialog(color, parent)
+    color_dialog = QColorDialog(parent)
     if alpha:
         color_dialog.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel, True)
+    color_dialog.setCurrentColor(QColor(color))
     if alpha:
         layout = color_dialog.layout()
         clearlayout(layout.itemAt(0).layout().takeAt(0))
@@ -1037,7 +1270,7 @@ def getColor(color, parent, alpha=False):
         if not alpha:
             layout.takeAt(layout.count() - 1).widget().hide()
             layout.takeAt(layout.count() - 1).widget().hide()
-    if color_dialog.exec_() != QColorDialog.DialogCode.Accepted:
+    if color_dialog.exec() != QColorDialog.DialogCode.Accepted:
         return QColor()
     return color_dialog.selectedColor()
 
@@ -1049,18 +1282,20 @@ def __selectcolor(
     configkey,
     callback=None,
     alpha=False,
+    cantzeroalpha=False,
 ):
 
     color = getColor(QColor(configdict[configkey]), parent, alpha)
     if not color.isValid():
         return
-    button.setIcon(qtawesome.icon("fa.paint-brush", color=color.name()))
-    configdict[configkey] = (
-        color.name(QColor.NameFormat.HexArgb) if alpha else color.name()
-    )
+    if alpha and cantzeroalpha and (color.alpha() == 0):
+        color.setAlpha(1)
+    colorname = color.name(QColor.NameFormat.HexArgb) if alpha else color.name()
+    button.setIcon(qtawesome.icon("fa.paint-brush", color=colorname))
+    configdict[configkey] = colorname
     if callback:
         try:
-            callback()
+            callback(colorname)
         except:
             print_exc()
 
@@ -1137,6 +1372,9 @@ class abstractwebview(QWidget):
         getuse=None,
     ):
         return index + 1
+
+    def set_transparent(self, _):
+        pass
 
     #
     def parsehtml(self, html):
@@ -1293,9 +1531,7 @@ class SingleExtensionSetting_(saveposwindow):
 def ExtensionSetting(name, settingurl, icon):
     global SingleExtensionSetting
     if not SingleExtensionSetting:
-        SingleExtensionSetting = SingleExtensionSetting_(
-            gobject.baseobject.commonstylebase
-        )
+        SingleExtensionSetting = SingleExtensionSetting_(gobject.base.commonstylebase)
     SingleExtensionSetting.createpage(name, settingurl, icon)
 
 
@@ -1327,7 +1563,7 @@ class Exteditor(LDialog):
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode((QAbstractItemView.SelectionMode.SingleSelection))
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setWordWrap(False)
         table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         table.customContextMenuRequested.connect(self.__menu)
@@ -1420,6 +1656,7 @@ class Exteditor(LDialog):
                 getIconButton(
                     callback=functools.partial(self.tryMessage, self.removex, _id),
                     icon="fa.times",
+                    fix=False,
                 ),
             )
             t = QTimer(self)
@@ -1454,6 +1691,7 @@ class Exteditor(LDialog):
                         ExtensionSetting, name, setting, info.get("icon")
                     ),
                     enable=self.table.indexWidgetX(i3).isChecked(),
+                    fix=False,
                 ),
             )
         icon = info.get("icon")
@@ -1464,6 +1702,7 @@ class Exteditor(LDialog):
                     qicon=QIcon(icon),
                     callback=functools.partial(os.startfile, info["path"]),
                     enable=self.table.indexWidgetX(i3).isChecked(),
+                    fix=False,
                 ),
             )
         t.stop()
@@ -1554,7 +1793,7 @@ class WebviewWidget(abstractwebview):
     @staticmethod
     def showError(e: Exception):
         QMessageBox.critical(
-            gobject.baseobject.settin_ui,
+            gobject.base.settin_ui,
             _TR("错误"),
             str(e)
             + "\n\n"
@@ -1562,7 +1801,7 @@ class WebviewWidget(abstractwebview):
                 "找不到Webview2Runtime！\n请安装Webview2Runtime，或者下载固定版本后解压到软件目录中。"
             ),
         )
-        if int(platform.version().split(".")[0]) <= 6:
+        if gobject.sys_le_win81:
             os.startfile(
                 "https://archive.org/download/microsoft-edge-web-view-2-runtime-installer-v109.0.1518.78"
             )
@@ -1656,7 +1895,7 @@ class WebviewWidget(abstractwebview):
             # 这个API似乎可以检测runtime是否是有效的，比自己查询版本更好
             if not version:
                 continue
-            if (version[0] > 109) and (int(platform.version().split(".")[0]) <= 6):
+            if (version[0] > 109) and gobject.sys_le_win81:
                 continue
             if version > maxversion:
                 maxversion = version
@@ -1722,6 +1961,9 @@ class WebviewWidget(abstractwebview):
         self.add_menu_noselect()
         self.cachezoom = 1
 
+    def set_transparent(self, b):
+        NativeUtils.webview2_set_transparent(self.webview, b)
+
     def IconChangedF(self, ptr, size):
         pixmap = QPixmap()
         pixmap.loadFromData(ptr[:size])
@@ -1730,7 +1972,7 @@ class WebviewWidget(abstractwebview):
 
     def __on_load(self, url: str, loadinnew: bool):
         if loadinnew:
-            threading.Thread(target=self.loadextensionwindow.emit, args=(url,)).start()
+            threader(self.loadextensionwindow.emit)(url)
         else:
             self.on_load.emit(url)
             self.url = url
@@ -1779,6 +2021,32 @@ class WebviewWidget(abstractwebview):
         return self._parsehtml_codec(self._parsehtml_dark_auto(html))
 
 
+_request_delete_ok_cache = set()
+
+
+def request_delete_ok(parent: QWidget = None, cache=None):
+    if cache and cache in _request_delete_ok_cache:
+        return True
+    msg_box = QMessageBox(parent)
+    msg_box.setIcon(QMessageBox.Icon.Warning)
+    msg_box.setWindowTitle(_TR("确认删除"))
+    msg_box.setText(_TR("确认删除"))
+    msg_box.setStandardButtons(
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+    )
+
+    if cache:
+        dont_ask_checkbox = QCheckBox(_TR("本次运行期间不再询问"), msg_box)
+        msg_box.setCheckBox(dont_ask_checkbox)
+
+    reply = msg_box.exec_()
+    if reply == QMessageBox.StandardButton.Yes:
+        if cache and dont_ask_checkbox.isChecked():
+            _request_delete_ok_cache.add(cache)
+        return True
+    return False
+
+
 class WebviewWidget_for_auto(WebviewWidget):
     pluginsedit = pyqtSignal()
     reloadx = pyqtSignal()
@@ -1787,8 +2055,10 @@ class WebviewWidget_for_auto(WebviewWidget):
         globalconfig["webviewLoadExt_cishu"] = not globalconfig["webviewLoadExt_cishu"]
         auto_select_webview.switchtype()
 
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent, loadext=globalconfig["webviewLoadExt_cishu"])
+    def __init__(self, parent=None, transp=False) -> None:
+        super().__init__(
+            parent, loadext=globalconfig["webviewLoadExt_cishu"], transp=transp
+        )
         self.pluginsedit.connect(functools.partial(Exteditor, self))
         self.reloadx.connect(self.appendext)
 
@@ -1911,23 +2181,64 @@ class mshtmlWidget(abstractwebview):
         return index + 1
 
 
-class CustomKeySequenceEdit(QKeySequenceEdit):
+class KeySequenceEdit(QKeySequenceEdit):
     changeedvent = pyqtSignal(str)
 
-    def __init__(self, parent=None):
-        super(CustomKeySequenceEdit, self).__init__(parent)
+    def focusOutEvent(self, _):
+        # Qt6 focusOut和timeout会把内容清空
+        if self.callonlymod and not isqt5:
+            return
+        super().focusOutEvent(_)
 
-    def keyPressEvent(self, QKeyEvent):
-        super(CustomKeySequenceEdit, self).keyPressEvent(QKeyEvent)
+    def timerEvent(self, _):
+        if self.callonlymod and not isqt5:
+            return
+        super().timerEvent(_)
+
+    def string(self):
+        value = self.keySequence().toString()
+        if value:
+            return value
+        le: QLineEdit = self.findChild(QLineEdit)
+        return le.text()
+
+    def setString(self, string: str):
+        seq = QKeySequence(string.replace("Win", "Meta"))
+        if seq.toString():
+            self.setKeySequence(seq)
+        else:
+            le: QLineEdit = self.findChild(QLineEdit)
+            le.setText(string)
+
+    def __init__(self, parent=None, callonlymod=False):
+        super(KeySequenceEdit, self).__init__(parent)
+        self.callonlymod = callonlymod
+
+    def keyPressEvent(self, ke: QKeyEvent):
+        super(KeySequenceEdit, self).keyPressEvent(ke)
         value = self.keySequence()
-        if len(value.toString()):
-            self.clearFocus()
-        self.changeedvent.emit(value.toString().replace("Meta", "Win"))
-        self.setKeySequence(QKeySequence(value))
+        if self.callonlymod and not value.toString():
+            text = []
+            mod = ke.modifiers()
+            if mod & Qt.KeyboardModifier.ControlModifier:
+                text.append("Ctrl")
+            if mod & Qt.KeyboardModifier.ShiftModifier:
+                text.append("Shift")
+            if mod & Qt.KeyboardModifier.AltModifier:
+                text.append("Alt")
+            if mod & Qt.KeyboardModifier.MetaModifier:
+                text.append("Win")
+            text = "+".join(text)
+            le: QLineEdit = self.findChild(QLineEdit)
+            le.setText(text)
+            self.changeedvent.emit(text)
+        else:
+            self.changeedvent.emit(value.toString().replace("Meta", "Win"))
+            self.setKeySequence(QKeySequence(value))
 
 
-def getsimplekeyseq(dic, key, callback=None):
-    key1 = CustomKeySequenceEdit(QKeySequence(dic[key].replace("Win", "Meta")))
+def getsimplekeyseq(dic: "dict[str,str]", key, callback=None):
+    key1 = KeySequenceEdit(QKeySequence(dic[key].replace("Win", "Meta")))
 
     def __(_d, _k, cb, s):
         _d[_k] = s
@@ -1942,7 +2253,7 @@ def D_getsimplekeyseq(dic, key, callback=None):
     return lambda: getsimplekeyseq(dic, key, callback)
 
 
-switchtypes = []
+switchtypes: "list[auto_select_webview]" = []
 
 
 class auto_select_webview(QWidget):
@@ -2057,9 +2368,11 @@ class auto_select_webview(QWidget):
             self._createinternal(shoudong=shoudong)
             self.internal.setHtml(html)
 
-    def _createwebview(self, shoudong=False):
+    def _createwebview(self, shoudong=False, transp=False):
         try:
-            browser = (WebviewWidget, WebviewWidget_for_auto)[self.loadex]()
+            browser = (WebviewWidget, WebviewWidget_for_auto)[self.loadex](
+                transp=transp
+            )
         except Exception as e:
             print_exc()
             if shoudong:
@@ -2068,43 +2381,15 @@ class auto_select_webview(QWidget):
         return browser
 
 
-class threebuttons(QWidget):
-    btn1clicked = pyqtSignal()
-    btn2clicked = pyqtSignal()
-    btn3clicked = pyqtSignal()
-    btn4clicked = pyqtSignal()
-    btn5clicked = pyqtSignal()
-
-    def __init__(self, texts=None):
-        super().__init__()
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        if len(texts) >= 1:
-            button = LPushButton(self)
-            button.setText(texts[0])
-            button.clicked.connect(self.btn1clicked)
-            layout.addWidget(button)
-        if len(texts) >= 2:
-            button2 = LPushButton(self)
-            button2.setText(texts[1])
-            button2.clicked.connect(self.btn2clicked)
-
-            layout.addWidget(button2)
-        if len(texts) >= 3:
-            button3 = LPushButton(self)
-            button3.setText(texts[2])
-            button3.clicked.connect(self.btn3clicked)
-            layout.addWidget(button3)
-        if len(texts) >= 4:
-            button4 = LPushButton(self)
-            button4.setText(texts[3])
-            button4.clicked.connect(self.btn4clicked)
-            layout.addWidget(button4)
-        if len(texts) >= 5:
-            button5 = LPushButton(self)
-            button5.setText(texts[4])
-            button5.clicked.connect(self.btn5clicked)
-            layout.addWidget(button5)
+def manybuttonlayout(textandfunctions: list):
+    layout = QHBoxLayout()
+    layout.setContentsMargins(0, 0, 0, 0)
+    for text, func in textandfunctions:
+        button = LPushButton()
+        button.setText(text)
+        button.clicked.connect(func)
+        layout.addWidget(button)
+    return layout
 
 
 def tabadd_lazy(tab, title, getrealwidgetfunction):
@@ -2123,15 +2408,26 @@ def makelabel(s: str):
     return wid
 
 
-def makeforms(lay: LFormLayout, lis):
-    for line in lis:
+def makeforms(lay: LFormLayout, lis, hiderows=None):
+    for i, line in enumerate(lis):
         if len(line) == 0:
             lay.addRow(QLabel())
             continue
         elif len(line) == 1:
             name, wid = None, line[0]
         else:
-            name, wid = line
+            name, wid = line[0], line[1:]
+            l = QHBoxLayout()
+            for _ in wid:
+                if callable(_):
+                    _ = _()
+                if isinstance(_, str):
+                    l.addWidget(makelabel(_))
+                elif isinstance(_, QWidget):
+                    l.addWidget(_)
+                elif isinstance(_, QLayout):
+                    l.addLayout(_)
+            wid = l
         if isinstance(wid, (tuple, list)):
             hb = QHBoxLayout()
             hb.setContentsMargins(0, 0, 0, 0)
@@ -2172,6 +2468,8 @@ def makeforms(lay: LFormLayout, lis):
             lay.addRow(name, wid)
         else:
             lay.addRow(wid)
+        if i in hiderows if hiderows else []:
+            lay.setRowVisible(i, False)
 
 
 class NQGroupBox(QGroupBox):
@@ -2180,16 +2478,42 @@ class NQGroupBox(QGroupBox):
         self.setObjectName("notitle")
 
 
-def makegroupingrid(args):
+class BGroupBox(LGroupBox):
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+
+        self.button: QPushButton = None
+
+    def resizeEvent(self, event):
+        opt = QStyleOptionGroupBox()
+        self.initStyleOption(opt)
+        text_rect = self.style().subControlRect(
+            QStyle.ComplexControl.CC_GroupBox,
+            opt,
+            QStyle.SubControl.SC_GroupBoxLabel,
+            self,
+        )
+        if self.button:
+            self.button.move(text_rect.right() + 5, text_rect.top())
+        super().resizeEvent(event)
+
+
+def makegroupingrid(args: dict):
     lis = args.get("grid")
+    button = args.get("button")
     title = args.get("title", None)
     _type = args.get("type", "form")
     parent = args.get("parent", None)
     groupname = args.get("name", None)
     enable = args.get("enable", True)
     internallayoutname = args.get("internallayoutname", None)
-
-    if title:
+    hiderows = args.get("hiderows", [])
+    if button:
+        group = BGroupBox()
+        group.setTitle(title)
+        group.button = button()
+        group.button.setParent(group)
+    elif title:
         group = LGroupBox()
         group.setTitle(title)
     else:
@@ -2198,15 +2522,14 @@ def makegroupingrid(args):
         group.setEnabled(False)
     if groupname and parent:
         setattr(parent, groupname, group)
-
     if _type == "grid":
         grid = QGridLayout(group)
         automakegrid(grid, lis)
         if internallayoutname:
             setattr(parent, internallayoutname, grid)
     elif _type == "form":
-        lay = LFormLayout(group)
-        makeforms(lay, lis)
+        lay = VisLFormLayout(group)
+        makeforms(lay, lis, hiderows)
         if internallayoutname:
             setattr(parent, internallayoutname, lay)
     return group
@@ -2307,13 +2630,12 @@ def makegrid(grid=None, savelist=None, savelay=None, delay=False):
 
 def makescroll():
     scroll = QScrollArea()
-    # scroll.setHorizontalScrollBarPolicy(1)
     scroll.setStyleSheet("""QScrollArea{background-color:transparent;border:0px}""")
     scroll.setWidgetResizable(True)
     return scroll
 
 
-def makescrollgrid(grid, lay, savelist=None, savelay=None):
+def makescrollgrid(grid, lay: QLayout, savelist=None, savelay=None):
     wid, do = makegrid(grid, savelist, savelay, delay=True)
     swid = makescroll()
     lay.addWidget(swid)
@@ -2323,22 +2645,32 @@ def makescrollgrid(grid, lay, savelist=None, savelay=None):
 
 
 def makesubtab_lazy(
-    titles=None, functions=None, klass=None, callback=None, delay=False, initial=None
+    titles=None,
+    functions=None,
+    klass=None,
+    callback=None,
+    delay=False,
+    initial=None,
+    fast=False,
 ):
     if klass:
         tab: LTabWidget = klass()
     else:
         tab = LTabWidget()
 
-    def __(t: LTabWidget, initial, i):
+    def __(fast, t: LTabWidget, initial, i):
         if initial:
             object, key = initial
             object[key] = i
         try:
             w = t.currentWidget()
             if "lazyfunction" in dir(w):
-                w.lazyfunction()
+                __ = w.lazyfunction
                 delattr(w, "lazyfunction")
+                if fast:
+                    QTimer.singleShot(0, __)
+                else:
+                    __()
         except:
             print_exc()
         if callback:
@@ -2346,7 +2678,7 @@ def makesubtab_lazy(
 
     can = initial and (initial[1] in initial[0])
     if not can:
-        tab.currentChanged.connect(functools.partial(__, tab, initial))
+        tab.currentChanged.connect(functools.partial(__, fast, tab, initial))
 
     def __do(tab: LTabWidget, titles, functions, initial):
         if titles and functions:
@@ -2354,7 +2686,7 @@ def makesubtab_lazy(
                 tabadd_lazy(tab, titles[i], func)
         if can:
             tab.setCurrentIndex(initial[0][initial[1]])
-            tab.currentChanged.connect(functools.partial(__, tab, initial))
+            tab.currentChanged.connect(functools.partial(__, fast, tab, initial))
             tab.currentChanged.emit(initial[0][initial[1]])
 
     ___do = functools.partial(__do, tab, titles, functions, initial)
@@ -2415,6 +2747,7 @@ class listediter(LDialog):
         namemapfunction=None,
         candidates=None,
         exec=False,
+        icon=None,
     ) -> None:
         super().__init__(parent)
         self.setWindowFlags(
@@ -2425,8 +2758,10 @@ class listediter(LDialog):
         self.closecallback = closecallback
         self.ispathsedit = ispathsedit
         self.isrankeditor = isrankeditor
+        if icon:
+            self.setWindowIcon(qtawesome.icon(icon))
+        self.setWindowTitle(title)
         try:
-            self.setWindowTitle(title)
             model = LStandardItemModel()
             self.hcmodel = model
             self.namemapfunction = namemapfunction
@@ -2436,7 +2771,7 @@ class listediter(LDialog):
             if isrankeditor or (not (ispathsedit is None)) or self.candidates:
                 table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
             table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-            table.setSelectionMode((QAbstractItemView.SelectionMode.SingleSelection))
+            table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
             table.setWordWrap(False)
             table.setModel(model)
 
@@ -2470,30 +2805,26 @@ class listediter(LDialog):
                     )
                     self.hctable.setIndexWidget(self.hcmodel.index(row, 0), combo)
             if isrankeditor:
-                self.buttons = threebuttons(texts=["上移", "下移"])
-                self.buttons.btn1clicked.connect(functools.partial(self.moverank, -1))
-                self.buttons.btn2clicked.connect(functools.partial(self.moverank, 1))
+                buttons = manybuttonlayout(
+                    (
+                        ("上移", functools.partial(self.moverank, -1)),
+                        ("下移", functools.partial(self.moverank, 1)),
+                    )
+                )
             elif self.candidates:
-                self.buttons = threebuttons(texts=["添加行", "删除行"])
-                self.buttons.btn1clicked.connect(self.click1)
-                self.buttons.btn2clicked.connect(self.clicked2)
+                buttons = manybuttonlayout(
+                    (("添加行", self.click1), ("删除行", self.clicked2))
+                )
             else:
                 if self.ispathsedit and self.ispathsedit.get("dirorfile", False):
-                    self.buttons = threebuttons(
-                        texts=["添加文件", "添加文件夹", "删除行", "上移", "下移"]
-                    )
-                    self.buttons.btn1clicked.connect(
-                        functools.partial(self._addfile, False)
-                    )
-                    self.buttons.btn2clicked.connect(
-                        functools.partial(self._addfile, True)
-                    )
-                    self.buttons.btn3clicked.connect(self.clicked2)
-                    self.buttons.btn4clicked.connect(
-                        functools.partial(self.moverank, -1)
-                    )
-                    self.buttons.btn5clicked.connect(
-                        functools.partial(self.moverank, 1)
+                    buttons = manybuttonlayout(
+                        (
+                            ("添加文件", functools.partial(self._addfile, False)),
+                            ("添加文件夹", functools.partial(self._addfile, True)),
+                            ("删除行", self.clicked2),
+                            ("上移", functools.partial(self.moverank, -1)),
+                            ("下移", functools.partial(self.moverank, 1)),
+                        )
                     )
                 else:
                     xx = "添加行"
@@ -2502,17 +2833,16 @@ class listediter(LDialog):
                             xx = "添加文件夹"
                         else:
                             xx = "添加文件"
-                    self.buttons = threebuttons(texts=[xx, "删除行", "上移", "下移"])
-                    self.buttons.btn1clicked.connect(self.click1)
-                    self.buttons.btn2clicked.connect(self.clicked2)
-                    self.buttons.btn3clicked.connect(
-                        functools.partial(self.moverank, -1)
-                    )
-                    self.buttons.btn4clicked.connect(
-                        functools.partial(self.moverank, 1)
+                    buttons = manybuttonlayout(
+                        (
+                            (xx, self.click1),
+                            ("删除行", self.clicked2),
+                            ("上移", functools.partial(self.moverank, -1)),
+                            ("下移", functools.partial(self.moverank, 1)),
+                        )
                     )
 
-            formLayout.addWidget(self.buttons)
+            formLayout.addLayout(buttons)
             self.resize(600, self.sizeHint().height())
             if exec:
                 self.exec()
@@ -2527,7 +2857,7 @@ class listediter(LDialog):
             self.internalrealname.pop(row)
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.buttons.setFocus()
+        self.setFocus()
 
         rows = self.hcmodel.rowCount()
         rowoffset = 0
@@ -2603,7 +2933,7 @@ class ClickableLine(QLineEdit):
         super().mousePressEvent(e)
 
 
-class listediterline(QWidget):
+class listediterline(QHBoxLayout):
 
     def text(self):
         return self.edit.text()
@@ -2624,14 +2954,13 @@ class listediterline(QWidget):
         self.edit = ClickableLine()
         self.reflist = reflist
         self.setText("|".join((str(_) for _ in reflist)))
-        hbox = QHBoxLayout(self)
-        hbox.setContentsMargins(0, 0, 0, 0)
-        hbox.addWidget(self.edit)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.addWidget(self.edit)
         if not specialklass:
             specialklass = listediter
         callback = functools.partial(
             specialklass,
-            self,
+            self.edit,
             name,
             reflist,
             closecallback=self.callback,
@@ -2651,7 +2980,7 @@ class listediterline(QWidget):
                 self.edit.setReadOnly(True)
                 callback()
 
-            hbox.addWidget(getIconButton(callback=__2))
+            self.addWidget(getIconButton(callback=__2))
         else:
             self.edit.setReadOnly(True)
             self.edit.clicked.connect(callback)
@@ -2692,23 +3021,19 @@ def getsimplepatheditor(
     icons=None,
     reflist=None,
     name=None,
-    header=None,
     dirorfile=False,
     clearable=True,
     clearset=None,
-    isfontselector=False,
-    w=False,
 ):
-    lay = QHBoxLayout()
-    lay.setContentsMargins(0, 0, 0, 0)
     if multi:
-        e = listediterline(
+        lay = listediterline(
             name,
             reflist,
             dict(isdir=isdir, multi=False, filter1=filter1, dirorfile=dirorfile),
         )
-        lay.addWidget(e)
     else:
+        lay = QHBoxLayout()
+        lay.setContentsMargins(0, 0, 0, 0)
         e = QLineEdit(text)
         e.setReadOnly(True)
         if icons:
@@ -2722,36 +3047,21 @@ def getsimplepatheditor(
         if clearable:
             lay.clear = clear
 
-        if isfontselector:
-
-            def __selectfont(callback, e):
-                f = QFont()
-                text = e.text()
-                if text:
-                    f.fromString(text)
-                font, ok = QFontDialog.getFont(f, e)
-                if ok:
-                    _s = font.toString()
-                    callback(_s)
-                    e.setText(_s)
-
-            _cb = functools.partial(__selectfont, callback, e)
-        else:
-            _cb = functools.partial(
-                openfiledirectory,
-                text,
-                multi,
-                e,
-                isdir,
-                "" if isdir else filter1,
-                callback,
-            )
+        _cb = functools.partial(
+            openfiledirectory,
+            text,
+            multi,
+            e,
+            isdir,
+            "" if isdir else filter1,
+            callback,
+        )
         bu.clicked.connect(_cb)
         lay.addWidget(e)
         lay.addWidget(bu)
         if clearable:
 
-            def __(_cb, _e, t):
+            def __(_cb, _e: QLineEdit, t):
                 _cb("")
                 if not t:
                     _e.setText("")
@@ -2760,10 +3070,6 @@ def getsimplepatheditor(
 
             clear.clicked.connect(functools.partial(__, callback, e, clearset))
             lay.addWidget(clear)
-    if w and isinstance(lay, QLayout):
-        w = QWidget()
-        w.setLayout(lay)
-        lay = w
     return lay
 
 
@@ -2771,7 +3077,7 @@ class threeswitch(QWidget):
     btnclicked = pyqtSignal(int)
     sizeChanged = pyqtSignal(QSize)
 
-    def selectlayout(self, i):
+    def selectlayout(self, i: int):
         try:
             for _ in range(len(self.btns)):
                 self.btns[(i + _) % len(self.btns)].setEnabled(False)
@@ -2785,7 +3091,7 @@ class threeswitch(QWidget):
 
     def __init__(self, p, icons):
         super().__init__(p)
-        self.btns = []
+        self.btns: "list[QPushButton]" = []
         hv = QHBoxLayout(self)
         hv.setContentsMargins(0, 0, 0, 0)
         hv.setSpacing(0)
@@ -2901,7 +3207,7 @@ class pixmapviewer(QWidget):
             pos.setY(pos.y() + line_height)
 
 
-class IconButton(QPushButton):
+class IconButton(LPushButton):
     clicked_1 = pyqtSignal()
     sizeChanged = pyqtSignal(QSize)
 
@@ -2914,7 +3220,9 @@ class IconButton(QPushButton):
 
     def resizedirect(self):
         h = QFontMetricsF(self.font()).height()
-        sz = (QSizeF(h, h) * gobject.Consts.btnscale).toSize()
+        sz = (
+            QSizeF(int(h * gobject.Consts.IconSizeHW), h) * gobject.Consts.btnscale
+        ).toSize()
         if self.fix:
             self.setFixedSize(sz)
         else:
@@ -2923,9 +3231,18 @@ class IconButton(QPushButton):
         self.sizeChanged.emit(sz)
 
     def __init__(
-        self, icon, enable=True, qicon=None, parent=None, checkable=False, fix=True
+        self,
+        icon,
+        enable=True,
+        qicon=None,
+        parent=None,
+        checkable=False,
+        fix=True,
+        tips=None,
     ):
         super().__init__(parent)
+        if tips:
+            self.setToolTip(tips)
         self._icon = icon
         self.clicked.connect(self.clicked_1)
         self.clicked.connect(self.__seticon)
@@ -3000,25 +3317,6 @@ def clearlayout(ll: QLayout):
             continue
 
 
-def showhidelayout(ll: QLayout, vis):
-    for _ in range(ll.count()):
-        item = ll.itemAt(_)
-        if not item:
-            continue
-        w = item.widget()
-        if w:
-            if vis:
-                if not w.isVisible():
-                    w.setVisible(True)
-            else:
-                w.setVisible(False)
-            continue
-        l = item.layout()
-        if l:
-            showhidelayout(l, vis)
-            continue
-
-
 class FQPlainTextEdit(QPlainTextEdit):
     def mousePressEvent(self, a0: QMouseEvent) -> None:
         # 点击浏览器后，无法重新获取焦点。
@@ -3071,45 +3369,55 @@ class VisGridLayout(QGridLayout):
                 super().addWidget(w, r, c, rs, cs)
 
 
-class VisLFormLayout(VisGridLayout):
+class __VisLFormLayout(VisGridLayout):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.setColumnStretch(0, 0)
+        self.setColumnStretch(1, 1)
+
+    def __makelayoutwidget(self, LayorWidget: "QLayout | QWidget"):
+        if isinstance(LayorWidget, QWidget):
+            return LayorWidget
+        w = QWidget()
+        w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        w.setLayout(LayorWidget)
+        LayorWidget.setContentsMargins(0, 0, 0, 0)
+        return w
 
     def addRow(self, label_or_field, field=None):
         row_index = self.rowCount()
-        if isinstance(label_or_field, (QWidget, str)) or not label_or_field:
-            if isinstance(label_or_field, str):
-                lb = getsmalllabel(label_or_field)()
-                super().addWidget(lb, row_index, 0, 1, 1)
-            elif isinstance(label_or_field, QWidget):
-                super().addWidget(label_or_field, row_index, 0, 1, 1 if field else 2)
-
-            if field:
-                if isinstance(field, QWidget):
-                    super().addWidget(field, row_index, 1, 1, 1)
-                elif isinstance(field, QLayout):
-                    w = QWidget()
-                    w.setLayout(field)
-                    w.setSizePolicy(
-                        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-                    )
-                    field.setContentsMargins(0, 0, 0, 0)
-                    super().addWidget(w, row_index, 1, 1, 1)
-                else:
-                    print(field)
-        elif isinstance(label_or_field, QLayout):
-            if field:
-                print(field)
-            w = QWidget()
-            w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            w.setLayout(label_or_field)
-            label_or_field.setContentsMargins(0, 0, 0, 0)
-            super().addWidget(w, row_index, 0, 1, 2)
+        colspan = 1 if (field) else 2
+        if isinstance(label_or_field, str):
+            label_or_field = LLabel(label_or_field)
+            colspan = 1
+        if label_or_field is not None:
+            super().addWidget(
+                self.__makelayoutwidget(label_or_field), row_index, 0, 1, colspan
+            )
+        if field:
+            super().addWidget(self.__makelayoutwidget(field), row_index, 1, 1, 1)
         return row_index
 
     def addWidget(self, w):
         self.addRow(None, w)
+
+
+try:
+    TYPE_CHECKING = False
+    from typing import TYPE_CHECKING
+except:
+    pass
+
+if TYPE_CHECKING or isqt5:
+
+    class VisLFormLayout(__VisLFormLayout):
+        pass
+
+else:
+
+    class VisLFormLayout(LFormLayout):
+        pass
 
 
 class CollapsibleBox(NQGroupBox):
@@ -3143,9 +3451,20 @@ class CollapsibleBoxWithButton(QWidget):
         lay = QVBoxLayout(self)
         lay.setSpacing(0)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(self.toggle_button)
+        _ = QWidget()
+        self.lay1 = QHBoxLayout(_)
+        self.lay1.setContentsMargins(0, 0, 0, 0)
+        self.lay1.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.lay1.addWidget(self.toggle_button)
+        lay.addWidget(_)
         lay.addWidget(self.content_area)
         self.__toggled(toggled)
+
+    def addLeftWidget(self, ws):
+        if not isinstance(ws, (tuple, list)):
+            ws = [ws]
+        for w in ws:
+            self.lay1.addWidget(w)
 
     def __toggled(self, checked):
         self.toggle_button.setChecked(checked)
@@ -3162,6 +3481,7 @@ def createfoldgrid(
     k=None,
     internallayoutname=None,
     parent=None,
+    leftwidget=None,
 ):
 
     def __(grid, internallayoutname, parent, lay: QLayout):
@@ -3177,151 +3497,104 @@ def createfoldgrid(
         title,
         toggled=toggled,
     )
+    if leftwidget:
+        box.addLeftWidget(leftwidget())
     if d:
         box.toggled.connect(functools.partial(d.__setitem__, k))
     return box
 
 
-class editswitchTextBrowser(QWidget):
-    textChanged = pyqtSignal(str)
+class SClickableLabel(QLabel):
+    beforeEnter = pyqtSignal()
 
-    def heightForWidth(self, w):
-        return self.browser.heightForWidth(w)
-
-    def resizeEvent(self, a0):
-        self.switch.move(self.width() - self.switch.width(), 0)
-        return super().resizeEvent(a0)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        stack = QStackedWidget()
-        self.edit = QPlainTextEdit()
-        self.browser = QLabel()
-        self.browser.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.browser.setWordWrap(True)
-        self.browser.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        self.edit.textChanged.connect(
-            lambda: (
-                self.browser.setText(
-                    "<html>"
-                    + re.sub(
-                        r'href="([^"]+)"',
-                        "",
-                        re.sub(r'src="([^"]+)"', "", self.edit.toPlainText()),
-                    )
-                    + "</html>"
-                ),
-                self.textChanged.emit(self.edit.toPlainText()),
-            )
-        )
-        stack.addWidget(self.browser)
-        stack.addWidget(self.edit)
-        l = QHBoxLayout(self)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(stack)
-        self.switch = IconButton(parent=self, icon="fa.edit", checkable=True)
-        self.switch.raise_()
-        self.switch.clicked.connect(stack.setCurrentIndex)
-
-    def settext(self, text):
-        self.edit.setPlainText(text)
-
-    def text(self):
-        return self.edit.toPlainText()
-
-
-class FlowWidget(QWidget):
-    def __init__(self, parent=None, groups=3):
-        super().__init__(parent)
-        self.margin = QMargins(5, 5, 5, 5)
-        self.spacing = 5
-        self._item_list = [[] for _ in range(groups)]
-
-    def insertWidget(self, group, index, w: QWidget):
-        w.setParent(self)
-        w.show()
-        self._item_list[group].insert(index, w)
-        self.doresize()
-
-    def addWidget(self, group, w: QWidget):
-        self.insertWidget(group, len(self._item_list[group]), w)
-
-    def removeWidget(self, w: QWidget):
-        for _ in self._item_list:
-            if w in _:
-                _.remove(w)
-                w.deleteLater()
-                self.doresize()
-                break
-
-    def doresize(self):
-        line_height = 0
-        spacing = self.spacing
-        y = self.margin.left()
-        for listi in self._item_list:
-            x = self.margin.top()
-            for i, item in enumerate(listi):
-
-                next_x = x + item.sizeHint().width() + spacing
-                if (
-                    next_x - spacing + self.margin.right() > self.width()
-                    and line_height > 0
-                ):
-                    x = self.margin.top()
-                    y = y + line_height + spacing
-                    next_x = x + item.sizeHint().width() + spacing
-
-                size = item.sizeHint()
-                if (i == len(listi) - 1) and isinstance(item, editswitchTextBrowser):
-                    w = self.width() - self.margin.right() - x
-                    size = QSize(w, max(size.height(), item.heightForWidth(w)))
-
-                item.setGeometry(QRect(QPoint(x, y), size))
-                line_height = max(line_height, size.height())
-                x = next_x
-            y = y + line_height + spacing
-        self.setFixedHeight(y + self.margin.bottom() - spacing)
-
-    def resizeEvent(self, a0):
-        self.doresize()
-
-
-class ClickableLabel(LLabel):
     def __init__(self, *argc, **kw):
         super().__init__(*argc, **kw)
         self.setClickable(True)
+
+    def setClickable(self, b: bool):
+        self._Clickable = b
         self.setStyleSheet(
-            r"""ClickableLabel{
+            r"""QLabel{
                 background:transparent
             }
-            ClickableLabel:hover{
+            QLabel:hover{
                 background-color: rgba(128,128,128,0.3)
             }"""
             ""
+            if b
+            else """QLabel{
+                background:transparent
+            }"""
         )
 
-    def setClickable(self, clickable: bool):
-        self._clickable = clickable
+    def enterEvent(self, event):
+        self.beforeEnter.emit()
+        return super().enterEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         if (
-            self._clickable
+            self._Clickable
             and event.button() == Qt.MouseButton.LeftButton
             and self.rect().contains(event.pos())
         ):
             self.clicked.emit()
+        super().mouseReleaseEvent(event)
 
     clicked = pyqtSignal()
+
+
+class ClickableLabel(SClickableLabel, LLabel):
+    pass
+
+
+def limitpos(pos: QPoint, w: QWidget, offset: QPoint):
+    x = pos.x()
+    y = pos.y()
+    screen_geometry = w.screen().geometry()
+    size = w.size()
+    right_space = screen_geometry.right() - pos.x()
+    bottom_space = screen_geometry.bottom() - pos.y()
+    left_space = pos.x() - screen_geometry.left()
+    top_space = pos.y() - screen_geometry.top()
+    # 水平方向调整
+    if right_space < size.width():
+        if left_space >= size.width():
+            x = pos.x() - size.width()
+        else:
+            # 如果两边空间都不够，选择空间较大的一侧
+            if right_space > left_space:
+                x = screen_geometry.right() - size.width()
+            else:
+                x = screen_geometry.left()
+
+    else:
+        x += offset.x()
+    # 垂直方向调整
+    if bottom_space < size.height():
+        if top_space >= size.height():
+            y = pos.y() - size.height()
+        else:
+            # 如果两边空间都不够，选择空间较大的一侧
+            if bottom_space > top_space:
+                y = screen_geometry.bottom() - size.height()
+            else:
+                y = screen_geometry.top()
+    else:
+        y += offset.y()
+    return QPoint(x, y)
 
 
 class PopupWidget(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowFlag(Qt.WindowType.Popup)
+        self.setWindowFlags(Qt.WindowType.Popup | self.windowFlags())
         self.dragging = False
         self.offset = None
+
+    def showEvent(self, a0):
+        pos = self.pos()
+        self.move(limitpos(pos, self, QPoint()))
+        return super().showEvent(a0)
 
     def display(self, pos=None):
         self.move(pos if pos else QCursor.pos())
@@ -3351,3 +3624,31 @@ class PopupWidget(QWidget):
     def closeEvent(self, a0):
         self.deleteLater()
         return super().closeEvent(a0)
+
+
+class MDLabel(QLabel):
+    def __init__(self, md: str, static=False):
+        super().__init__()
+        self._md = md
+        self.static = static
+        self.once = True
+        self.setOpenExternalLinks(True)
+        self.setWordWrap(True)
+        self.updatelangtext()
+
+    def updatelangtext(self):
+        if self.once:
+            self.once = False
+        elif self.static:
+            return
+        self.setText(
+            NativeUtils.Markdown2Html(
+                self._md if self.static else "\n".join(_TRL(self._md.split("\n")))
+            )
+        )
+
+
+class HBoxCenter(QHBoxLayout):
+    def __init__(self, *a):
+        super().__init__(*a)
+        self.setAlignment(Qt.AlignmentFlag.AlignHCenter)

@@ -1,4 +1,4 @@
-#include "Cotopha.h"
+﻿#include "Cotopha.h"
 #define s2_mov_ecx_edi 0xcf8b
 
 namespace
@@ -587,7 +587,7 @@ namespace
       bool attachCaller(ULONG addr)
       {
         static std::unordered_set<ULONG> addresses_;
-        if (addresses_.find(addr) != addresses_.end())
+        if (addresses_.count(addr))
           return false;
         addresses_.insert(addr);
         HookParam hp;

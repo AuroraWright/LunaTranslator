@@ -5,6 +5,8 @@ from myutils.utils import (
     createurl,
     common_list_models,
     common_parse_normal_response,
+    common_create_gemini_request,
+    common_create_gpt_data,
 )
 from myutils.proxy import getproxy
 from language import Languages
@@ -196,9 +198,8 @@ class qianfanIAM:
         ).json()["token"]
 
 
-def createheaders(apiurl: str, config: dict, maybeuse: dict, proxy):
+def createheaders(apiurl: str, curkey: str, maybeuse: dict, proxy, extra):
     _ = {}
-    curkey = config["SECRET_KEY"]
     if curkey:
         # 部分白嫖接口可以不填，填了反而报错
         _.update({"Authorization": "Bearer " + curkey})
@@ -210,6 +211,8 @@ def createheaders(apiurl: str, config: dict, maybeuse: dict, proxy):
             key = qianfanIAM.getkey(Access_Key, Secret_Key, proxy)
             maybeuse[curkey] = key
         _.update({"Authorization": "Bearer " + maybeuse[curkey]})
+    if extra:
+        _.update(extra)
     return _
 
 
@@ -225,50 +228,33 @@ class gptcommon(basetrans):
 
     def __init__(self, typename):
         self.context = []
+        self.context_for_cache = []
+        self.context_for_cache_skipinter = 0
+        self.context_for_cache_skipinter_shouldmove = False
         self.maybeuse = {}
         super().__init__(typename)
-
-    def createdata(self, message, extra):
-        temperature = self.config["Temperature"]
-        data = dict(
-            model=self.config["model"],
-            messages=message,
-            # optional
-            max_tokens=self.config["max_tokens"],
-            # n=1,
-            # stop=None,
-            top_p=self.config["top_p"],
-            temperature=temperature,
-            stream=self.config["流式输出"],
-        )
-        if self.config.get("frequency_penalty_use", False):
-            data.update(dict(frequency_penalty=self.config["frequency_penalty"]))
-        data.update(extra)
-        return data
-
-    def createheaders(self, extra):
-        headers = createheaders(
-            self.apiurl, self.multiapikeycurrent, self.maybeuse, self.proxy
-        )
-        headers.update(extra)
-        return headers
 
     def translate(self, query_1: str):
         extrabody, extraheader = getcustombodyheaders(
             self.config.get("customparams"), **locals()
         )
         usingstream = self.config["流式输出"]
-        messages = self.commoncreatemessages(query_1)
+        messages, query = self.commoncreatemessages(query_1)
         if self.apiurl.startswith("https://generativelanguage.googleapis.com"):
             response = self.request_gemini(messages, extrabody, extraheader)
         elif self.apiurl.startswith("https://api.anthropic.com/v1/messages"):
             response = self.req_claude(messages, extrabody, extraheader)
         else:
+            headers = createheaders(
+                self.apiurl,
+                self.multiapikeycurrent["SECRET_KEY"],
+                self.maybeuse,
+                self.proxy,
+                extraheader,
+            )
+            _json = common_create_gpt_data(self.config, messages, extrabody)
             response = self.proxysession.post(
-                self.createurl(),
-                headers=self.createheaders(extraheader),
-                json=self.createdata(messages, extrabody),
-                stream=usingstream,
+                self.createurl(), headers=headers, json=_json, stream=usingstream
             )
         hidethinking = self.config.get("hidethinking", False)
         markdown2html = self.config.get("markdown2html", False)
@@ -284,10 +270,12 @@ class gptcommon(basetrans):
                 yield "LUNASHOWHTML" + NativeUtils.Markdown2Html(respmessage)
             else:
                 yield respmessage
-        if not (query_1.strip() and respmessage.strip()):
+        if not (respmessage and query_1.strip() and respmessage.strip()):
             return
         self.context.append({"role": "user", "content": query_1})
+        self.context_for_cache.append({"role": "user", "content": query})
         self.context.append({"role": "assistant", "content": respmessage})
+        self.context_for_cache.append({"role": "assistant", "content": respmessage})
 
     def createurl(self):
         return createurl(self.apiurl)
@@ -298,76 +286,54 @@ class gptcommon(basetrans):
         )
         sysprompt = self._gptlike_createsys("使用自定义promt", "自定义promt")
         message = [{"role": "system", "content": sysprompt}]
-        self._gpt_common_parse_context(
-            message, self.context, self.config["附带上下文个数"], query=query_1
-        )
+        checknum = self.config["附带上下文个数"]
+        __message = []
+        if self.config.get("cachecontext", False):
+            if self.context_for_cache_skipinter_shouldmove:
+                self.context_for_cache_skipinter = (
+                    len(self.context_for_cache) - (checknum // 2) * 2
+                )
+                self.context_for_cache_skipinter_shouldmove = False
+            if len(self.context_for_cache) < checknum:
+                self.context_for_cache_skipinter = 0
+            self._gpt_common_parse_context(
+                __message,
+                self.context_for_cache[self.context_for_cache_skipinter :],
+                checknum,
+                query=query_1,
+                cachecontext=True,
+            )
+        else:
+            self._gpt_common_parse_context(
+                __message, self.context, checknum, query=query_1
+            )
+        self.context_for_cache_skipinter_shouldmove = len(__message) == checknum * 2
+
+        message.extend(__message)
         message.append({"role": "user", "content": query})
         prefill = self._gptlike_create_prefill("prefill_use", "prefill")
         if prefill:
             message.append({"role": "assistant", "content": prefill})
-        return message
+        return message, query
 
     def request_gemini(self, messages: list, extrabody, extraheader):
-        gen_config = {
-            "generationConfig": {
-                "stopSequences": [" \n"],
-                "temperature": self.config["Temperature"],
-            }
-        }
-        model = self.config["model"]
-        safety = {
-            "safety_settings": [
-                {
-                    "category": "HARM_CATEGORY_HARASSMENT",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_HATE_SPEECH",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_CIVIC_INTEGRITY",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    "threshold": "BLOCK_NONE",
-                },
-            ]
-        }
-        # https://discuss.ai.google.dev/t/gemma-3-missing-features-despite-announcement/71692/13
+
         sysprompt = messages[0]["content"]
         messages.pop(0)
-        sys_message = (
-            {"systemInstruction": {"parts": {"text": sysprompt}}} if sysprompt else {}
-        )
         for i, item in enumerate(messages):
             messages[i] = {
                 "role": {"assistant": "model", "user": "user"}[item["role"]],
                 "parts": [{"text": item["content"]}],
             }
-        contents = dict(contents=messages)
-        usingstream = self.config["流式输出"]
-        payload = {}
-        payload.update(contents)
-        payload.update(safety)
-        payload.update(sys_message)
-        payload.update(gen_config)
-        payload.update(extrabody)
-        res = self.proxysession.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:{}".format(
-                model, ["generateContent", "streamGenerateContent"][usingstream]
-            ),
-            headers=extraheader,
-            params={"key": self.multiapikeycurrent["SECRET_KEY"]},
-            json=payload,
-            stream=usingstream,
+        return common_create_gemini_request(
+            self.proxysession,
+            self.config,
+            self.multiapikeycurrent["SECRET_KEY"],
+            sysprompt,
+            messages,
+            extraheader,
+            extrabody,
         )
-        return res
 
     def req_claude(self, messages: list, extrabody, extraheader):
         temperature = self.config["Temperature"]

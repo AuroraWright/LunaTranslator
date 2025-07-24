@@ -72,7 +72,7 @@ export const zh = defineConfig({
         },
         nav: [
             { text: "官方网站", link: "https://lunatranslator.org/" },
-            { text: "视频教学", link: "https://space.bilibili.com/592120404/video" },
+            { text: "视频教程", link: "https://space.bilibili.com/592120404/video" },
             { text: "QQ群963119821", link: "https://qm.qq.com/q/I5rr3uEpi2" },
             { text: "支持作者", link: "/zh/support" },
         ],
@@ -111,8 +111,7 @@ export const zh = defineConfig({
                         text: '翻译接口设置', link: '/zh/useapis/tsapi',
                         collapsed: true,
                         items: [
-                            { text: '大模型在线翻译', link: '/zh/guochandamoxing' },
-                            { text: '大模型离线翻译', link: '/zh/offlinellm' },
+                            { text: '大模型翻译接口', link: '/zh/guochandamoxing' },
                             { text: '传统在线翻译接口', link: '/zh/useapis/tsapi' },
                         ]
                     },
@@ -124,18 +123,26 @@ export const zh = defineConfig({
                             { text: '各种翻译优化的作用', link: '/zh/transoptimi' }
                         ]
                     },
-                    { text: '语音合成', link: '/zh/ttsofname' },
                     {
-                        text: '分词&辞书', link: '/zh/qa1',
+                        text: '语音合成', link: '/zh/ttsengines',
+                        collapsed: true,
+                        items: [
+                            { text: '语音合成引擎', link: '/zh/ttsengines' },
+                            { text: '根据不同的人物使用不同的声音', link: '/zh/ttsofname' }
+                        ]
+                    },
+                    {
+                        text: '分词&辞书&Anki', link: '/zh/qa1',
                         collapsed: true,
                         items: [
                             { text: '使用Mecab分词&词性颜色标注', link: '/zh/qa1' },
-                            { text: 'Anki集成', link: '/zh/qa2' }
+                            { text: 'Anki集成', link: '/zh/qa2' },
                         ]
                     },
                     { text: '工具按钮', link: '/zh/alltoolbuttons' },
                     { text: '快捷按键', link: '/zh/fastkeys' },
                     { text: '网络服务', link: '/zh/apiservice' },
+                    { text: '语音识别', link: '/zh/sr' },
                 ]
             }
         ]

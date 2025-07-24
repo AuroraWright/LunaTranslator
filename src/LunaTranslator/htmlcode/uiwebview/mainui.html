@@ -1,0 +1,953 @@
+<div id="luna_root_div" dir="auto">
+    <div id="luna_root_div_trans"></div>
+    <div id="luna_root_div_origin"></div>
+</div>
+<div id="luna_overlay_div"></div>
+<div id="luna_atback_div"></div>
+<style>
+    #luna_overlay_div {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        display: block;
+    }
+
+    #luna_atback_div {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        display: block;
+    }
+
+    body {
+        overflow: auto;
+        /* word-break: break-all; */
+    }
+
+    body::-webkit-scrollbar {
+        display: none;
+    }
+
+    ruby {
+        ruby-align: center;
+    }
+
+    rt {
+        user-select: none;
+    }
+</style>
+<style id="tooltipstyle">
+    .tooltip {
+        --tooltips-background: #333;
+        --tooltips-text: white;
+        --tooltips-padding: 8px;
+    }
+</style>
+<style>
+    .tooltip {
+        position: fixed;
+        /* 相对于视口定位 */
+        background: var(--tooltips-background);
+        /* #333;*/
+        color: var(--tooltips-text);
+        padding: var(--tooltips-padding);
+        border-radius: var(--tooltips-radius);
+        pointer-events: none;
+        /* 防止 Tooltip 遮挡鼠标事件 */
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        /* transform: translate(0%, 10px); */
+        /* 轻微下移避免遮挡鼠标 */
+    }
+
+    .tooltip.show {
+        opacity: 1;
+    }
+</style>
+<script>
+    function settooltipsstyle(c1, c2, pd, r) {
+        document.getElementById('tooltipstyle').innerHTML = `
+        .tooltip {
+        --tooltips-background: ${c1};
+        --tooltips-text: ${c2};
+        --tooltips-padding: ${pd}px;
+        --tooltips-radius: ${r}px;
+    }
+        `
+    }
+</script>
+<style id="maybevertical">
+</style>
+<style id="colorcontroller"></style>
+<script>document.addEventListener('DOMContentLoaded', () => {
+        //https://github.com/MicrosoftEdge/WebView2Feedback/blob/main/specs/WebMessageObjects.md
+
+        // 阻止浏览器默认行为
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        document.body.addEventListener('drop', (e) => {
+            chrome.webview.postMessageWithAdditionalObjects("FilesDropped", e.dataTransfer.files);
+        }, false);
+
+    });
+</script>
+
+<style>
+    #popupContainer {
+        position: absolute;
+        display: none;
+        z-index: 3000;
+        background-color: white;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+        padding: 10px;
+        width: 400px;
+        max-width: 90vw;
+    }
+
+    #popup-content {
+        position: relative;
+    }
+
+    #popupiframe {
+        width: 100%;
+        height: 400px;
+    }
+</style>
+<div id="popupContainer">
+    <div id="popup-content">
+        <iframe title="" frameborder="0" id="popupiframe"></iframe>
+    </div>
+</div>
+<script>
+    //nativte api
+    var sizeignore = false
+    var cacheheight = 0
+    var isheightchangebytooltip = false
+    function refreshcontent_before() {
+        sizeignore = true
+    }
+    function refreshcontent_after() {
+        sizeignore = false
+        if (window.LUNAJSObject)
+            LUNAJSObject.calllunaheightchange(cacheheight)
+    }
+    let lastZoomLevel = window.devicePixelRatio;
+    window.addEventListener('resize', function () {
+        const currentZoomLevel = window.devicePixelRatio;
+        if (Math.abs(currentZoomLevel - lastZoomLevel) > 0.01) {
+            lastZoomLevel = currentZoomLevel;
+            safe_calllunaheightchange()
+        }
+    });
+    function safe_calllunaheightchange() {
+        let root = document.getElementById('luna_root_div')
+        let h = root.offsetHeight + root.offsetTop
+        const computedStyle = window.getComputedStyle(document.body);
+        h += parseFloat(computedStyle.marginBottom)//+parseFloat(computedStyle.marginTop) 
+        cacheheight = h
+        isheightchangebytooltip = false
+        if (sizeignore) return
+        if (window.LUNAJSObject)
+            LUNAJSObject.calllunaheightchange(h)
+    }
+    document.body.addEventListener('click', (e) => {
+        popupContainer.style.display = 'none'
+    })
+    function limitPosition(pos, popup, offset) {
+        const x = pos.x;
+        const y = pos.y;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const popupWidth = popup.offsetWidth;
+        const popupHeight = popup.offsetHeight;
+
+        let adjustedX = x;
+        let adjustedY = y;
+
+        // 计算各方向可用空间
+        const rightSpace = screenWidth - x;
+        const bottomSpace = screenHeight - y;
+        const leftSpace = x;
+        const topSpace = y;
+
+        // 水平方向调整
+        if (rightSpace < popupWidth) {
+            if (leftSpace >= popupWidth) {
+                adjustedX = x - popupWidth;
+            } else {
+                // 如果两边空间都不够，选择空间较大的一侧
+                if (rightSpace > leftSpace) {
+                    adjustedX = screenWidth - popupWidth;
+                } else {
+                    adjustedX = 0;
+                }
+            }
+        } else {
+            adjustedX += offset.x;
+        }
+
+        // 垂直方向调整
+        if (bottomSpace < popupHeight) {
+            if (topSpace >= popupHeight) {
+                adjustedY = y - popupHeight;
+            } else {
+                // 如果两边空间都不够，选择空间较大的一侧
+                if (bottomSpace > topSpace) {
+                    adjustedY = screenHeight - popupHeight;
+                } else {
+                    adjustedY = 0;
+                }
+            }
+        } else {
+            adjustedY += offset.y;
+        }
+
+        // 确保不会超出边界
+        adjustedX = Math.max(0, Math.min(adjustedX, screenWidth - popupWidth));
+        adjustedY = Math.max(0, Math.min(adjustedY, screenHeight - popupHeight));
+
+        return { x: adjustedX, y: adjustedY };
+    }
+
+    function showPopupAtPosition(e) {
+        const pos = { x: e.clientX, y: e.clientY };
+        const offset = { x: 0, y: 10 }; // 默认偏移量
+
+        // 先显示弹出窗口(隐藏状态)以获取其尺寸
+        popupContainer.style.display = 'block';
+        popupContainer.style.visibility = 'hidden';
+
+        const adjustedPos = limitPosition(pos, popupContainer, offset);
+
+        popupContainer.style.left = `${adjustedPos.x}px`;
+        popupContainer.style.top = `${adjustedPos.y}px`;
+        popupContainer.style.visibility = 'visible';
+    }
+    function flowclickdictionary(e, link) {
+        popupiframe.src = link;
+        showPopupAtPosition(e)
+        e.stopPropagation()
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    function safe_calllunaclickedword(e, word, app) {
+        if (window.LUNAJSObject)
+            LUNAJSObject.calllunaclickedword(word, app)
+        else {
+            const url = new URL('/page/dictionary', window.location.origin);
+            url.searchParams.append('word', word['word'])
+            url.searchParams.append('prototype', word['prototype'])
+            if (e.button == 0 && !urlParams.get('__internal', 0)) {
+                url.searchParams.append('__internal', 1)
+                flowclickdictionary(e, url.toString())
+            }
+            else {
+                //wsinvoke('calllunaclickedword', [word, app])
+                //比起在luna里打开，用新的标签页打开似乎是更好的选择
+                window.open(url.toString())
+            }
+        }
+    }
+</script>
+<script>
+    function _simpleuid() {
+        return 'luna' + Math.random().toString(36).substr(2, 9);
+    }
+    function maybesethtml(ele, args, text) {
+        if (args.userawhtml) {
+            ele.innerHTML = text
+        }
+        else {
+            ele.innerText = text
+            ele.style.whiteSpace = 'pre-wrap'
+        }
+    }
+    function createnameandtext(name, text, args) {
+        let ele = document.createElement('span')
+        ele.classList.add('lunatranslator_text_all')
+        maybesethtml(ele, args, text)
+        if (name.length) {
+            let spanx = document.createElement('span')
+            spanx.classList.add('lunatranslator_name')
+            spanx.classList.add('lunatranslator_text_all')
+            spanx.innerText = name + " "
+            let __x = document.createElement('span')
+            __x.appendChild(spanx)
+            __x.appendChild(ele)
+            ele = __x
+        }
+        return ele
+    }
+    function normal_create_internal(styleargs, name, text, args) {
+        let ele = createnameandtext(name, text, args)
+        ele.style.color = `var(--${args.color})`
+        return ele
+    }
+    function createyinyingstyle(styleargs, _id, color) {
+        let ntimes = ""
+        for (let i = 0; i < styleargs.shadowforce; i++) {
+            ntimes += `0px 0px calc(${styleargs.shadowR}em + ${styleargs.shadowR_ex}px) var(--${color})`
+            if (i == styleargs.shadowforce - 1)
+                ntimes += ";"
+            else
+                ntimes += ","
+        }
+        return `#${_id}{text-shadow:${ntimes}}`
+    }
+    function yinying_create_internal(styleargs, name, text, args) {
+        let ele = createnameandtext(name, text, args)
+        ele.style.color = `var(--YINYING_FILLCOLOR)`
+        let _id = _simpleuid()
+        ele.id = _id
+        let style = document.createElement('style')
+        style.innerHTML = createyinyingstyle(styleargs, _id, args.color)
+        style.classList.add('yinyingstyleklass')
+        style.setAttribute('__color', args.color)
+        style.setAttribute('__id', _id)
+        ele.appendChild(style)
+        return ele
+    }
+    function createmiaobianstyle(styleargs, _id, color) {
+
+        let c2 = `var(--${color})`
+        let c1 = `var(--miaobianfillcolor)`
+        if (styleargs.reverse) {
+            c2 = `var(--miaobianfillcolor)`
+            c1 = `var(--${color})`
+        }
+        //paint-order: stroke; 需要123,不再支持低版本webview2
+        return `#${_id} span{ 
+        color: ${c2};
+        -webkit-text-stroke: calc(${styleargs.width_rate}em + ${styleargs.width}px) ${c1};
+        paint-order: stroke; 
+        }`
+    }
+    function miaobian12_common(styleargs, name, text, args) {
+        let ele = document.createElement('span')
+        let _id = _simpleuid()
+        ele.id = _id
+        let style = document.createElement('style')
+        style.innerHTML = createmiaobianstyle(styleargs, _id, args.color)
+        style.setAttribute('__color', args.color)
+        style.setAttribute('__id', _id)
+        style.classList.add('miaobiaostyleklass')
+        ele.appendChild(style)
+        let p = createnameandtext(name, text, args)
+        ele.appendChild(p)
+        return ele
+
+    }
+    regist_style_imp = {
+        normal: normal_create_internal,
+        yinying: yinying_create_internal,
+        miaobian1: miaobian12_common,
+    }
+    function dispatch_text_style(style, styleargs, name, text, args) {
+        return regist_style_imp[style](styleargs, name, text, args)
+    }
+</script>
+<style id="maybeshowerror">
+</style>
+<style id="maybeshoworigin">
+</style>
+<style id="maybeshowtranslate">
+</style>
+<style id="maybeshowname">
+</style>
+<style id="maybeshowrt">
+</style>
+<style id="maybeshowclick">
+</style>
+<style id="maybeshowatcenter"></style>
+<style id="styleforfont"></style>
+<style id="clickwordhover">
+    :root {
+        --clickwordhover: rgba(0, 0, 0, 0.5)
+    }
+</style>
+<script>
+    var allowclickword = false
+    function sethovercolor(color) {
+        document.getElementById('clickwordhover').innerHTML = `:root{
+        --clickwordhover:${color}
+    }`
+    }
+    function showatcenter(center) {
+        let css = ['', '.centercontrol{ text-align: center; }'][center]
+        document.getElementById('maybeshowatcenter').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function showhidert(show) {
+        let css = ['.lunatranslator_rt{   display: none;    }', '.lunatranslator_rt{}'][show]
+        document.getElementById('maybeshowrt').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function showhideclick(show, clickable) {
+        allowclickword = clickable
+        let css = ['', `
+    .lunatranslator_clickword {
+        z-index: 2000;
+        position: relative;
+    }
+
+    .lunatranslator_clickword:hover {
+        background-color: var(--clickwordhover);
+    }  `][show]
+        document.getElementById('maybeshowclick').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function showhidename(show) {
+        let css = ['.lunatranslator_name{   display: none;    }', '.lunatranslator_name{}'][show]
+        document.getElementById('maybeshowname').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function showhidetranslate(show) {
+        let css = ['.lunatranslator_translate{   display: none;    }', '.lunatranslator_translate{}'][show]
+        document.getElementById('maybeshowtranslate').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function showhideerror(show) {
+        let css = ['.lunatranslator_error{   display: none;    }', '.lunatranslator_error{}'][show]
+        document.getElementById('maybeshowerror').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function showhideorigin(show) {
+        let css = ['.lunatranslator_origin{   display: none;    }', '.lunatranslator_origin{}'][show]
+        document.getElementById('maybeshoworigin').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function get_out_div(_id) {
+        return 'div' + _id
+    }
+    function create_div_line_id(_id, argsjson) {
+        if (document.getElementById(_id)) return
+        let args = JSON.parse(decodeURIComponent(argsjson))
+        let texttype = args.texttype
+        let div = document.createElement("div");
+        let span = document.createElement('span')
+        div.id = get_out_div(_id)
+        span.id = _id;
+        span.classList.add('lunatranslator_text')
+        div.appendChild(span)
+        if (texttype == 0) {
+            div.classList.add('lunatranslator_origin')
+            div.classList.add('klass_font_origin')
+        }
+        else if (texttype == 1) {
+            div.classList.add('lunatranslator_translate')
+            div.classList.add('klass_font_trans')
+        }
+        else if (texttype == 2) {
+            div.classList.add('klass_font_trans')
+        }
+        else if (texttype == 3) {
+            div.classList.add('lunatranslator_error')
+            div.classList.add('klass_font_trans')
+        }
+        else if (texttype == 4) {
+            div.classList.add('klass_font_trans')
+            div.classList.add('lunatranslator_translate')
+            let divx = document.createElement('div')
+            divx.classList.add('lunatranslator_error')
+            divx.appendChild(div)
+            div = divx
+        }
+        div.classList.add('centercontrol')
+        if (args.klass) {
+            div.classList.add('TS_CLASS_' + args.klass)
+        }
+        if (texttype == 0 || texttype == 2 || texttype == 3)
+            document.getElementById('luna_root_div_origin').appendChild(div);
+        else if (texttype == 1 || texttype == 4)
+            document.getElementById('luna_root_div_trans').appendChild(div);
+    }
+    function isRTL(text) {
+        // 使用正则表达式检测RTL字符
+        const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+        return rtlRegex.test(text);
+    }
+    function create_internal_text(clear, style, styleargsjson, _id, nameu, textu, argsjson) {
+        //由于name的存在，dir auto会失效。
+        let args = JSON.parse(decodeURIComponent(argsjson))
+        let styleargs = JSON.parse(decodeURIComponent(styleargsjson))
+        let name = decodeURIComponent(nameu)
+        let text = decodeURIComponent(textu)
+        let div = document.getElementById(get_out_div(_id))
+        div.dir = isRTL(text) ? 'rtl' : 'auto'
+        let innerele = dispatch_text_style(style, styleargs, name, text, args);
+        let ele = document.getElementById(_id)
+        if (clear)
+            clearparent(ele)
+        ele.innerHTML = ''
+        ele.appendChild(innerele)
+        safe_calllunaheightchange()
+    }
+    function _splittags(tag) {
+        let result = [];
+        let currentSubArray = [];
+
+        tag.forEach(item => {
+            if (item.word === "\n") {
+                if (currentSubArray.length > 0) {
+                    result.push(currentSubArray);
+                }
+                currentSubArray = [];
+            } else {
+                currentSubArray.push(item);
+            }
+        });
+
+        if (currentSubArray.length > 0) {
+            result.push(currentSubArray);
+        }
+
+        return result
+    }
+    var word_hover_show_word_info = false
+    function set_word_hover_show_word_info(action) {
+        word_hover_show_word_info = action
+        if (!action)
+            document.querySelectorAll('.tooltip').forEach((ele) => {
+                ele.remove()
+            })
+    }
+    let word_hover_action_usewb2 = false
+    function setwordhoveruse(use) {
+        word_hover_action_usewb2 = use
+    }
+    function checktooltipheight(tooltip) {
+        targetheigth = 0
+
+        if (!tooltip) {
+            if (isheightchangebytooltip && !document.querySelectorAll('.tooltip').length)
+                targetheigth = cacheheight
+        }
+        else {
+            bottom = tooltip.offsetHeight + tooltip.offsetTop
+            if (bottom > cacheheight || isheightchangebytooltip)
+                targetheigth = bottom
+        }
+        if (!targetheigth || sizeignore) return
+        if (window.LUNAJSObject)
+            LUNAJSObject.calllunaheightchange(targetheigth)
+        isheightchangebytooltip = true
+
+    }
+    function createwordhoverlistener(eleori, word) {
+
+        let tooltipcontent = ''
+        if (word.prototype && word.word != word.prototype)
+            tooltipcontent += ' / ' + word.prototype
+        if (word.kana && word.kana != word.word)
+            tooltipcontent += ' / ' + word.kana
+        if (word.info) {
+            tooltipcontent += '\n' + word.info
+        }
+        if (!tooltipcontent) return
+
+        let tooltip = null;
+        eleori.addEventListener("mousemove", (e) => {
+            if (!word_hover_show_word_info) return
+            if (!word_hover_action_usewb2 && window.LUNAJSObject) {
+                LUNAJSObject.calllunaMouseHoverWord("mousemove", e.clientX, e.clientY, word)
+                return
+            }
+            if (tooltip) {
+                const computedStyle = window.getComputedStyle(tooltip);
+                tooltip.style.left = `${e.clientX - parseFloat(computedStyle.marginLeft)}px`;
+                tooltip.style.top = `${10 + e.clientY - parseFloat(computedStyle.marginTop)}px`;
+                checktooltipheight(tooltip)
+            }
+        });
+
+        // 鼠标进入时创建 Tooltip
+        eleori.addEventListener("mouseenter", (e) => {
+            if (!word_hover_show_word_info) return
+            if (!word_hover_action_usewb2 && window.LUNAJSObject) {
+                LUNAJSObject.calllunaMouseHoverWord("mouseenter", e.clientX, e.clientY, word)
+                return
+            }
+            if (!tooltip) {
+                tooltip = document.createElement("div");
+                tooltip.classList.add('tooltip')
+                tooltip.classList.add('klass_font_origin')
+                tooltip.innerText = word.word + tooltipcontent;
+                document.body.appendChild(tooltip); // 添加到 body 避免定位受限
+
+                // 初始位置设为鼠标当前位置
+                const computedStyle = window.getComputedStyle(tooltip);
+                tooltip.style.left = `${e.clientX - parseFloat(computedStyle.marginLeft)}px`;
+                tooltip.style.top = `${e.clientY - parseFloat(computedStyle.marginTop)}px`;
+
+                tooltip.classList.add("show");
+                checktooltipheight(tooltip)
+            }
+        });
+
+        // 鼠标离开时移除 Tooltip
+        eleori.addEventListener("mouseleave", () => {
+            if (!word_hover_show_word_info) return
+            if (!word_hover_action_usewb2 && window.LUNAJSObject) {
+                LUNAJSObject.calllunaMouseHoverWord("mouseleave", 0, 0, 0)
+                return
+            }
+            if (tooltip) {
+                tooltip.classList.remove("show");
+                // 动画结束后移除
+                tooltip.addEventListener("transitionend", () => {
+                    if (tooltip) tooltip.remove();
+                    tooltip = null;
+                    checktooltipheight(tooltip)
+                }, { once: true });
+            }
+        });
+    }
+    function makeinlineblock(ele) {
+        let div = document.createElement('div')
+        div.style.display = 'inline-block'
+        div.appendChild(ele)
+        return div
+    }
+    function clearparent(ele) {
+        ele.parentNode.parentNode.childNodes.forEach((e) => {
+            if (e.id != ele.parentNode.id) {
+                e.remove()
+            }
+        })
+        ele.parentNode.parentNode.parentNode.childNodes.forEach((e) => {
+            if (e.id && (e.id != ele.parentNode.parentNode.id)) {
+                e.innerHTML = ""
+            }
+        })
+    }
+    function cleartranslate(_id) {
+        let ele = document.getElementById(_id)
+        clearparent(ele)
+    }
+    function create_internal_rubytext(clear, style, styleargsjson, _id, tagjson, argsjson) {
+        let args = JSON.parse(decodeURIComponent(argsjson))
+        let styleargs = JSON.parse(decodeURIComponent(styleargsjson))
+        let tags = JSON.parse(decodeURIComponent(tagjson))
+        let color = args.color
+        let kanacolor = args.kanacolor
+        let ele = document.getElementById(_id)
+        if (clear)
+            clearparent(ele)
+        ele.innerHTML = ''
+        tags.forEach(word => {
+            if (word.word == '\n') {
+                ele.appendChild(document.createElement('br'))
+                return
+            }
+            let eleori = dispatch_text_style(style, styleargs, '', word.word, { color: color })
+            if (word.isdeli || word.isshit) {
+                ele.appendChild(eleori)
+                return
+            }
+            eleori = makeinlineblock(eleori)//还是得用这个，没辙，不然：无法ruby-overhang:none，而且注音和文字有overlap。至于如果一个被注音文字很长，导致换行不正常的问题，暂时没办法了。
+            let uid = _simpleuid()
+            let mark = document.createElement('mark')
+            mark.appendChild(eleori)
+            eleori = mark
+            eleori.classList.add(uid)
+            let style1 = document.createElement('style')
+            style1.innerHTML += `.${uid} {background: var(--${word.color}); } `
+
+            eleori.setAttribute('word', JSON.stringify(word))
+            eleori.addEventListener('click', function (e) {
+                safe_calllunaclickedword(e, JSON.parse(this.getAttribute('word')), false)
+            })
+            eleori.oncontextmenu = function (e) {
+                if (!allowclickword) return
+                if (window.getSelection().toString()) { }
+                else {
+                    event.preventDefault();
+                    safe_calllunaclickedword(e, JSON.parse(this.getAttribute('word')), true)
+                }
+            }
+
+            createwordhoverlistener(eleori, word)
+            eleori.classList.add('lunatranslator_clickword')
+            eleori.appendChild(style1)
+
+            if ((word.word != word.kana) && word.kana && (!word.hidekana) && (word.kana.trim().length)) {
+
+                let ruby = document.createElement('ruby')
+                ruby.appendChild(eleori)
+                let rt = document.createElement('rt')
+                rt.appendChild(makeinlineblock(dispatch_text_style(style, styleargs, '', word.kana, { color: kanacolor })))
+                rt.classList.add('klass_font_hira')
+                rt.classList.add('lunatranslator_rt')
+                ruby.appendChild(rt)
+                eleori = ruby
+            }
+            ele.appendChild(eleori)
+        })
+        safe_calllunaheightchange()
+
+    }
+    function clear_all() {
+        document.getElementById('luna_root_div_origin').innerHTML = "";
+        document.getElementById('luna_root_div_trans').innerHTML = "";
+        safe_calllunaheightchange()
+    }
+    _clear_all = clear_all //保留符号
+    function setselectable(b) {
+        document.getElementById('luna_root_div').style.userSelect = b ? 'text' : 'none';
+        document.getElementById('luna_overlay_div').style.display = b ? 'none' : 'block';
+    }
+    function isPointOverText(x, y) {
+        //https://stackoverflow.com/questions/10389459/is-there-a-way-to-detect-if-im-hovering-over-text
+        const element = document.elementFromPoint(x, y);
+        if (element == null) return false;
+        const nodes = element.childNodes;
+        for (let i = 0, node; (node = nodes[i++]);) {
+            if (node.nodeType === 3) {
+                const range = document.createRange();
+                range.selectNode(node);
+                const rects = range.getClientRects();
+                for (let j = 0, rect; (rect = rects[j++]);) {
+                    if (
+                        x > rect.left &&
+                        x < rect.right &&
+                        y > rect.top &&
+                        y < rect.bottom
+                    ) {
+                        if (node.nodeType === Node.TEXT_NODE) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    document.addEventListener('mousemove', function (e) {
+        if (window.LUNAJSObject)
+            LUNAJSObject.calllunaMouseMove(e.clientX, e.clientY)
+
+    });
+    document.addEventListener('mousedown', function (e) {
+        if (e.button == 0)
+            window.getSelection().removeAllRanges()
+        if (!isPointOverText(e.clientX, e.clientY)) {
+            if (window.LUNAJSObject)
+                LUNAJSObject.calllunaMousePress(e.button, e.clientX, e.clientY)
+        }
+    });
+    document.addEventListener('mouseup', function (e) {
+        if (window.LUNAJSObject)
+            LUNAJSObject.calllunaMouseRelease(e.button, e.clientX, e.clientY)
+    });
+    document.addEventListener('mouseleave', function (e) {
+        if (window.LUNAJSObject) {
+            LUNAJSObject.calllunaMouseRelease(e.button, e.clientX, e.clientY)
+            LUNAJSObject.calllunaLeave()
+        }
+    });
+    document.addEventListener('mouseenter', function (e) {
+        if (window.LUNAJSObject) {
+            LUNAJSObject.calllunaEnter()
+        }
+    });
+    function switchcursor(cursor) {
+        document.getElementById('luna_atback_div').style.cursor = cursor
+        document.getElementById('luna_overlay_div').style.cursor = cursor
+
+    }
+    function measureheight(t, args) {
+        let span = document.createElement('span')
+        document.body.appendChild(span)
+        span.classList.add(t)
+        span.innerHTML += "<br>";
+        //字体大小为小数时，offsetheight有舍入误差
+        let lineHeight = args.extra ? (Math.max(1, span.offsetHeight + args.extra) + 'px') : 'normal'
+        document.body.removeChild(span)
+        document.getElementById('styleforfont').innerHTML += `.${t}{
+        line-height: ${lineHeight};
+        }
+        `
+    }
+    function _setfontstyle_which(t, args) {
+        let style = ''
+        if (args.lineHeightNormal) { style += `line-height:normal;` }
+        else if (args.lineHeight) { style += `line-height:${args.lineHeight}em;` }
+        if (args.fontFamily) style += `font-family: ${args.fontFamily};`
+        if (args.fontSize) style += `font-size: ${args.fontSize}pt;`
+        if (args.bold != undefined) style += `font-weight: ${args.bold ? "bold" : "normal"} ;`
+        if (args.marginTop != undefined) style += `margin-top: ${args.marginTop};`
+        if (args.marginBottom != undefined) style += `margin-bottom: ${args.marginBottom};`
+        return `.${t}{${style}}`
+    }
+    function setfontstyle(argsjson) {
+        let args = JSON.parse(decodeURIComponent(argsjson))
+        let extra = args.extra
+        let style = ''
+        style += _setfontstyle_which('klass_font_origin', args.origin)
+        style += _setfontstyle_which('klass_font_trans', args.trans)
+        style += _setfontstyle_which('klass_font_hira', args.hira)
+        for (let klass in extra) {
+            style += _setfontstyle_which('TS_CLASS_' + klass, extra[klass])
+        }
+        document.getElementById('styleforfont').innerHTML = style
+        document.getElementById('styleforfont').innerHTML += `.klass_font_hira{
+        line-height: normal;
+        }
+        `
+        safe_calllunaheightchange()
+    }
+    function yinying_dynamic(styleargs) {
+        document.querySelectorAll('.yinyingstyleklass').forEach(
+            (ele) => {
+                let __color = ele.getAttribute('__color')
+                let __id = ele.getAttribute('__id')
+                ele.innerHTML = createyinyingstyle(styleargs, __id, __color)
+            }
+        )
+        return `--YINYING_FILLCOLOR:${styleargs.fillcolor};`
+    }
+    function miaobian12_dynamic(styleargs) {
+        document.querySelectorAll('.miaobiaostyleklass').forEach(
+            (ele) => {
+                let __color = ele.getAttribute('__color')
+                let __id = ele.getAttribute('__id')
+                ele.innerHTML = createmiaobianstyle(styleargs, __id, __color)
+            }
+        )
+        return `--miaobianfillcolor:${styleargs.fillcolor};`
+    }
+    regist_style_dynamic = {
+        normal: (_) => "",
+        yinying: yinying_dynamic,
+        miaobian1: miaobian12_dynamic,
+    }
+    function setcolorstyle(colorsjs) {
+        let info = JSON.parse(decodeURIComponent(colorsjs))
+        let colors = info.color
+        let style = regist_style_dynamic[info.style](info.styleargs)
+        for (let klass in colors) {
+            style += ` 
+        --${klass}:${colors[klass]};
+        `
+        }
+        document.getElementById('colorcontroller').innerHTML = `:root {
+  ${style}
+}`
+        safe_calllunaheightchange()
+    }
+    function setdisplayrank(type) {
+        if (type == 1) {
+            document.getElementById('luna_root_div').insertBefore(document.getElementById('luna_root_div_trans'), document.getElementById('luna_root_div_origin'))
+        }
+        else {
+            document.getElementById('luna_root_div').insertBefore(document.getElementById('luna_root_div_origin'), document.getElementById('luna_root_div_trans'))
+        }
+        safe_calllunaheightchange()
+    }
+    function getCleanSelectionText() {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return '';
+
+        const range = selection.getRangeAt(0);
+        const fragment = range.cloneContents();
+
+        fragment.querySelectorAll('.lunatranslator_rt, rt, style').forEach(el => el.remove());
+        let names = document.querySelectorAll('.lunatranslator_name')
+        if (names.length) {
+            const display = window.getComputedStyle(names[0]).display;
+            if (display == 'none') {
+                fragment.querySelectorAll('.lunatranslator_name').forEach(el => el.remove())
+            }
+        }
+        return fragment.textContent.trim();
+    }
+    function verticalhorizontal(v) {
+        let css = ['', 'body {writing-mode: vertical-rl;}'][v]
+        document.getElementById('maybevertical').innerHTML = css;
+        safe_calllunaheightchange()
+    }
+    function report_clickword_positions() {
+        result = []
+        document.querySelectorAll('.lunatranslator_clickword').forEach(
+            element => {
+                const rect = element.getBoundingClientRect();
+                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const absoluteTop = rect.top + scrollTop;
+                const absoluteLeft = rect.left + scrollLeft;
+                result.push({ y: absoluteTop, x: absoluteLeft, h: rect.height, w: rect.width, word: JSON.parse(element.getAttribute('word')) })
+            }
+        )
+        return result
+    }
+</script>
+<script>
+    var webSocket = null;
+    function wsinvoke(fname, args) {
+        if (!webSocket) return
+        try {
+            webSocket.send(JSON.stringify({ function: fname, args: args }))
+        } catch (e) { }
+    }
+    function __internalservice() {
+        if (window.LUNAJSObject)
+            return;
+        const scheme = window.location.protocol;
+        const wsUrl = ((scheme == 'http:') ? 'ws' : 'wss') + '://' + window.location.host + '/__internalservice/mainuiws';
+
+        let isConnect = false;
+        let rec = null;
+        function createWebSocket() {
+            try {
+                webSocket = new WebSocket(wsUrl);
+                initWebSocket();
+            } catch (e) {
+                reConnect();
+            }
+        }
+
+        function initWebSocket() {
+            webSocket.onopen = function (e) {
+                wsinvoke('calllunaloadready')
+                isConnect = true;
+            };
+            webSocket.onclose = function (e) {
+                isConnect = false;
+                reConnect();
+            };
+            webSocket.onmessage = function (e) {
+                eval(e.data)
+            };
+            webSocket.onerror = function (e) {
+                isConnect = false;
+                reConnect();
+            };
+        }
+
+        function reConnect() {
+            if (isConnect) return;
+            if (rec) clearTimeout(rec);
+            rec = setTimeout(function () {
+                createWebSocket();
+            }, 1000);
+        }
+        createWebSocket()
+
+    };
+    if (window.LUNAJSObject)
+        LUNAJSObject.calllunaloadready()
+    else
+        __internalservice()
+
+</script>

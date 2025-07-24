@@ -62,7 +62,8 @@ void TextThread::Push(BYTE *data, int length)
 		if (auto converted = commonparsestring(data, length, &hp, Host::defaultCodepage))
 		{
 			buffer.append(converted.value());
-			if (hp.type & FULL_STRING && converted.value().size() > 1)
+			isMultiCharString = isMultiCharString || (converted.value().size() > 1);
+			if (hp.type & FULL_STRING && isMultiCharString)
 				buffer.push_back(L'\n');
 		}
 		else
@@ -76,7 +77,7 @@ void TextThread::Push(BYTE *data, int length)
 	if (filterRepetition)
 	{
 		if (std::all_of(buffer.begin(), buffer.end(), [&](wchar_t ch)
-						{ return repeatingChars.find(ch) != repeatingChars.end(); }))
+						{ return repeatingChars.count(ch); }))
 			buffer.clear();
 		if (RemoveRepetition(buffer)) // sentence repetition detected, which means the entire sentence has already been received
 		{
@@ -98,7 +99,7 @@ void TextThread::UpdateFlushTime(bool recursive)
 	if (!recursive)
 		return;
 	auto &&ths = syncThreads.Acquire().contents;
-	if (ths.find(this) == ths.end())
+	if (!ths.count(this))
 		return;
 	for (auto t : ths)
 	{

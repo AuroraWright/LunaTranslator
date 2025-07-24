@@ -1,21 +1,21 @@
 from qtsymbols import *
 from myutils.config import globalconfig
-import importlib, copy, os, platform
+import importlib, copy, os
 from traceback import print_exc
 from gui.usefulwidget import WebviewWidget
 from myutils.mecab import mecab
 from gui.rendertext.texttype import TextType, ColorControl
 from gui.rendertext.webview import TextBrowser as WebviewTextbrowser
 from gui.rendertext.textbrowser import TextBrowser as QtTextbrowser
-from services.servicecollection_1 import mainuiwsoutputsave, WSForEach
+from network.server.servicecollection_1 import mainuiwsoutputsave, WSForEach
 import NativeUtils
+import gobject
 
 
 def checkusewhich():
     if "rendertext_using" not in globalconfig:
-        iswin8later = tuple(int(_) for _ in platform.version().split(".")[:2]) >= (6, 2)
         webview2version = NativeUtils.detect_webview2_version()
-        if iswin8later:
+        if gobject.sys_ge_win8:
             if WebviewWidget.findFixedRuntime():
                 # 如果手动放置，那一定选手动的，不管功能完不完整。
                 globalconfig["rendertext_using"] = "webview"
@@ -38,6 +38,7 @@ class Textbrowser(QFrame):
         self.textbrowser.resize(event.size())
 
     def _contentsChanged(self, size: QSize):
+        size.setHeight(max(size.height(), globalconfig["min_auto_height"]))
         self.contentsChanged.emit(size)
 
     def loadinternal(self, shoudong=False, forceReload=False):
@@ -63,7 +64,7 @@ class Textbrowser(QFrame):
             tb = importlib.import_module("gui.rendertext.textbrowser").TextBrowser
             self.textbrowser = tb(self)
 
-        if tuple(int(_) for _ in platform.version().split(".")[:2]) <= (6, 1):
+        if gobject.sys_le_win7:
             # win7不可以同时FramelessWindowHint和WA_TranslucentBackground，否则会导致无法显示
             # win8没问题
             self.window().setAttribute(
@@ -90,6 +91,8 @@ class Textbrowser(QFrame):
                 self.append(*trace)
             elif t == 1:
                 self.iter_append(*trace)
+            elif t == 2:
+                self.updatetext(*trace)
         self.textbrowser.refreshcontent_after()
 
     def __init__(self, parent):
@@ -99,10 +102,10 @@ class Textbrowser(QFrame):
         self.cleared = True
         self.curr_eng = None
         self.trace = []
-        self.loadinternal()
 
     def iter_append(
         self,
+        clear,
         iter_context_class,
         texttype: TextType,
         name,
@@ -110,23 +113,34 @@ class Textbrowser(QFrame):
         color: ColorControl,
         klass,
     ):
-        self.trace.append((1, (iter_context_class, texttype, name, text, color, klass)))
+        self.trace.append((1, (clear, iter_context_class, texttype, name, text, color, klass)))
         self.cleared = False
         self.textbrowser.iter_append(
-            iter_context_class, texttype, name, text, color, klass
+            clear, iter_context_class, texttype, name, text, color, klass
         )
         WSForEach(
             mainuiwsoutputsave,
             lambda _1: _1.iter_append(
-                iter_context_class, texttype, name, text, color, klass
+                clear, iter_context_class, texttype, name, text, color, klass
             ),
         )
 
-    def append(self, texttype: TextType, name, text, tag, color: ColorControl, klass):
+    def updatetext(self, texttype: TextType, text, hira, color: ColorControl):
+        self.textbrowser.updatetext(texttype, text, mecab.parseastarget(hira), color)
+        WSForEach(
+            mainuiwsoutputsave,
+            lambda _1: _1.updatetext(texttype, text, mecab.parseastarget(hira), color),
+        )
+
+    def append(self, updateTranslate, clear, texttype: TextType, name, text, tag, color: ColorControl, klass):
+        if clear:
+            self.trace.clear()
         self.trace.append(
             (
                 0,
                 (
+                    updateTranslate,
+                    clear,
                     texttype,
                     name,
                     text,
@@ -138,17 +152,17 @@ class Textbrowser(QFrame):
         )
         self.cleared = False
         self.textbrowser.append(
-            texttype, name, text, mecab.parseastarget(tag), color, klass
+            updateTranslate, clear, texttype, name, text, mecab.parseastarget(tag), color, klass
         )
         WSForEach(
             mainuiwsoutputsave,
             lambda _1: _1.append(
-                texttype, name, text, mecab.parseastarget(tag), color, klass
+                updateTranslate, clear, texttype, name, text, mecab.parseastarget(tag), color, klass
             ),
         )
 
-    def clear(self):
-        self.cleared = True
+    def clear(self, isauto=True):
+        self.cleared = isauto
         self.trace.clear()
         self.textbrowser.clear()
         WSForEach(
@@ -184,7 +198,7 @@ class Textbrowser(QFrame):
             lambda _1: _1.showhidert(_),
         )
 
-    def showhideclick(self, _):
+    def showhideclick(self, _=None):
         self.textbrowser.showhideclick(_)
         WSForEach(
             mainuiwsoutputsave,
@@ -212,9 +226,6 @@ class Textbrowser(QFrame):
             lambda _1: _1.showhidetranslate(_),
         )
 
-    def seteditable(self, _):
-        self.textbrowser.seteditable(_)
-
     def setselectable(self, _):
         self.textbrowser.setselectable(_)
 
@@ -223,6 +234,13 @@ class Textbrowser(QFrame):
         WSForEach(
             mainuiwsoutputsave,
             lambda _1: _1.showhideorigin(_),
+        )
+
+    def settooltipsstyle(self, *_):
+        self.textbrowser.settooltipsstyle(*_)
+        WSForEach(
+            mainuiwsoutputsave,
+            lambda _1: _1.settooltipsstyle(*_),
         )
 
     def showhideerror(self, _):
@@ -261,4 +279,18 @@ class Textbrowser(QFrame):
         WSForEach(
             mainuiwsoutputsave,
             lambda _1: _1.verticalhorizontal(_),
+        )
+
+    def setwordhoveruse(self, _):
+        self.textbrowser.setwordhoveruse(_)
+        WSForEach(
+            mainuiwsoutputsave,
+            lambda _1: _1.setwordhoveruse(_),
+        )
+
+    def set_word_hover_show_word_info(self, _):
+        self.textbrowser.set_word_hover_show_word_info(_)
+        WSForEach(
+            mainuiwsoutputsave,
+            lambda _1: _1.set_word_hover_show_word_info(_),
         )

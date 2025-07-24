@@ -108,8 +108,7 @@ export const ja = defineConfig({
                         text: '翻訳インターフェース設定', link: '/ja/useapis/tsapi',
                         collapsed: true,
                         items: [
-                            { text: '大規模モデルオンライン翻訳', link: '/ja/guochandamoxing' },
-                            { text: '大規模モデルオフライン翻訳', link: '/ja/offlinellm' },
+                            { text: '大規模モデル翻訳インターフェース', link: '/ja/guochandamoxing' },
                             { text: '従来のオンライン翻訳インターフェース', link: '/ja/useapis/tsapi' },
                         ]
                     },
@@ -121,9 +120,16 @@ export const ja = defineConfig({
                             { text: 'さまざまな翻訳最適化の役割', link: '/ja/transoptimi' }
                         ]
                     },
-                    { text: '音声合成', link: '/ja/ttsofname' },
                     {
-                        text: '形態素解析＆辞書', link: '/ja/qa1',
+                        text: '音声合成', link: '/ja/ttsengines',
+                        collapsed: true,
+                        items: [
+                            { text: '音声合成エンジン', link: '/ja/ttsengines' },
+                            { text: 'キャラクターごとに異なる声を使用した', link: '/ja/ttsofname' }
+                        ]
+                    },
+                    {
+                        text: '形態素解析＆辞書&Anki', link: '/ja/qa1',
                         collapsed: true,
                         items: [
                             { text: 'Mecabを使用した形態素解析＆品詞カラー表示', link: '/ja/qa1' },
@@ -133,6 +139,8 @@ export const ja = defineConfig({
                     { text: 'ツールボタン', link: '/ja/alltoolbuttons' },
                     { text: 'ショートカットキー', link: '/ja/fastkeys' },
                     { text: 'ネットワークサービス', link: '/ja/apiservice' },
+                    { text: '音声認識', link: '/ja/sr' },
+
                 ]
             }
         ]

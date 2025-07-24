@@ -11,6 +11,7 @@ from gui.usefulwidget import (
     D_getsimpleswitch,
     getsmalllabel,
     qtawesome,
+    getcenterX,
     D_getspinbox,
     D_getcolorbutton,
     makegrid,
@@ -51,7 +52,7 @@ class dialog_selecticon(LDialog):
         print(_)
         self.dict[self.key] = _
         self.close()
-        gobject.baseobject.translation_ui.refreshtoolicon()
+        gobject.base.translation_ui.refreshtoolicon()
 
         color = (
             globalconfig["buttoncolor_1"]
@@ -63,8 +64,8 @@ class dialog_selecticon(LDialog):
 
 
 def doadjust(_):
-    gobject.baseobject.translation_ui.adjustbuttons()
-    gobject.baseobject.translation_ui.enterfunction()
+    gobject.base.translation_ui.adjustbuttons()
+    gobject.base.translation_ui.enterfunction()
 
 
 def changerank(item, up, tomax, sortlist: list, savelist, savelay, savescroll):
@@ -157,19 +158,19 @@ def createbuttonwidget(self, lay: QLayout):
                 self,
                 globalconfig,
                 "buttoncolor",
-                callback=lambda: (toolcolorchange(), refreshtoolicon()),
+                callback=lambda _: (toolcolorchange(), refreshtoolicon()),
             ),
             D_getcolorbutton(
                 self,
                 globalconfig,
                 "buttoncolor_1",
-                callback=lambda: (toolcolorchange(), refreshtoolicon()),
+                callback=lambda _: (toolcolorchange(), refreshtoolicon()),
             ),
             D_getcolorbutton(
                 self,
                 globalconfig,
                 "button_color_normal",
-                callback=lambda: (toolcolorchange(), refreshtoolicon()),
+                callback=lambda _: (toolcolorchange(), refreshtoolicon()),
             ),
             "",
         ]
@@ -182,7 +183,18 @@ def createbuttonwidget(self, lay: QLayout):
     savelist = []
     savelay = []
     savescroll = []
-    grids = [["显示", "", "", "对齐", "", ("图标", 2), "", "说明"]]
+    grids = [
+        [
+            getcenterX("显示"),
+            "",
+            "",
+            getcenterX("对齐"),
+            "",
+            (getcenterX("图标"), 2),
+            "",
+            "说明",
+        ]
+    ]
     for i, k in enumerate(sortlist):
 
         button_up = D_getIconButton_mousefollow(

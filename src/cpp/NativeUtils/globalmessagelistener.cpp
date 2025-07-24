@@ -8,7 +8,7 @@ bool IsColorSchemeChangeMessage(LPARAM lParam)
 {
     return lParam && CompareStringOrdinal(reinterpret_cast<LPCWCH>(lParam), -1, L"ImmersiveColorSet", -1, TRUE) == CSTR_EQUAL;
 }
-typedef void (*WindowMessageCallback_t)(int, bool, const wchar_t *);
+typedef void (*WindowMessageCallback_t)(int, void*, void*);
 static int unique_id = 1;
 typedef void (*hotkeycallback_t)();
 static std::map<int, hotkeycallback_t> keybinds;
@@ -29,29 +29,19 @@ static LRESULT CALLBACK WNDPROC_1(HWND hWnd, UINT message, WPARAM wParam, LPARAM
             if (IsColorSchemeChangeMessage(lParam) && ((idx++) % 2))
                 callback(0, false, NULL);
         }
-        else if (message == Magpie_Core_CLI_ToastMessage)
+        else if (message == Magpie_Core_CLI_ToastMessage || message == Magpie_Core_CLI_ScalingOptions_Save)
         {
             ATOM atom = (ATOM)wParam;
             WCHAR buffer[256];
             if (GlobalGetAtomName(atom, buffer, ARRAYSIZE(buffer)))
             {
                 GlobalDeleteAtom(atom);
-                callback(4, false, buffer);
-            }
-        }
-        else if (message == Magpie_Core_CLI_ScalingOptions_Save)
-        {
-            ATOM atom = (ATOM)wParam;
-            WCHAR buffer[1024];
-            if (GlobalGetAtomName(atom, buffer, ARRAYSIZE(buffer)))
-            {
-                GlobalDeleteAtom(atom);
-                callback(5, false, buffer);
+                callback(message == Magpie_Core_CLI_ToastMessage ? 4 : 5, false, buffer);
             }
         }
         else if (message == WM_MAGPIE_SCALINGCHANGED)
         {
-            callback(1, (bool)wParam, NULL);
+            callback(1, (void*)wParam, (void*)lParam);
         }
         else if (message == LUNA_UPDATE_PREPARED_OK)
         {
@@ -61,7 +51,7 @@ static LRESULT CALLBACK WNDPROC_1(HWND hWnd, UINT message, WPARAM wParam, LPARAM
         {
             auto data = clipboard_get_internal();
             if (data)
-                callback(3, iscurrentowndclipboard(), data.value().c_str());
+                callback(3, (void*)iscurrentowndclipboard(), (void*)data.value().c_str());
         }
         else if (WM_HOTKEY == message)
         {

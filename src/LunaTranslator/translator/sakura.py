@@ -2,11 +2,13 @@ from translator.basetranslator import basetrans
 import requests
 import json, zhconv
 from myutils.utils import urlpathjoin
+from language import Languages
 from translator.gptcommon import list_models
 
 
 class TS(basetrans):
     _compatible_flag_is_sakura_less_than_5_52_3 = False
+    needzhconv = True
 
     @property
     def using_gpt_dict(self):
@@ -29,20 +31,13 @@ class TS(basetrans):
         # OpenAI
         # self.client = OpenAI(api_key="114514", base_url=api_url)
 
-    def make_gpt_dict_text(self, gpt_dict):
+    def make_gpt_dict_text(self, gpt_dict: "list[dict]"):
         gpt_dict_text_list = []
         for gpt in gpt_dict:
             src = gpt["src"]
-            if self.needzhconv:
-                dst = zhconv.convert(gpt["dst"], "zh-hans")
-                info = (
-                    zhconv.convert(gpt["info"], "zh-hans")
-                    if "info" in gpt.keys()
-                    else None
-                )
-            else:
-                dst = gpt["dst"]
-                info = gpt["info"] if "info" in gpt.keys() else None
+
+            dst = self.checklangzhconv(self.srclang, gpt["dst"])
+            info = self.checklangzhconv(self.srclang, gpt.get("info"))
 
             if info:
                 single = "{}->{} #{}".format(src, dst, info)
@@ -53,7 +48,9 @@ class TS(basetrans):
         gpt_dict_raw_text = "\n".join(gpt_dict_text_list)
         return gpt_dict_raw_text
 
-    def _gpt_common_parse_context_2(self, messages, context, contextnum, query, ja=False):
+    def _gpt_common_parse_context_2(
+        self, messages, context, contextnum, query, ja=False, native=False
+    ):
         msgs = []
         self._gpt_common_parse_context(msgs, context, contextnum, query)
         __ja, __zh = [], []
@@ -64,7 +61,8 @@ class TS(basetrans):
                 messages.append(
                     {
                         "role": "user",
-                        "content": "将下面的日文文本翻译成中文：" + "\n".join(__ja),
+                        "content": ("" if native else "将下面的日文文本翻译成中文：")
+                        + "\n".join(__ja),
                     }
                 )
             messages.append({"role": "assistant", "content": "\n".join(__zh)})
@@ -109,7 +107,9 @@ class TS(basetrans):
                     "content": "你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。",
                 }
             ]
-            self._gpt_common_parse_context_2(messages, self.context, contextnum, query, True)
+            self._gpt_common_parse_context_2(
+                messages, self.context, contextnum, query, True
+            )
             if gpt_dict:
                 content = (
                     "根据以下术语表（可以为空）：\n"
@@ -128,18 +128,20 @@ class TS(basetrans):
                     "content": "你是一个视觉小说翻译模型，可以通顺地使用给定的术语表以指定的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的特殊符号，也不要擅自增加或减少换行。",
                 }
             ]
-            self._gpt_common_parse_context_2(messages, self.context, contextnum, query, True)
-            if gpt_dict:
-                content = (
-                    "参考以下术语表（可为空，格式为src->dst #备注）\n"
-                    + self.make_gpt_dict_text(gpt_dict)
-                    + "\n"
-                    + "根据以上术语表的对应关系和备注，结合历史剧情和上下文，将下面的文本从日文翻译成简体中文："
-                    + "\n"
-                    + query
-                )
-            else:
-                content = "将下面的文本从日文翻译成简体中文：" + query
+            __gptdict = self.make_gpt_dict_text(gpt_dict)
+            if __gptdict:
+                __gptdict += "\n"
+            __msg = []
+            self._gpt_common_parse_context_2(
+                __msg, self.context, contextnum, query, True, True
+            )
+            content = (
+                (("历史翻译：" + __msg[1]["content"] + "\n") if __msg else "")
+                + "参考以下术语表（可为空，格式为src->dst #备注）\n"
+                + __gptdict
+                + "根据以上术语表的对应关系和备注，结合历史剧情和上下文，将下面的文本从日文翻译成简体中文：\n"
+                + query
+            )
             messages.append({"role": "user", "content": content})
         return messages
 
@@ -245,7 +247,9 @@ class TS(basetrans):
             output_text = ""
             for o in output:
                 if o["choices"][0]["finish_reason"] == None:
-                    text_partial = o["choices"][0]["delta"].get("content", "")
+                    text_partial = o["choices"][0]["delta"].get("content")
+                    if not text_partial:
+                        continue
                     output_text += text_partial
                     yield text_partial
                     completion_tokens += 1
@@ -274,6 +278,8 @@ class TS(basetrans):
                     for o in output:
                         if o["choices"][0]["finish_reason"] == None:
                             text_partial = o["choices"][0]["delta"]["content"]
+                            if not text_partial:
+                                continue
                             output_text += text_partial
                             yield text_partial
                             completion_tokens += 1

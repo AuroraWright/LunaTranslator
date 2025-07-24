@@ -1,10 +1,10 @@
-# LunaTranslator
+# LunaTranslator [软件下载](https://docs.lunatranslator.org/README.html)
 
 > **一款galgame翻译器**
  
 ### 简体中文  | [English](README_en.md) | [Other Language](otherlang.md)
 
-### [使用说明](https://docs.lunatranslator.org/) | [视频教程](https://space.bilibili.com/592120404/video) | [软件下载](https://docs.lunatranslator.org/README.html) | [![](https://img.shields.io/badge/QQ群-963119821-FF007C?style=for-the-badge)](https://qm.qq.com/q/I5rr3uEpi2) [![](https://img.shields.io/discord/1262692128031772733?label=Discord&logo=discord&color=FF007C&style=for-the-badge)](https://discord.com/invite/ErtDwVeAbB)
+### 如果使用中遇到困难，可以查阅使用说明、观看[视频教程](https://space.bilibili.com/592120404/video)，也欢迎加入[QQ群 963119821](https://qm.qq.com/q/I5rr3uEpi2)、或发起[issue](https://github.com/HIllya51/LunaTranslator/issues)来与我交流。
 
 ## 功能支持
 
@@ -15,6 +15,8 @@
 - **OCR** 支持 **[离线OCR](https://docs.lunatranslator.org/useapis/ocrapi.html)** 和 **[在线OCR](https://docs.lunatranslator.org/useapis/ocrapi.html)** 
 
 - **剪贴板** 支持从剪贴板中获取文本进行翻译，也可以将提取的文本输出到剪贴板
+
+- **其他** 还支持 **[语音识别](https://docs.lunatranslator.org/sr.html)** 和**文件翻译**
 
 #### 翻译器
 
@@ -42,7 +44,8 @@
 
 ## 支持作者
 
-如果你感觉该软件对你有帮助，欢迎微信扫码赞助，谢谢，么么哒~
+软件维护不易，如果您感觉该软件对你有帮助，欢迎微信扫码赞助，您的支持将成为软件长期维护的助力，谢谢~
+
 <img src='../src/files/static/zan.jpg' style="height: 400px !important;">
 
 ## 开源许可
@@ -79,4 +82,6 @@ LunaTranslator使用 [GPLv3](../LICENSE) 许可证。
 * ![img](https://img.shields.io/github/license/swigger/wechat-ocr) [swigger/wechat-ocr](https://github.com/swigger/wechat-ocr)
 * ![img](https://img.shields.io/github/license/rupeshk/MarkdownHighlighter) [rupeshk/MarkdownHighlighter](https://github.com/rupeshk/MarkdownHighlighter)
 * ![img](https://img.shields.io/github/license/sindresorhus/github-markdown-css) [sindresorhus/github-markdown-css](https://github.com/sindresorhus/github-markdown-css)
+* ![img](https://img.shields.io/github/license/gexgd0419/NaturalVoiceSAPIAdapter) [gexgd0419/NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter)
+* ![img](https://img.shields.io/github/license/microsoft/PowerToys) [microsoft/PowerToys](https://github.com/microsoft/PowerToys)
 </details>

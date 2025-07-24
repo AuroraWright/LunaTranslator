@@ -1,8 +1,7 @@
-import os, sys, re, json
-import shutil, json
+import os, sys, re
+import shutil
 import subprocess, time
-import urllib.request
-from traceback import print_exc
+import hashlib
 
 rootDir = os.path.dirname(__file__)
 if not rootDir:
@@ -24,18 +23,10 @@ def fuckmove(src, tgt):
             shutil.copytree(src, tgt, dirs_exist_ok=True)
 
 
-mylinks = {
-    "ocr_models": {
-        "ja.zip": "https://github.com/test123456654321/RESOURCES/releases/download/ocr_models/ja.zip",
-    },
-    "magpie.zip": "https://github.com/HIllya51/Magpie/releases/download/common/magpie.zip",
-}
-
-
 pluginDirs = ["DLL32", "DLL64"]
 
 localeEmulatorFile = "https://github.com/xupefei/Locale-Emulator/releases/download/v2.5.0.1/Locale.Emulator.2.5.0.1.zip"
-LocaleRe = "https://github.com/InWILL/Locale_Remulator/releases/download/v1.5.3-beta.1/Locale_Remulator.1.5.3-beta.1.zip"
+LocaleRe = "https://github.com/InWILL/Locale_Remulator/releases/download/v1.6.0/Locale_Remulator.1.6.0.zip"
 
 curlFile32 = "https://curl.se/windows/dl-8.8.0_3/curl-8.8.0_3-win32-mingw.zip"
 curlFile32xp = "https://web.archive.org/web/20220101212640if_/https://curl.se/windows/dl-7.80.0/curl-7.80.0-win32-mingw.zip"
@@ -46,9 +37,6 @@ availableLocales = ["cht", "en", "ja", "ko", "ru", "zh"]
 
 def createPluginDirs():
     os.chdir(rootDir + "\\files")
-    if not os.path.exists("plugins"):
-        os.mkdir("plugins")
-    os.chdir("plugins")
     for pluginDir in pluginDirs:
         if not os.path.exists(pluginDir):
             os.mkdir(pluginDir)
@@ -73,10 +61,12 @@ def move_directory_contents(source_dir, destination_dir):
 
 def downloadmapie():
     os.chdir(f"{rootDir}/scripts/temp")
-    subprocess.run(f"curl -C - -LO {mylinks['magpie.zip']}")
+    subprocess.run(
+        f"curl -C - -LO https://github.com/HIllya51/Magpie/releases/download/common/magpie.zip"
+    )
     subprocess.run(f"7z x -y magpie.zip")
     os.chdir(rootDir)
-    os.rename("scripts/temp/Magpie", "files/plugins/Magpie")
+    os.rename("scripts/temp/Magpie", "files/Magpie")
 
 
 def downloadlr():
@@ -87,7 +77,7 @@ def downloadlr():
     fn = os.path.splitext(base)[0]
     subprocess.run(f"7z x -y {base}")
     os.chdir(rootDir)
-    os.makedirs("files/plugins/Locale/Locale_Remulator", exist_ok=True)
+    os.makedirs("files/Locale/Locale_Remulator", exist_ok=True)
 
     for f in [
         "LRHookx64.dll",
@@ -96,9 +86,7 @@ def downloadlr():
         "LRProc.exe",
         "LRSubMenus.dll",
     ]:
-        fuckmove(
-            os.path.join("scripts/temp", fn, f), "files/plugins/Locale/Locale_Remulator"
-        )
+        fuckmove(os.path.join("scripts/temp", fn, f), "files/Locale/Locale_Remulator")
 
 
 def downloadLocaleEmulator():
@@ -122,12 +110,12 @@ def downloadLocaleEmulator():
     ]:
         os.chdir(rootDir)
         os.makedirs(
-            "files/plugins/Locale/Locale.Emulator",
+            "files/Locale/Locale.Emulator",
             exist_ok=True,
         )
         fuckmove(
             os.path.join("scripts/temp/LocaleEmulator", f),
-            "files/plugins/Locale/Locale.Emulator",
+            "files/Locale/Locale.Emulator",
         )
 
 
@@ -140,29 +128,27 @@ def downloadNtlea():
     subprocess.run(f"7z x -y {ntleaFile.split('/')[-1]} -ontlea")
 
     os.chdir(rootDir)
-    os.makedirs("files/plugins/Locale/ntleas046_x64", exist_ok=True)
+    os.makedirs("files/Locale/ntleas046_x64", exist_ok=True)
     shutil.copytree(
         "scripts/temp/ntlea/x86",
-        "files/plugins/Locale/ntleas046_x64/x86",
+        "files/Locale/ntleas046_x64/x86",
         dirs_exist_ok=True,
     )
     shutil.copytree(
         "scripts/temp/ntlea/x64",
-        "files/plugins/Locale/ntleas046_x64/x64",
+        "files/Locale/ntleas046_x64/x64",
         dirs_exist_ok=True,
     )
 
 
-def downloadCurl(arch):
-    if arch == "xp":
+def downloadCurl(target):
+    if target == "winxp":
         os.chdir(f"{rootDir}/scripts/temp")
         subprocess.run(f"curl -C - -LO {curlFile32xp}")
         subprocess.run(f"7z x -y {curlFile32xp.split('/')[-1]}")
         os.chdir(rootDir)
         outputDirName32 = curlFile32xp.split("/")[-1].replace(".zip", "")
-        fuckmove(
-            f"scripts/temp/{outputDirName32}/bin/libcurl.dll", "files/plugins/DLL32"
-        )
+        fuckmove(f"scripts/temp/{outputDirName32}/bin/libcurl.dll", "files/DLL32")
         return
     os.chdir(f"{rootDir}/scripts/temp")
     subprocess.run(f"curl -C - -LO {curlFile32}")
@@ -171,64 +157,87 @@ def downloadCurl(arch):
     subprocess.run(f"7z x -y {curlFile64.split('/')[-1]}")
     os.chdir(rootDir)
     outputDirName32 = curlFile32.split("/")[-1].replace(".zip", "")
-    fuckmove(f"scripts/temp/{outputDirName32}/bin/libcurl.dll", "files/plugins/DLL32")
+    fuckmove(f"scripts/temp/{outputDirName32}/bin/libcurl.dll", "files/DLL32")
     outputDirName64 = curlFile64.split("/")[-1].replace(".zip", "")
-    fuckmove(
-        f"scripts/temp/{outputDirName64}/bin/libcurl-x64.dll", "files/plugins/DLL64"
-    )
+    fuckmove(f"scripts/temp/{outputDirName64}/bin/libcurl-x64.dll", "files/DLL64")
 
 
 def downloadOCRModel():
     os.chdir(rootDir + "\\files")
     if not os.path.exists("ocrmodel"):
-        os.mkdir("ocrmodel")
+        os.mkdir("ocrmodel/")
+    link = "https://lunatranslator.org/r2/luna/ocr_models_v5/jazhchten.zip"
     os.chdir("ocrmodel")
-    subprocess.run(f"curl -C - -LO {mylinks['ocr_models']['ja.zip']}")
-    subprocess.run(f"7z x -y ja.zip")
-    os.remove(f"ja.zip")
+    __ = hashlib.md5(link.encode()).hexdigest()
+    os.makedirs(__, exist_ok=True)
+    os.chdir(__)
+    subprocess.run(f"curl -C - -LO {link}")
+    subprocess.run(f"7z x -y jazhchten.zip")
+    with open("jazhchten.zip", "rb") as ff:
+        md5 = hashlib.md5(ff.read()).hexdigest()
+    os.remove(f"jazhchten.zip")
+    os.chdir("..")
+    os.rename(__, md5)
     os.chdir(rootDir)
 
 
-def get_url_as_json(url):
-    for i in range(10):
-        try:
-            response = urllib.request.urlopen(url)
-            data = response.read().decode("utf-8")
-            json_data = json.loads(data)
-            return json_data
-        except:
-            time.sleep(3)
+def buildhook(arch, target):
+
+    os.chdir("cpp/LunaHook")
+    archA = ("win32", "x64")[arch == "x64"]
+    vsver = "Visual Studio 17 2022"
+    Tool = "v141_xp" if target == "winxp" else f"host={arch}"
+    if target == "win10":
+        config = "-DWIN10ABOVE=ON"
+    elif target == "win7":
+        config = ""
+    elif target == "winxp":
+        config = "-DWINXP=ON"
+    subprocess.run(
+        f'cmake {config} -DBUILD_HOST=OFF ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target}_2'
+    )
+    subprocess.run(
+        f"cmake --build ./build/{arch}_{target}_2 --config Release --target ALL_BUILD -j 14"
+    )
+    if target != "win10":
+        config += " -DUSE_VC_LTL=ON "
+    subprocess.run(
+        f'cmake {config} -DBUILD_HOOK=OFF ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target}_1'
+    )
+    subprocess.run(
+        f"cmake --build ./build/{arch}_{target}_1 --config Release --target ALL_BUILD -j 14"
+    )
+    release = os.path.join("builds", os.listdir("builds")[0])
+    os.makedirs("builds/Release", exist_ok=True)
+    for f in os.listdir(release):
+        shutil.move(os.path.join(release, f), "builds/Release")
+    shutil.rmtree(release)
 
 
-def buildPlugins(arch):
-    os.chdir(rootDir + "/cpp/scripts")
-    subprocess.run("python fetchwebview2.py")
-    if arch == "x86":
-        subprocess.run(
-            f'cmake ../CMakeLists.txt -G "Visual Studio 17 2022" -A win32 -T host=x86 -B ../build/x86 -DCMAKE_SYSTEM_VERSION=10.0.26621.0'
-        )
-        subprocess.run(
-            f"cmake --build ../build/x86 --config Release --target ALL_BUILD -j 14"
-        )
-    # subprocess.run(f"python copytarget.py 1")
-    elif arch == "x64":
-        subprocess.run(
-            f'cmake ../CMakeLists.txt -G "Visual Studio 17 2022" -A x64 -T host=x64 -B ../build/x64 -DCMAKE_SYSTEM_VERSION=10.0.26621.0'
-        )
-        subprocess.run(
-            f"cmake --build ../build/x64 --config Release --target ALL_BUILD -j 14"
-        )
-        # subprocess.run(f"python copytarget.py 0")
-    elif arch == "xp":
-        with open("do.bat", "w") as ff:
-            ff.write(
-                rf"""
+def buildPlugins(arch, target):
+    os.chdir(rootDir + "/cpp")
+    archA = ("win32", "x64")[arch == "x64"]
 
-cmake -DWINXP=ON ../CMakeLists.txt -G "Visual Studio 16 2019" -A win32 -T v141_xp -B ../build/x86_xp
-cmake --build ../build/x86_xp --config Release --target ALL_BUILD -j 14
-"""
-            )
-        os.system(f"cmd /c do.bat")
+    flag = (
+        "-DWIN10ABOVE=ON"
+        if target == "win10"
+        else (" -DWINXP=ON " if target == "winxp" else "")
+    )
+    sysver = " -DCMAKE_SYSTEM_VERSION=10.0.26621.0 "
+    vsver = "Visual Studio 17 2022"
+    Tool = "v141_xp" if target == "winxp" else f"host={arch}"
+    subprocess.run(
+        f'cmake {flag} ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target} {sysver}'
+    )
+    subprocess.run(
+        f"cmake --build ./build/{arch}_{target} --config Release --target ALL_BUILD -j 14"
+    )
+    for _dir, _, _fs in os.walk("builds"):
+        print(_dir, _fs)
+        for _f in _fs:
+            ff = os.path.join(_dir, _f)
+            if os.path.splitext(ff)[1].lower() not in (".dll", ".exe"):
+                os.remove(ff)
 
 
 def downloadbass():
@@ -248,20 +257,20 @@ def downloadbass():
         subprocess.run("curl -C - -LO " + link)
         subprocess.run(f"7z x -y {name} -o{d}")
         os.chdir(rootDir)
-        fuckmove(f"scripts/temp/{d}/{d[:-2]}.dll", "files/plugins/DLL32")
-        fuckmove(f"scripts/temp/{d}/x64/{d[:-2]}.dll", "files/plugins/DLL64")
+        fuckmove(f"scripts/temp/{d}/{d[:-2]}.dll", "files/DLL32")
+        fuckmove(f"scripts/temp/{d}/x64/{d[:-2]}.dll", "files/DLL64")
 
 
-def downloadalls(arch):
+def downloadalls(target):
     os.chdir(rootDir)
     os.makedirs("scripts/temp", exist_ok=True)
     createPluginDirs()
     downloadNtlea()
     downloadbass()
-    downloadCurl(arch)
+    downloadCurl(target)
     downloadLocaleEmulator()
     downloadlr()
-    if arch == "xp":
+    if target == "winxp":
         return
     downloadmapie()
     downloadOCRModel()
@@ -283,66 +292,73 @@ if __name__ == "__main__":
             print("version=" + versionstring)
             exit()
     elif sys.argv[1] == "cpp":
-        buildPlugins(sys.argv[2])
+        buildPlugins(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "hook":
+        buildhook(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "pyrt":
-        version = sys.argv[3]
-        if sys.argv[2] == "x86":
-            py37Path = (
-                f"C:\\hostedtoolcache\\windows\\Python\\{version}\\x86\\python.exe"
-            )
-        else:
-            py37Path = (
-                f"C:\\hostedtoolcache\\windows\\Python\\{version}\\x64\\python.exe"
-            )
+        arch = sys.argv[2]
+        pythonversion = sys.argv[3]
+        target = sys.argv[4]
+        py37Path = (
+            f"C:\\hostedtoolcache\\windows\\Python\\{pythonversion}\\{arch}\\python.exe"
+        )
         os.chdir(rootDir)
         subprocess.run(f"{py37Path} -m pip install --upgrade pip")
-        subprocess.run(f"{py37Path} -m pip install -r requirements.txt")
+        if 1:  # target == "win7":
+            subprocess.run(f"{py37Path} -m pip install tinycss2 PyQt5")
+        else:
+            subprocess.run(f"{py37Path} -m pip install tinycss2 pyqt6")
+
         # 3.8之后会莫名其妙引用这个b东西，然后这个b东西会把一堆没用的东西导入进来
         shutil.rmtree(os.path.join(os.path.dirname(py37Path), "Lib\\test"))
         shutil.rmtree(os.path.join(os.path.dirname(py37Path), "Lib\\unittest"))
         # 放弃，3.8需要安装KB2533623才能运行，3.7用不着。
         subprocess.run(
-            f"{py37Path} {os.path.join(rootthisfiledir,'collectpyruntime.py')}"
+            f"{py37Path} {os.path.join(rootthisfiledir,'collectpyruntime.py')} {target}"
         )
     elif sys.argv[1] == "merge":
-        downloadalls(sys.argv[2])
+        arch = sys.argv[2]
+        target = sys.argv[3]
+        downloadalls(target)
 
         os.chdir(rootDir)
-        if sys.argv[2] == "xp":
-            shutil.copytree("../build/cpp_xp", "cpp/builds", dirs_exist_ok=True)
-            shutil.copytree("../build/cpp_x64", "cpp/builds", dirs_exist_ok=True)
+        if target == "winxp":
+            shutil.copytree("../build/cpp_x86_winxp", "cpp/builds", dirs_exist_ok=True)
+            shutil.copytree("../build/cpp_x64_win7", "cpp/builds", dirs_exist_ok=True)
             shutil.copytree(
-                "../build/hook_xp", "files/plugins/LunaHook", dirs_exist_ok=True
+                "../build/hook_x86_winxp", "files/LunaHook", dirs_exist_ok=True
             )
             shutil.copytree(
-                "../build/hook_64", "files/plugins/LunaHook", dirs_exist_ok=True
+                "../build/hook_x64_win7", "files/LunaHook", dirs_exist_ok=True
             )
-            os.remove("files/plugins/LunaHook/LunaHost64.dll")
-            os.makedirs("files/plugins/DLL32", exist_ok=True)
-            shutil.copy("cpp/builds/_x86/shareddllproxy32.exe", "files/plugins")
-            shutil.copy("cpp/builds/_x64/shareddllproxy64.exe", "files/plugins")
-            os.system(f"robocopy cpp/builds/_x86 files/plugins/DLL32 *.dll")
-            os.system(f"python {os.path.join(rootthisfiledir,'collectall_xp.py')}")
+            os.remove("files/LunaHook/LunaHost64.dll")
+            os.makedirs("files/DLL32", exist_ok=True)
+            shutil.copy("cpp/builds/_x86_winxp/shareddllproxy32.exe", "files")
+            shutil.copy("cpp/builds/_x64_win7/shareddllproxy64.exe", "files")
+            os.system(f"robocopy cpp/builds/_x86_winxp files/DLL32 *.dll")
+            os.system(
+                f"python {os.path.join(rootthisfiledir,'collectall.py')} {arch} {target}"
+            )
             exit()
         shutil.copytree(
-            "../build/hook_64", "files/plugins/LunaHook", dirs_exist_ok=True
+            f"../build/hook_x64_{target}", "files/LunaHook", dirs_exist_ok=True
         )
         shutil.copytree(
-            "../build/hook_32", "files/plugins/LunaHook", dirs_exist_ok=True
+            f"../build/hook_x86_{target}", "files/LunaHook", dirs_exist_ok=True
         )
-        shutil.copytree("../build/cpp_x64", "cpp/builds", dirs_exist_ok=True)
-        shutil.copytree("../build/cpp_x86", "cpp/builds", dirs_exist_ok=True)
+        shutil.copytree(f"../build/cpp_x64_{target}", "cpp/builds", dirs_exist_ok=True)
+        shutil.copytree(f"../build/cpp_x86_{target}", "cpp/builds", dirs_exist_ok=True)
+        os.makedirs("files/DLL32", exist_ok=True)
+        shutil.copy(f"cpp/builds/_x86_{target}/shareddllproxy32.exe", "files")
+        os.system(f"robocopy cpp/builds/_x86_{target} files/DLL32 *.dll")
+        os.makedirs("files/DLL64", exist_ok=True)
+        shutil.copy(f"cpp/builds/_x64_{target}/shareddllproxy64.exe", "files")
+        os.system(f"robocopy cpp/builds/_x64_{target} files/DLL64 *.dll")
 
-        os.makedirs("files/plugins/DLL32", exist_ok=True)
-        shutil.copy("cpp/builds/_x86/shareddllproxy32.exe", "files/plugins")
-        os.system(f"robocopy cpp/builds/_x86 files/plugins/DLL32 *.dll")
-        os.makedirs("files/plugins/DLL64", exist_ok=True)
-        shutil.copy("cpp/builds/_x64/shareddllproxy64.exe", "files/plugins")
-        os.system(f"robocopy cpp/builds/_x64 files/plugins/DLL64 *.dll")
-
-        if sys.argv[2] == "x86":
-            os.remove("files/plugins/LunaHook/LunaHost64.dll")
-            os.system(f"python {os.path.join(rootthisfiledir,'collectall.py')} 32")
+        if arch == "x86":
+            os.remove(f"files/LunaHook/LunaHost64.dll")
         else:
-            os.remove("files/plugins/LunaHook/LunaHost32.dll")
-            os.system(f"python {os.path.join(rootthisfiledir,'collectall.py')} 64")
+            os.remove("files/LunaHook/LunaHost32.dll")
+        os.system(
+            f"python {os.path.join(rootthisfiledir,'collectall.py')} {arch} {target}"
+        )

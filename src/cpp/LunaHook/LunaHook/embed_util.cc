@@ -9,6 +9,10 @@ void cast_back(const HookParam &hp, TextBuffer *buff, const std::wstring &trans,
   { // renpy
     buff->from(trans);
   }
+  else if (hp.type & CODEC_UTF32)
+  {
+    buff->from(utf16_to_utf32(trans));
+  }
   else
   {
     std::string astr;
@@ -265,7 +269,7 @@ bool checktranslatedok(TextBuffer buff)
   ZeroMemory(commonsharedmem->text, sizeof(commonsharedmem->text)); // clear trans before call
   if (buff.size > 1000)
     return true;
-  return (translatecache.find(texthash(buff.buff, buff.size)) != translatecache.end());
+  return translatecache.count(texthash(buff.buff, buff.size));
 }
 bool TextHook::waitfornotify(TextBuffer *buff, ThreadParam tp)
 {
@@ -281,9 +285,10 @@ bool TextHook::waitfornotify(TextBuffer *buff, ThreadParam tp)
     return false;
   std::wstring translate;
   auto hash = texthash(buff->buff, buff->size);
-  if (translatecache.find(hash) != translatecache.end())
+  auto found = translatecache.find(hash);
+  if (found != translatecache.end())
   {
-    translate = translatecache.at(hash);
+    translate = found->second;
   }
   else
   {

@@ -1,20 +1,22 @@
 from qtsymbols import *
 import functools, importlib
 from traceback import print_exc
-import os, gobject, requests
+import os, gobject, requests, sys, uuid
 from myutils.commonbase import maybejson
 from myutils.config import globalconfig, _TR, static_data
-from myutils.utils import makehtml
+from myutils.utils import makehtml, selectdebugfile
 from myutils.wrapper import Singleton
 from gui.usefulwidget import (
     MySwitch,
     getsimpleswitch,
-    threebuttons,
+    manybuttonlayout,
     listediterline,
+    getsmalllabel,
     TableViewW,
     getsimplepatheditor,
     SuperCombo,
     getsimplecombobox,
+    getboxlayout,
     getspinbox,
     SplitLine,
     getIconButton,
@@ -47,13 +49,28 @@ class noundictconfigdialog1(LDialog):
             self.model.index(row, 1), item.get("escape", item.get("regex", False))
         )
 
-    def __init__(self, parent, reflist, title, label) -> None:
+    def __init__(self, parent, reflist, title, label, extraX: dict = None) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
         self.setWindowTitle(title)
         # self.setWindowModality(Qt.ApplicationModal)
         self.reflist = reflist
         formLayout = QVBoxLayout(self)  # 配置layout
-
+        if extraX:
+            ttsprocess = extraX.get("ttsprocess_path")
+            if not ttsprocess:
+                ttsprocess = str(uuid.uuid4())
+                extraX["ttsprocess_path"] = ttsprocess
+            last = getIconButton(
+                callback=lambda: selectdebugfile(ttsprocess, istts=True),
+                icon="fa.edit",
+                enable=extraX.get("ttsprocess_use", False),
+            )
+            switch = getsimpleswitch(
+                extraX, "ttsprocess_use", callback=last.setEnabled, default=False
+            )
+            formLayout.addLayout(
+                getboxlayout([getsmalllabel("自定义python处理"), switch, last, ""])
+            )
         self.model = LStandardItemModel()
         self.model.setHorizontalHeaderLabels(label)
         table = TableViewW(self, copypaste=True, updown=True)
@@ -86,48 +103,46 @@ class noundictconfigdialog1(LDialog):
                         ishide = False
                         break
                 table.setRowHidden(row, ishide)
+            table.updateVisibleArea()
 
         button4.clicked.connect(clicked4)
         search.addWidget(button4)
         table.getindexdata = self.__getindexwidgetdata
         table.setindexdata = self.__setindexwidget
-        self.table = table
-        for row, item in enumerate(reflist):
-            self.newline(row, item)
-        button = threebuttons(texts=["添加行", "删除行", "上移", "下移", "立即应用"])
         table.insertplainrow = lambda row: self.newline(
             row, {"key": "", "value": "", "regex": False}
         )
+        self.table = table
+        for row, item in enumerate(reflist):
+            self.newline(row, item)
+        table.startObserveInserted()
+        button = manybuttonlayout(
+            [
+                ("添加行", functools.partial(table.insertplainrow, 0)),
+                ("删除行", self.table.removeselectedrows),
+                ("上移", functools.partial(table.moverank, -1)),
+                ("下移", functools.partial(table.moverank, 1)),
+                ("立即应用", self.apply),
+            ]
+        )
 
-        button.btn1clicked.connect(functools.partial(table.insertplainrow, 0))
-
-        button.btn2clicked.connect(self.table.removeselectedrows)
-        button.btn5clicked.connect(self.apply)
-        button.btn3clicked.connect(functools.partial(table.moverank, -1))
-        button.btn4clicked.connect(functools.partial(table.moverank, 1))
-        self.button = button
         formLayout.addWidget(table)
         formLayout.addLayout(search)
-        formLayout.addWidget(button)
+        formLayout.addLayout(button)
 
         self.resize(QSize(600, 400))
         self.show()
 
     def __setindexwidget(self, index: QModelIndex, data):
-        if index.column() == 0:
-            data = {"regex": self.table.compatiblebool(data)}
-            self.table.setIndexWidget(index, getsimpleswitch(data, "regex"))
-        elif index.column() == 1:
-            data = {"escape": self.table.compatiblebool(data)}
-            self.table.setIndexWidget(index, getsimpleswitch(data, "escape"))
+        if index.column() in (0, 1):
+            bval = self.table.compatiblebool(data)
+            self.table.setIndexData(index, bval)
         else:
             self.table.model().setItem(index.row(), index.column(), QStandardItem(data))
 
     def __getindexwidgetdata(self, index: QModelIndex):
-        if index.column() == 0:
-            return self.table.indexWidgetX(index).isChecked()
-        if index.column() == 1:
-            return self.table.indexWidgetX(index).isChecked()
+        if index.column() in (0, 1):
+            return index.data(self.table.ValRole)
         return self.model.itemFromIndex(index).text()
 
     def apply(self):
@@ -156,7 +171,7 @@ class noundictconfigdialog1(LDialog):
             )
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.button.setFocus()
+        self.setFocus()
         self.apply()
 
 
@@ -165,12 +180,10 @@ class voiceselect(LDialog):
 
     def __init__(self, *argc, **kwarg):
         super().__init__(*argc, **kwarg)
+        self.resize(500, 10)
         self.setWindowTitle("选择声音")
         self.setWindowFlags(
-            self.windowFlags()
-            & ~Qt.WindowType.WindowContextHelpButtonHint
-            & ~Qt.WindowType.WindowCloseButtonHint
-            | Qt.WindowType.WindowStaysOnTopHint
+            self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
         )
         _layout = LFormLayout(self)
 
@@ -221,6 +234,8 @@ class voiceselect(LDialog):
             "voice",
             internal=obj.voicelist,
             callback=functools.partial(self._selectvoice, obj),
+            sizeX=True,
+            static=True,
         )
         self._layout.insertRow(1, "语音", voices)
         voices.currentIndexChanged.emit(voices.currentIndex())
@@ -234,7 +249,7 @@ class voiceselect(LDialog):
         self.datas["vis"] = self.datas["visx"]
         self.datas["voice"] = None
         try:
-            self.object = gobject.baseobject.loadreader(internal, init=False)
+            self.object = gobject.base.loadreader(internal, init=False)
             self.voicelistsignal.emit(self.object)
         except:
 
@@ -263,7 +278,7 @@ class yuyinzhidingsetting(LDialog):
         self.table.setindexdata(self.model.index(row, 4), item["target"])
 
     def createacombox(self, config):
-        com = SuperCombo()
+        com = SuperCombo(sizeX=True)
         com.addItems(["跳过", "默认", "选择声音"])
         target = config.get("target", "skip")
         com.target = target
@@ -273,7 +288,7 @@ class yuyinzhidingsetting(LDialog):
             com.setCurrentIndex(1)
         else:
             ttsklass, ttsvoice, voicename = target
-            com.addItem(voicename)
+            com.addItem("[[" + voicename + "]]")
             com.setCurrentIndex(3)
         com.currentIndexChanged.connect(
             functools.partial(self.__comchange, com, config)
@@ -302,7 +317,9 @@ class yuyinzhidingsetting(LDialog):
                 )
                 com.blockSignals(True)
                 com.clear()
-                com.addItems(["跳过", "默认", "选择声音", voice.datas["vis"]])
+                com.addItems(
+                    ["跳过", "默认", "选择声音", "[[" + voice.datas["vis"] + "]]"]
+                )
                 com.setCurrentIndex(3)
                 com.blockSignals(False)
             else:
@@ -319,10 +336,11 @@ class yuyinzhidingsetting(LDialog):
 
         self.model = LStandardItemModel()
         self.model.setHorizontalHeaderLabels(["范围", "正则", "条件", "目标", "指定为"])
-        table = TableViewW(self, updown=True, copypaste=True)
+        table = TableViewW(self, updown=True)
         table.setModel(self.model)
         table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        for _ in [0, 1, 2, 4]:
+        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        for _ in [0, 1, 2]:
             table.horizontalHeader().setSectionResizeMode(
                 _, QHeaderView.ResizeMode.ResizeToContents
             )
@@ -356,18 +374,18 @@ class yuyinzhidingsetting(LDialog):
 
         button4.clicked.connect(clicked4)
         search.addWidget(button4)
-
-        button = threebuttons(texts=["添加行", "删除行", "上移", "下移", "立即应用"])
-
-        button.btn1clicked.connect(functools.partial(self.table.insertplainrow, 0))
-        button.btn2clicked.connect(table.removeselectedrows)
-        button.btn5clicked.connect(self.apply)
-        button.btn3clicked.connect(functools.partial(table.moverank, -1))
-        button.btn4clicked.connect(functools.partial(table.moverank, 1))
-        self.button = button
+        button = manybuttonlayout(
+            [
+                ("添加行", functools.partial(self.table.insertplainrow, 0)),
+                ("删除行", table.removeselectedrows),
+                ("上移", functools.partial(table.moverank, -1)),
+                ("下移", functools.partial(table.moverank, 1)),
+                ("立即应用", self.apply),
+            ]
+        )
         formLayout.addWidget(table)
         formLayout.addLayout(search)
-        formLayout.addWidget(button)
+        formLayout.addLayout(button)
 
         self.resize(QSize(600, 400))
         self.show()
@@ -437,7 +455,7 @@ class yuyinzhidingsetting(LDialog):
             )
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.button.setFocus()
+        self.setFocus()
         self.apply()
 
 
@@ -449,7 +467,7 @@ def autoinitdialog_items(dic):
         if "argstype" in dic and arg in dic["argstype"]:
             default.update(dic["argstype"][arg])
         items.append(default)
-    items.append({"type": "okcancel"})
+    items.append(dict(type="okcancel", rank=-sys.float_info.min))
     return items
 
 
@@ -481,13 +499,208 @@ class SuperComboX(SuperCombo):
 
 @Singleton
 class autoinitdialog(LDialog):
+    def closeEvent(self, a0):
+        if not isqt5:
+            for _ in self.__qt6fucker:
+                _.setEditable(False)
+        return super().closeEvent(a0)
+
+    def __refresh(self, line, combo: SuperCombo):
+        try:
+            func = getattr(
+                importlib.import_module(self.modelfile), line["list_function"]
+            )
+            items = func(self.maybehasextrainfo, self.regist)
+            curr = combo.currentText()
+            combo.clear()
+            combo.addItems(items)
+            if curr in items:
+                combo.setCurrentIndex(items.index(curr))
+
+            self.dd[self.refname2line[line["list_cache"]]["k"]] = items
+        except Exception as e:
+            print_exc()
+            if e.args and isinstance(e.args[0], requests.Response):
+                resp = e.args[0]
+                title = "{} {}: {}".format(resp.status_code, resp.reason, resp.url)
+                text = str(maybejson(resp))
+                if len(e.args) >= 2:
+                    if text:
+                        text += "\n"
+                    text += e.args[1]
+                print(title, text)
+                QMessageBox.information(self, title, text)
+            else:
+                QMessageBox.information(self, str(type(e))[8:-2], str(e))
+
+    def createobject(self, line: "dict", dd: "dict[dict,str|dict]", sub=False):
+        if "k" in line:
+            key = line["k"]
+        if line["type"] == "label":
+
+            if "islink" in line and line["islink"]:
+                lineW = QLabel(makehtml(dd[key]))
+                lineW.setOpenExternalLinks(True)
+            else:
+                lineW = LLabel(dd[key])
+        elif line["type"] == "textlist":
+            directedit = isinstance(dd[key], str)
+            if directedit:
+                __list = dd[key].split("|")
+            else:
+                __list = dd[key].copy()
+            lineW = listediterline(line["name"], __list, directedit=directedit)
+
+            def __getv(l, directedit):
+                if directedit:
+                    return "|".join(l)
+                return l
+
+            self.regist[key] = functools.partial(__getv, __list, directedit)
+        elif line["type"] == "custom":
+            try:
+                lineWF = getattr(
+                    importlib.import_module(self.modelfile), line["function"]
+                )
+                lineW = lineWF(self._dict)
+                self.updater[key] = lineW.updateValues
+            except:
+                print_exc()
+        elif line["type"] == "combo":
+            lineW = SuperCombo()
+            items = line["list"]
+            lineW.addItems(items, line.get("internal"))
+
+            if "internal" in line:
+                lineW.setCurrentData(dd.get(key))
+                self.regist[key] = lineW.getCurrentData
+            else:
+                lineW.setCurrentIndex(dd.get(key, 0))
+                self.regist[key] = lineW.currentIndex
+            self.cachecombo[key] = lineW
+        elif line["type"] == "listedit_with_name":
+            lineW = QHBoxLayout()
+            combo = SuperComboX()
+            combo.setEditable(True)
+            self.__qt6fucker.append(combo)
+            vis = [
+                _["vis"] + "_({})".format(_["value"])
+                for _ in static_data["API_URL_PRESETS"]
+            ]
+            value = [_["value"] for _ in static_data["API_URL_PRESETS"]]
+            icons = [QIcon(_["icon"]) for _ in static_data["API_URL_PRESETS"]]
+
+            def __(combo: SuperCombo, index):
+                combo.setCurrentText(combo.getIndexData(index))
+
+            combo.activated.connect(functools.partial(__, combo))
+            combo.addItems(vis, value, icons)
+            if dd[key] in value:
+                combo.setCurrentIndex(value.index(dd[key]))
+            combo.setCurrentText(dd[key])
+            self.regist[key] = combo.currentText
+            lineW.addWidget(combo)
+        elif line["type"] == "lineedit_or_combo":
+            lineW = QHBoxLayout()
+            combo = SuperCombo(static=True)
+            combo.setEditable(True)
+            self.__qt6fucker.append(combo)
+            if "list_function" in line:
+                items = dd[self.refname2line[line["list_cache"]]["k"]]
+            else:
+                items = line["list"]
+            combo.addItems(items)
+            if dd[key] in items:
+                combo.setCurrentIndex(items.index(dd[key]))
+            else:
+                combo.setCurrentText(dd[key])
+            self.regist[key] = combo.currentText
+            if "list_function" in line:
+                lineW.addWidget(
+                    getIconButton(
+                        callback=functools.partial(self.__refresh, line, combo),
+                        icon="fa.refresh",
+                    )
+                )
+            lineW.addWidget(combo)
+        elif line["type"] == "okcancel":
+            lineW = QDialogButtonBox(
+                QDialogButtonBox.StandardButton.Ok
+                | QDialogButtonBox.StandardButton.Cancel
+            )
+            lineW.rejected.connect(self.close)
+            lineW.accepted.connect(
+                functools.partial(self.save, line.get("callback", None))
+            )
+
+            lineW.button(QDialogButtonBox.StandardButton.Ok).setText(_TR("确定"))
+            lineW.button(QDialogButtonBox.StandardButton.Cancel).setText(_TR("取消"))
+        elif line["type"] == "lineedit":
+            if not isinstance(dd[key], str):
+                return
+            lineW = QLineEdit(dd[key])
+            self.regist[key] = lineW.text
+        elif line["type"] == "multiline":
+            lineW = QPlainTextEdit(dd[key])
+            self.regist[key] = lineW.toPlainText
+        elif line["type"] == "file":
+            __temp = {"k": dd[key]}
+            lineW = getsimplepatheditor(
+                dd[key],
+                line.get("multi", False),
+                line.get("dir", False),
+                line.get("filter", None),
+                callback=functools.partial(__temp.__setitem__, "k"),
+                reflist=__temp["k"],
+                name=line.get("name", ""),
+                dirorfile=line.get("dirorfile", False),
+            )
+
+            self.regist[key] = functools.partial(__temp.__getitem__, "k")
+        elif line["type"] == "switch":
+            lineW = MySwitch(sign=dd[key])
+            self.regist[key] = lineW.isChecked
+            if not sub:
+                _ = QHBoxLayout()
+                _.addStretch()
+                _.addWidget(lineW)
+                _.addStretch()
+                lineW = _
+        elif line["type"] in ["spin", "intspin"]:
+
+            __temp = {"k": dd[key]}
+            lineW = getspinbox(
+                line.get("min", 0),
+                line.get("max", 100),
+                __temp,
+                "k",
+                line["type"] == "spin",
+                line.get("step", 0.1),
+            )
+            self.regist[key] = lineW.value
+        elif line["type"] == "split":
+            lineW = SplitLine()
+        return lineW
+
+    def save(self, callback=None):
+        for k in self.regist:
+            self.dd[k] = self.regist[k]()
+        for k in self.updater:
+            self.dd.update(self.updater[k]())
+        self.close()
+        if callback:
+            try:
+                callback()
+            except:
+                print_exc()
+
     def __init__(
         self,
         parent,
-        dd,
+        dd: "dict",
         title,
         width,
-        lines,
+        lines: "list[dict]",
         modelfile=None,
         maybehasextrainfo=None,
         exec_=False,
@@ -496,240 +709,83 @@ class autoinitdialog(LDialog):
         self.setWindowTitle(title)
         self.resize(QSize(width, 10))
         formLayout = VisLFormLayout(self)
-        regist = {}
-
-        def save(callback=None):
-            for k in regist:
-                dd[k] = regist[k]()
-            self.close()
-            if callback:
-                try:
-                    callback()
-                except:
-                    print_exc()
-
+        self.regist = {}
+        self.dd = dd
+        self.updater = {}
+        self._dict = dd.copy()
+        self.modelfile = modelfile
+        self.maybehasextrainfo = maybehasextrainfo
+        self.__qt6fucker: "list[QComboBox]" = []
         hasrank = []
+        negarank = []
         hasnorank = []
         for line in lines:
             rank = line.get("rank", None)
             if rank is None:
                 hasnorank.append(line)
                 continue
-            hasrank.append(line)
+            if rank >= 0:
+                hasrank.append(line)
+            else:
+                negarank.append(line)
         hasrank.sort(key=lambda line: line.get("rank", None))
-        lines = hasrank + hasnorank
+        negarank.sort(key=lambda line: line.get("rank", None))
+        lines = hasrank + hasnorank + negarank
 
-        refname2line = {}
+        self.refname2line = {}
+        self.appendtoS: "dict[object,dict]" = {}
         for line in lines:
             refswitch = line.get("refswitch", None)
             if refswitch:
-                refname2line[refswitch] = None
+                self.refname2line[refswitch] = None
+            appends = line.get("appends", None)
+            if appends:
+                for _ in appends:
+                    self.appendtoS[_] = None
 
             list_cache = line.get("list_cache", None)
             if list_cache:
-                refname2line[list_cache] = None
+                self.refname2line[list_cache] = None
         oklines = []
 
         for line in lines:
             k = line.get("k", None)
-            if k in refname2line:
-                refname2line[k] = line
+            if k in self.refname2line:
+                self.refname2line[k] = line
+                continue
+            if k in self.appendtoS:
+                self.appendtoS[k] = line
                 continue
             oklines.append(line)
         lines = oklines
-        cachecombo = {}
-        cachehasref = {}
+        self.cachecombo = {}
+        self.cachehasref = {}
         for line in lines:
             if line.get("hide"):
                 continue
-            if "k" in line:
-                key = line["k"]
-            if line["type"] == "label":
-
-                if "islink" in line and line["islink"]:
-                    lineW = QLabel(makehtml(dd[key]))
-                    lineW.setOpenExternalLinks(True)
-                else:
-                    lineW = LLabel(dd[key])
-            elif line["type"] == "textlist":
-                directedit = isinstance(dd[key], str)
-                if directedit:
-                    __list = dd[key].split("|")
-                else:
-                    __list = dd[key].copy()
-                lineW = listediterline(line["name"], __list, directedit=directedit)
-
-                def __getv(l, directedit):
-                    if directedit:
-                        return "|".join(l)
-                    return l
-
-                regist[key] = functools.partial(__getv, __list, directedit)
-            elif line["type"] == "custom":
-                try:
-                    lineWF = getattr(
-                        importlib.import_module(modelfile), line["function"]
-                    )
-                    lineW = lineWF(dd[key])
-                    regist[key] = lineW.value
-                except:
-                    print_exc()
-            elif line["type"] == "combo":
-                lineW = SuperCombo()
-                items = line["list"]
-                lineW.addItems(items, line.get("internal"))
-
-                if "internal" in line:
-                    lineW.setCurrentData(dd.get(key))
-                    regist[key] = lineW.getCurrentData
-                else:
-                    lineW.setCurrentIndex(dd.get(key, 0))
-                    regist[key] = lineW.currentIndex
-                cachecombo[key] = lineW
-            elif line["type"] == "listedit_with_name":
-                line1 = QLineEdit()
-                lineW = QHBoxLayout()
-                combo = SuperComboX()
-                combo.setLineEdit(line1)
-                vis = [
-                    _["vis"] + "_({})".format(_["value"])
-                    for _ in static_data["API_URL_PRESETS"]
-                ]
-                value = [_["value"] for _ in static_data["API_URL_PRESETS"]]
-                icons = [QIcon(_["icon"]) for _ in static_data["API_URL_PRESETS"]]
-
-                def __(combo: SuperCombo, index):
-                    combo.setCurrentText(combo.getIndexData(index))
-
-                combo.activated.connect(functools.partial(__, combo))
-                combo.addItems(vis, value, icons)
-                if dd[key] in value:
-                    combo.setCurrentIndex(value.index(dd[key]))
-                combo.setCurrentText(dd[key])
-                regist[key] = combo.currentText
-                lineW.addWidget(combo)
-            elif line["type"] == "lineedit_or_combo":
-                line1 = QLineEdit()
-                lineW = QHBoxLayout()
-                combo = SuperCombo(static=True)
-                combo.setLineEdit(line1)
-
-                def __refresh(regist, line, combo: SuperCombo):
-                    try:
-                        func = getattr(
-                            importlib.import_module(modelfile), line["list_function"]
-                        )
-                        items = func(maybehasextrainfo, regist)
-                        curr = combo.currentText()
-                        combo.clear()
-                        combo.addItems(items)
-                        if curr in items:
-                            combo.setCurrentIndex(items.index(curr))
-
-                        dd[refname2line[line["list_cache"]]["k"]] = items
-                    except Exception as e:
-                        print_exc()
-                        if e.args and isinstance(e.args[0], requests.Response):
-                            resp = e.args[0]
-                            title = "{} {}: {}".format(
-                                resp.status_code, resp.reason, resp.url
-                            )
-                            text = str(maybejson(resp))
-                            if len(e.args) >= 2:
-                                if text:
-                                    text += "\n"
-                                text += e.args[1]
-                            QMessageBox.information(self, title, text)
-                        else:
-                            QMessageBox.information(self, str(type(e))[8:-2], str(e))
-
-                if "list_function" in line:
-                    items = dd[refname2line[line["list_cache"]]["k"]]
-                else:
-                    items = line["list"]
-                combo.addItems(items)
-                if dd[key] in items:
-                    combo.setCurrentIndex(items.index(dd[key]))
-                else:
-                    combo.setCurrentText(dd[key])
-                regist[key] = combo.currentText
-                if "list_function" in line:
-                    lineW.addWidget(
-                        getIconButton(
-                            callback=functools.partial(__refresh, regist, line, combo),
-                            icon="fa.refresh",
-                        )
-                    )
-                lineW.addWidget(combo)
-            elif line["type"] == "okcancel":
-                lineW = QDialogButtonBox(
-                    QDialogButtonBox.StandardButton.Ok
-                    | QDialogButtonBox.StandardButton.Cancel
-                )
-                lineW.rejected.connect(self.close)
-                lineW.accepted.connect(
-                    functools.partial(save, line.get("callback", None))
-                )
-
-                lineW.button(QDialogButtonBox.StandardButton.Ok).setText(_TR("确定"))
-                lineW.button(QDialogButtonBox.StandardButton.Cancel).setText(
-                    _TR("取消")
-                )
-            elif line["type"] == "lineedit":
-                if not isinstance(dd[key], str):
-                    continue
-                lineW = QLineEdit(dd[key])
-                regist[key] = lineW.text
-            elif line["type"] == "multiline":
-                lineW = QPlainTextEdit(dd[key])
-                regist[key] = lineW.toPlainText
-            elif line["type"] == "file":
-                __temp = {"k": dd[key]}
-                lineW = getsimplepatheditor(
-                    dd[key],
-                    line.get("multi", False),
-                    line.get("dir", False),
-                    line.get("filter", None),
-                    callback=functools.partial(__temp.__setitem__, "k"),
-                    reflist=__temp["k"],
-                    name=line.get("name", ""),
-                    header=line.get("name", ""),
-                    dirorfile=line.get("dirorfile", False),
-                )
-
-                regist[key] = functools.partial(__temp.__getitem__, "k")
-            elif line["type"] == "switch":
-                lineW = MySwitch(sign=dd[key])
-                regist[key] = lineW.isChecked
-                _ = QHBoxLayout()
-                _.addStretch()
-                _.addWidget(lineW)
-                _.addStretch()
-                lineW = _
-            elif line["type"] in ["spin", "intspin"]:
-
-                __temp = {"k": dd[key]}
-                lineW = getspinbox(
-                    line.get("min", 0),
-                    line.get("max", 100),
-                    __temp,
-                    "k",
-                    line["type"] == "spin",
-                    line.get("step", 0.1),
-                )
-                regist[key] = lineW.value
-            elif line["type"] == "split":
-                lineW = SplitLine()
-
+            lineW = self.createobject(line, dd)
+            if not lineW:
+                continue
+            appends = line.get("appends", None)
+            if appends:
+                hbox = QHBoxLayout()
+                hbox.addWidget(lineW)
+                for _ in appends:
+                    line_ref = self.appendtoS.get(_, None)
+                    if line_ref:
+                        object = self.createobject(line_ref, dd, sub=True)
+                        hbox.addWidget(getsmalllabel(line_ref.get("name", ""))())
+                        hbox.addWidget(object)
+                lineW = hbox
             refswitch = line.get("refswitch", None)
             if refswitch:
                 hbox = QHBoxLayout()
-                line_ref = refname2line.get(refswitch, None)
+                line_ref = self.refname2line.get(refswitch, None)
                 if line_ref:
                     if "k" in line_ref:
                         key = line_ref["k"]
                     switch = MySwitch(sign=dd[key])
-                    regist[key] = switch.isChecked
+                    self.regist[key] = switch.isChecked
                     switch.clicked.connect(lineW.setEnabled)
                     lineW.setEnabled(dd[key])
                     hbox.addWidget(switch)
@@ -744,13 +800,13 @@ class autoinitdialog(LDialog):
 
             refcombo = line.get("refcombo")
             if refcombo:
-                if refcombo not in cachehasref:
-                    cachehasref[refcombo] = []
-                cachehasref[refcombo].append((line, formLayout.rowCount() - 1))
+                if refcombo not in self.cachehasref:
+                    self.cachehasref[refcombo] = []
+                self.cachehasref[refcombo].append((line, formLayout.rowCount() - 1))
         for (
             comboname,
             refitems,
-        ) in cachehasref.items():
+        ) in self.cachehasref.items():
 
             def refcombofunction(refitems, _i):
                 viss = []
@@ -771,14 +827,14 @@ class autoinitdialog(LDialog):
                 QApplication.processEvents()
                 self.resize(self.width(), 1)
 
-            cachecombo[comboname].currentIndexChanged.connect(
+            self.cachecombo[comboname].currentIndexChanged.connect(
                 functools.partial(refcombofunction, refitems)
             )
-            cachecombo[comboname].currentIndexChanged.emit(
-                cachecombo[comboname].currentIndex()
+            self.cachecombo[comboname].currentIndexChanged.emit(
+                self.cachecombo[comboname].currentIndex()
             )
         if exec_:
-            self.exec_()
+            self.exec()
         else:
             self.show()
 
@@ -786,7 +842,7 @@ class autoinitdialog(LDialog):
 @Singleton
 class postconfigdialog_(LDialog):
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.button.setFocus()
+        self.setFocus()
         self.apply()
 
     def apply(self):
@@ -837,15 +893,16 @@ class postconfigdialog_(LDialog):
         table.setModel(model)
         table.setWordWrap(False)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        button = threebuttons(texts=["添加行", "删除行", "上移", "下移", "立即应用"])
         self.table = table
-        button.btn1clicked.connect(table.insertplainrow)
-        button.btn2clicked.connect(table.removeselectedrows)
-
-        button.btn3clicked.connect(functools.partial(table.moverank, -1))
-        button.btn4clicked.connect(functools.partial(table.moverank, 1))
-        button.btn5clicked.connect(self.apply)
-        self.button = button
+        button = manybuttonlayout(
+            (
+                ("添加行", table.insertplainrow),
+                ("删除行", table.removeselectedrows),
+                ("上移", functools.partial(table.moverank, -1)),
+                ("下移", functools.partial(table.moverank, 1)),
+                ("立即应用", self.apply),
+            )
+        )
         self.model = model
         self.configdict = configdict
         search = QHBoxLayout()
@@ -871,7 +928,7 @@ class postconfigdialog_(LDialog):
 
         formLayout.addWidget(table)
         formLayout.addLayout(search)
-        formLayout.addWidget(button)
+        formLayout.addLayout(button)
         self.resize(QSize(600, 400))
         self.show()
 

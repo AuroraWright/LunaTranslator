@@ -1,0 +1,610 @@
+{
+    "themes": [
+        {
+            "name": "PyQtDarkTheme",
+            "file": {
+                "dark": "PyQtDarkTheme/dark.py",
+                "light": "PyQtDarkTheme/light.py",
+                "setting": "PyQtDarkTheme/setting.py"
+            }
+        },
+        {
+            "name": "QTWin11",
+            "file": {
+                "dark": "QTWin11/dark.py",
+                "light": "QTWin11/light.py"
+            }
+        }
+    ],
+    "font_type_default": {
+        "default": [
+            "Segoe UI",
+            "Arial",
+            "Tahoma",
+            "Microsoft Sans Serif"
+        ],
+        "zh": [
+            "微软雅黑",
+            "Microsoft YaHei",
+            "黑体",
+            "SimHei",
+            "新宋体",
+            "NSimSun",
+            "宋体",
+            "SimSun"
+        ],
+        "ja": [
+            "游ゴシック",
+            "Yu Gothic",
+            "メイリオ",
+            "Meiryo",
+            "ＭＳ Ｐゴシック",
+            "MS PGothic",
+            "ＭＳ ゴシック",
+            "MS Gothic"
+        ],
+        "ko": [
+            "맑은 고딕",
+            "Malgun Gothic",
+            "돋움체",
+            "Dotum",
+            "굴림체",
+            "Gulim",
+            "바탕체",
+            "Batang"
+        ],
+        "cht": [
+            "微軟正黑體",
+            "Microsoft JhengHei",
+            "標楷體",
+            "DFKai-SB",
+            "新細明體",
+            "PMingLiU",
+            "細明體",
+            "MingLiU"
+        ],
+        "th": [
+            "Leelawadee",
+            "Tahoma",
+            "Microsoft Sans Serif"
+        ],
+        "bo": [
+            "Microsoft Himalaya",
+            "Noto Serif Tibetan",
+            "Tibetan Machine Uni"
+        ]
+    },
+    "setting_font_type_default": {
+        "default": [
+            "Segoe UI",
+            "Tahoma",
+            "Microsoft Sans Serif",
+            "Arial"
+        ],
+        "zh": {
+            "xp": [
+                "Microsoft YaHei UI",
+                "微软雅黑",
+                "Microsoft YaHei",
+                "新宋体",
+                "NSimSun",
+                "宋体",
+                "SimSun",
+                "黑体",
+                "SimHei"
+            ],
+            "normal": [
+                "Microsoft YaHei UI",
+                "微软雅黑",
+                "Microsoft YaHei",
+                "黑体",
+                "SimHei",
+                "新宋体",
+                "NSimSun",
+                "宋体",
+                "SimSun"
+            ]
+        },
+        "ja": [
+            "Yu Gothic UI",
+            "游ゴシック",
+            "Yu Gothic",
+            "Meiryo UI",
+            "メイリオ",
+            "Meiryo",
+            "MS UI Gothic",
+            "ＭＳ Ｐゴシック",
+            "MS PGothic",
+            "ＭＳ ゴシック",
+            "MS Gothic"
+        ],
+        "ko": [
+            "맑은 고딕",
+            "Malgun Gothic",
+            "굴림체",
+            "Gulim",
+            "돋움체",
+            "Dotum",
+            "바탕체",
+            "Batang"
+        ],
+        "cht": [
+            "Microsoft JhengHei UI",
+            "微軟正黑體",
+            "Microsoft JhengHei",
+            "新細明體",
+            "PMingLiU",
+            "細明體",
+            "MingLiU"
+        ],
+        "th": [
+            "Leelawadee UI",
+            "Tahoma",
+            "Microsoft Sans Serif"
+        ],
+        "bo": [
+            "Microsoft YaHei UI",
+            "微软雅黑",
+            "Microsoft YaHei",
+            "黑体",
+            "SimHei",
+            "新宋体",
+            "NSimSun",
+            "宋体",
+            "SimSun"
+        ]
+    },
+    "aboutsource": {
+        "translate": [
+            {
+                "name": "J北京7",
+                "link": "/Resource/translate/JBeijing7.zip",
+                "about": "日语_->_简体中文"
+            },
+            {
+                "name": "金山快译",
+                "link": "/Resource/translate/FastAIT09_Setup.25269.4101.zip",
+                "about": "日语_->_简体中文"
+            },
+            {
+                "name": "快译通",
+                "link": "/Resource/translate/DR.eye.zip",
+                "about": "日语_->_简体中文"
+            },
+            {
+                "name": "Sugoi",
+                "link": "/Resource/translate/Sugoi_V12.1_683043.7z",
+                "about": "日语_->_英语"
+            },
+            {
+                "name": "LEC",
+                "link": "/Resource/translate/LEC",
+                "about": "日语_->_英语"
+            },
+            {
+                "name": "Atlas",
+                "link": "/Resource/translate/Atlas",
+                "about": "日语_->_英语"
+            },
+            {
+                "name": "ezTrans",
+                "link": "/Resource/translate/ezTrans",
+                "about": "日语_->_韩语"
+            }
+        ],
+        "ocr": [
+            {
+                "name": "本地OCR",
+                "function": [
+                    "ocrengines.local",
+                    "question"
+                ]
+            },
+            {
+                "name": "SnippingTool",
+                "function": [
+                    "ocrengines.SnippingTool",
+                    "question"
+                ]
+            },
+            {
+                "name": "WindowsOCR",
+                "function": [
+                    "ocrengines.windowsocr",
+                    "question"
+                ]
+            },
+            {
+                "name": "manga-ocr",
+                "links": [
+                    {
+                        "name": "整合包_CPU",
+                        "link": "/Resource/IntegrationPack/manga_ocr/cpu"
+                    },
+                    {
+                        "name": "整合包_GPU",
+                        "link": "/Resource/IntegrationPack/manga_ocr/gpu"
+                    }
+                ]
+            }
+        ],
+        "tts": [
+            {
+                "name": "NeoSpeech",
+                "links": [
+                    {
+                        "name": "Misaki",
+                        "link": "/Resource/voice/NeoSpeech.Japanese.Misaki.zip"
+                    },
+                    {
+                        "name": "Show",
+                        "link": "/Resource/voice/NeoSpeech.TTS.NeoSpeech.Japanese.Show_v3.10.0.0.zip"
+                    }
+                ]
+            },
+            {
+                "name": "VOICEVOX",
+                "links": [
+                    {
+                        "name": "Github",
+                        "link": "https://github.com/VOICEVOX/voicevox/releases"
+                    }
+                ]
+            },
+            {
+                "name": "vits-simple-api",
+                "links": [
+                    {
+                        "name": "整合包_CPU",
+                        "link": "/Resource/IntegrationPack/vits-simple-api/cpu"
+                    },
+                    {
+                        "name": "整合包_GPU",
+                        "link": "/Resource/IntegrationPack/vits-simple-api/gpu"
+                    }
+                ]
+            },
+            {
+                "name": "VoiceRoid2",
+                "links": [
+                    {
+                        "name": "整合包_[[結月ゆかり]]",
+                        "link": "/Resource/voice/VOICEROID2_Yuzuki_Yukari.zip"
+                    },
+                    {
+                        "name": "整合包_[[紲星あかり]]",
+                        "link": "/Resource/voice/VOICEROID2_Kizuna_Akari.zip"
+                    },
+                    {
+                        "name": "整合包_[[琴葉 茜・葵]]",
+                        "link": "/Resource/voice/VOICEROID2_Kotonoha_Akane_Aoi.zip"
+                    },
+                    {
+                        "name": "整合包_[[伊織弓鶴]]",
+                        "link": "/Resource/voice/VOICEROID2_Iori_Yuzuru.zip"
+                    },
+                    {
+                        "name": "整合包_[[ついなちゃん]]",
+                        "link": "/Resource/voice/VOICEROID2_tsuina-chan_dl_e.zip"
+                    },
+                    {
+                        "name": "整合包_[[東北イタコ]]",
+                        "link": "/Resource/voice/VOICEROID2_Tohoku_Itako.zip"
+                    },
+                    {
+                        "name": "附加音源_[[結月ゆかり]]",
+                        "link": "/Resource/voice/yukari_emo_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[紲星あかり]]",
+                        "link": "/Resource/voice/akari_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[東北きりたん]]",
+                        "link": "/Resource/voice/kiritan_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[東北イタコ]]",
+                        "link": "/Resource/voice/itako_emo_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[東北ずん子]]",
+                        "link": "/Resource/voice/zunko_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[伊織弓鶴]]",
+                        "link": "/Resource/voice/yuzuru_emo_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[ついなちゃん]]",
+                        "link": "/Resource/voice/tsuina_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[ついなちゃん（関西弁）]]",
+                        "link": "/Resource/voice/tsuina_west_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[琴葉茜]]",
+                        "link": "/Resource/voice/akane_west_emo_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[琴葉葵]]",
+                        "link": "/Resource/voice/aoi_emo_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[水奈瀬コウ]]",
+                        "link": "/Resource/voice/kou_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[桜乃そら]]",
+                        "link": "/Resource/voice/sora_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[民安ともえ]]",
+                        "link": "/Resource/voice/tamiyasu_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[月読アイ]]",
+                        "link": "/Resource/voice/ai_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[月読ショウタ]]",
+                        "link": "/Resource/voice/shouta_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[京町セイカ]]",
+                        "link": "/Resource/voice/seika_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[音街ウナ]]",
+                        "link": "/Resource/voice/una_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[鷹の爪吉田]]",
+                        "link": "/Resource/voice/yoshidakun_44.zip"
+                    },
+                    {
+                        "name": "附加音源_[[ギャラ子]]",
+                        "link": "/Resource/voice/galaco_44.zip"
+                    },
+                    {
+                        "name": "整合包_[[VoiceRoid+ 東北ずん子]]",
+                        "link": "/Resource/voice/VOICEROID+zunko.7z"
+                    }
+                ]
+            }
+        ],
+        "magpie": [
+            {
+                "name": "Magpie",
+                "links": [
+                    {
+                        "name": "Github",
+                        "link": "https://github.com/Blinue/Magpie/releases"
+                    },
+                    {
+                        "name": "win7适配版",
+                        "link": "/Resource/Magpie9_Win7"
+                    }
+                ]
+            }
+        ]
+    },
+    "transoptimi": [
+        {
+            "name": "vndbnamemap",
+            "visname": "专有名词翻译_翻译前替换"
+        },
+        {
+            "name": "noundict",
+            "visname": "专有名词翻译"
+        },
+        {
+            "name": "transerrorfix",
+            "visname": "翻译结果修正"
+        },
+        {
+            "name": "myprocess",
+            "visname": "自定义优化"
+        },
+        {
+            "name": "arabic_reshaper",
+            "visname": "arabic reshaper",
+            "languageuse": "ar"
+        }
+    ],
+    "codepage_real": [
+        932,
+        65001,
+        936,
+        950,
+        949,
+        1258,
+        874,
+        1256,
+        1255,
+        1254,
+        1253,
+        1257,
+        1250,
+        1251,
+        1252,
+        437
+    ],
+    "codepage_display": [
+        "日语_(CP932,SHIFT-JIS)",
+        "UTF8_(CP65001)",
+        "简体中文_(CP936,GBK)",
+        "繁体中文_(CP950,BIG5)",
+        "韩语_(CP949,EUC-KR)",
+        "越南语_(CP1258)",
+        "泰语_(CP874)",
+        "阿拉伯语_(CP1256)",
+        "希伯来语_(CP1255)",
+        "土耳其语_(CP1254)",
+        "希腊语_(CP1253)",
+        "北欧_(CP1257)",
+        "中东欧_(CP1250)",
+        "西里尔_(CP1251)",
+        "拉丁_(CP1252)",
+        "英语_(CP437)"
+    ],
+    "model_fileds": [
+        "word",
+        "rubytextHtml",
+        "example_sentence",
+        "audio_for_word",
+        "audio_for_example_sentence",
+        "screenshot",
+        "remarks",
+        "dictionaryInfo",
+        "dictionaryContent",
+        "luna_reserved_1",
+        "luna_reserved_2",
+        "luna_reserved_3",
+        "user_custom_1",
+        "user_custom_2",
+        "user_custom_3"
+    ],
+    "textrender": {
+        "textbrowser": [
+            "normal",
+            "yinying",
+            "miaobian1"
+        ],
+        "webview": [
+            "normal",
+            "yinying",
+            "miaobian1"
+        ]
+    },
+    "main_server": [
+        "https://lunatranslator.org",
+        "https://lunatranslator.star.is"
+    ],
+    "docs_server": [
+        "https://docs.lunatranslator.org",
+        "https://docs.lunatranslator.star.is"
+    ],
+    "bangumi_oauth": {
+        "client_id": "bgm31536662bc84ee9a9",
+        "client_secret": "b4ca9f5dc7c3819bff163843e1b5cdb0"
+    },
+    "API_URL_PRESETS": [
+        {
+            "vis": "OpenAI",
+            "value": "https://api.openai.com",
+            "icon": "files/static/llm_icons/openai.svg"
+        },
+        {
+            "vis": "DeepSeek",
+            "value": "https://api.deepseek.com",
+            "icon": "files/static/llm_icons/deepseek.svg"
+        },
+        {
+            "vis": "Gemini",
+            "value": "https://generativelanguage.googleapis.com",
+            "icon": "files/static/llm_icons/gemini.svg"
+        },
+        {
+            "vis": "claude",
+            "value": "https://api.anthropic.com/v1/messages",
+            "icon": "files/static/llm_icons/claude.svg"
+        },
+        {
+            "vis": "阿里云百炼大模型",
+            "value": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "icon": "files/static/llm_icons/qwen.svg"
+        },
+        {
+            "vis": "字节跳动火山引擎",
+            "value": "https://ark.cn-beijing.volces.com/api/v3",
+            "icon": "files/static/llm_icons/doubao.svg"
+        },
+        {
+            "vis": "腾讯混元大模型",
+            "value": "https://api.hunyuan.cloud.tencent.com/v1",
+            "icon": "files/static/llm_icons/hunyuan.svg"
+        },
+        {
+            "vis": "硅基流动",
+            "value": "https://api.siliconflow.cn",
+            "icon": "files/static/llm_icons/siliconflow.svg"
+        },
+        {
+            "vis": "cohere",
+            "value": "https://api.cohere.ai/compatibility/v1",
+            "icon": "files/static/llm_icons/cohere.svg"
+        },
+        {
+            "vis": "OpenRouter",
+            "value": "https://openrouter.ai/api/v1",
+            "icon": "files/static/llm_icons/openrouter.svg"
+        },
+        {
+            "vis": "groq",
+            "value": "https://api.groq.com/openai/v1",
+            "icon": "files/static/llm_icons/groq.svg"
+        },
+        {
+            "vis": "Mistral AI",
+            "value": "https://api.mistral.ai/v1",
+            "icon": "files/static/llm_icons/mistral.svg"
+        },
+        {
+            "vis": "x.ai",
+            "value": "https://api.x.ai/",
+            "icon": "files/static/llm_icons/xai.svg"
+        },
+        {
+            "vis": "Ollama",
+            "value": "http://127.0.0.1:11434",
+            "icon": "files/static/llm_icons/ollama.svg"
+        },
+        {
+            "vis": "月之暗面",
+            "value": "https://api.moonshot.cn",
+            "icon": "files/static/llm_icons/moonshot.svg"
+        },
+        {
+            "vis": "智谱AI",
+            "value": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+            "icon": "files/static/llm_icons/zhipu.svg"
+        },
+        {
+            "vis": "讯飞星火大模型",
+            "value": "https://spark-api-open.xf-yun.com/v1",
+            "icon": "files/static/llm_icons/xunfei.ico"
+        },
+        {
+            "vis": "百度千帆大模型",
+            "value": "https://qianfan.baidubce.com/v2",
+            "icon": "files/static/llm_icons/wenxin.svg"
+        },
+        {
+            "vis": "零一万物",
+            "value": "https://api.lingyiwanwu.com",
+            "icon": "files/static/llm_icons/lyww.svg"
+        },
+        {
+            "vis": "cerebras",
+            "value": "https://api.cerebras.ai/v1",
+            "icon": "files/static/llm_icons/cerebras.png"
+        },
+        {
+            "vis": "deepinfra",
+            "value": "https://api.deepinfra.com/v1/openai/chat/completions",
+            "icon": "files/static/llm_icons/deepinfra.webp"
+        },
+        {
+            "vis": "MiniMax",
+            "value": "https://api.minimax.chat/v1",
+            "icon": "files/static/llm_icons/minimax.svg"
+        },
+        {
+            "vis": "Chute",
+            "value": "https://llm.chutes.ai/v1/chat/completions",
+            "icon": "files/static/llm_icons/chutes.webp"
+        }
+    ]
+}

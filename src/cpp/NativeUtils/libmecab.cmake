@@ -11,24 +11,19 @@ set(mecabsrc "${mecab_SOURCE_DIR}/mecab/src")
 
 if(NOT EXISTS "${mecabsrc}/writeonceflag")
 
-    if(NOT WINXP)
-        file(READ "${mecabsrc}/dictionary.cpp" dictionary)
-        set(std_binary_function [=[
-namespace std
-{
+    file(READ "${mecabsrc}/dictionary.cpp" dictionary)
+    set(std_binary_function [=[
+
   template <class Argv1, class Argv2, class Result>
-  struct binary_function
+  struct std_binary_function_FUCK
   {
     typedef Argv1 first_argument_type;
     typedef Argv2 second_argument_type;
     typedef Result result_type;
   };
-}
 ]=])
-        file(WRITE "${mecabsrc}/dictionary.cpp" "${std_binary_function}${dictionary}")
-    else()
-
-    endif()
+    string(REPLACE "std::binary_function" "std_binary_function_FUCK" dictionary "${dictionary}")
+    file(WRITE "${mecabsrc}/dictionary.cpp" "${std_binary_function}${dictionary}")
 
     file(READ "${mecabsrc}/mecab.h" mecabh)
     string(REPLACE "__declspec(dllexport)" "" mecabh "${mecabh}")
@@ -39,11 +34,12 @@ namespace std
 endif()
 
 file(GLOB SOURCES "${mecabsrc}/*.cpp")
-list(FILTER SOURCES EXCLUDE REGEX ".*/mecab-[a-z\\-]*\\.cpp")
+list(FILTER SOURCES EXCLUDE REGEX ".*/mecab[a-z\\-]*\\.cpp")
 
 add_library(libmecab ${SOURCES})
 
 target_include_directories(libmecab INTERFACE "${mecabsrc}")
+if(MSVC)
 target_compile_options(libmecab PRIVATE /EHsc
                                         /std:c++14
                                         /GL         
@@ -56,6 +52,9 @@ target_compile_options(libmecab PRIVATE /EHsc
                                         /wd4305
                                         /wd4267
                                         /wd4244)
+else()
+target_compile_options(libmecab PRIVATE -std=c++14)
+endif()
 target_compile_definitions(
     libmecab PRIVATE
     -D_CRT_SECURE_NO_DEPRECATE

@@ -6,7 +6,7 @@ from qtsymbols import *
 from metadata.abstract import common
 from gui.gamemanager.dialog import getreflist, getalistname
 from myutils.wrapper import threader
-from gui.usefulwidget import threebuttons
+from gui.usefulwidget import manybuttonlayout
 
 
 class bgmsettings(QFormLayout):
@@ -14,7 +14,6 @@ class bgmsettings(QFormLayout):
     @property
     def headers(self):
         return {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Authorization": "Bearer " + self._ref.config["access-token"].strip(),
         }
 
@@ -128,14 +127,9 @@ class bgmsettings(QFormLayout):
         if k != self._ref.config["access-token"]:
             self._ref.config["access-token"] = k
             self._ref.config["refresh_token"] = ""
-        headers = {
-            "accept": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        }
         response = requests.post(
             "https://bgm.tv/oauth/token_status",
             params={"access_token": k},
-            headers=headers,
             proxies=self._ref.proxy,
         ).json()
         if t != self.tm:
@@ -248,19 +242,30 @@ class bgmsettings(QFormLayout):
         oauth.clicked.connect(self.__oauth)
         vbox.addWidget(self.lbinfo)
         self.addRow("access-token", vbox)
-
-        btn = threebuttons(["上传游戏", "上传游戏列表", "获取游戏列表"])
-        btn.btn1clicked.connect(
-            functools.partial(self.singleupload_existsoverride, gameuid)
-        )
-        btn.btn2clicked.connect(
-            functools.partial(
-                getalistname, btn, self.getalistname_upload, title="上传游戏列表"
-            )
-        )
-        btn.btn3clicked.connect(
-            functools.partial(
-                getalistname, btn, self.getalistname_download, title="添加到列表"
+        btn = manybuttonlayout(
+            (
+                (
+                    "上传游戏",
+                    functools.partial(self.singleupload_existsoverride, gameuid),
+                ),
+                (
+                    "上传游戏列表",
+                    functools.partial(
+                        getalistname,
+                        ww,
+                        self.getalistname_upload,
+                        title="上传游戏列表",
+                    ),
+                ),
+                (
+                    "获取游戏列表",
+                    functools.partial(
+                        getalistname,
+                        ww,
+                        self.getalistname_download,
+                        title="添加到列表",
+                    ),
+                ),
             )
         )
         fl2.addRow(btn)
@@ -297,18 +302,13 @@ class searcher(common):
 
     def getidbytitle(self, title):
 
-        headers = {
-            "accept": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        }
-
         params = {
             "type": "4",
             "responseGroup": "small",
         }
 
         response = self.proxysession.get(
-            "https://api.bgm.tv/search/subject/" + title, params=params, headers=headers
+            "https://api.bgm.tv/search/subject/" + title, params=params
         )
         print(response.text)
         try:
@@ -324,10 +324,7 @@ class searcher(common):
 
     def searchfordata(self, sid):
 
-        headers = {
-            "accept": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        }
+        headers = {}
         if self.config["access-token"].strip() != "":
             headers["Authorization"] = "Bearer " + self.config["access-token"]
         response = self.proxysession.get(
@@ -366,5 +363,5 @@ class searcher(common):
             "images": [response["images"]["large"]],
             "webtags": vndbtags,
             "developers": developers,
-            "description": response["summary"].replace("\n", "<br>"),
+            "description": response["summary"],
         }

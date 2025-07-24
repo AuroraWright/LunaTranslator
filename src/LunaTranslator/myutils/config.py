@@ -1,5 +1,5 @@
 import json
-import os, time, uuid, shutil, sys, platform, re
+import os, time, uuid, re
 from traceback import print_exc
 from language import TransLanguages, Languages
 
@@ -33,19 +33,6 @@ def isascii(s: str):
             return False
 
 
-def namemapcast(namemap):
-    bettermap = namemap.copy()
-    for k, v in namemap.items():
-        for sp in ["・", " "]:
-            spja = k.split(sp)
-            spen = v.split(sp if k == v else " ")
-            if len(spja) == len(spen) and len(spen) > 1:
-                for i in range(len(spja)):
-                    if len(spja[i]) >= 2:
-                        bettermap[spja[i]] = spen[i]
-    return bettermap
-
-
 def tryreadconfig(path, default=None):
     path = os.path.join("userconfig", path)
     try:
@@ -69,7 +56,7 @@ def tryreadconfig_1(path, default=None, pathold=None):
 
 
 def tryreadconfig2(path):
-    path = os.path.join("files/defaultconfig", path)
+    path = os.path.join("LunaTranslator/defaultconfig", path)
     with open(path, "r", encoding="utf-8") as ff:
         x = json.load(ff)
     return x
@@ -85,7 +72,9 @@ ocrdfsetting = tryreadconfig2("ocrsetting.json")
 ocrerrorfixdefault = tryreadconfig2("ocrerrorfix.json")
 
 ocrerrorfix = tryreadconfig("ocrerrorfix.json")
-globalconfig = tryreadconfig("config.json")
+globalconfig: "dict[str, dict[str, str] | list[str] | str]" = tryreadconfig(
+    "config.json"
+)
 magpie_config = tryreadconfig_1("Magpie/config.json", pathold="magpie_config.json")
 postprocessconfig = tryreadconfig("postprocessconfig.json")
 
@@ -97,8 +86,8 @@ if _savehook:
     # savehook_new_data:{uid:dict,...}
     # savegametaged:[ None, {'games':[uid,...],'title':str,'opened':bool,'uid':str},...]
     # gamepath2uid:{gamepath:uid}
-    savehook_new_list = _savehook[0]
-    savehook_new_data = _savehook[1]
+    savehook_new_list: list = _savehook[0]
+    savehook_new_data: "dict[str, dict]" = _savehook[1]
     savegametaged = _savehook[2]
     # gamepath2uid = _savehook[3] 不再使用，允许重复的path
 
@@ -180,7 +169,7 @@ def getdefaultsavehook(title=None):
         # "statistic_wordcount": 0,
         # "statistic_wordcount_nodump": 0,
         # "hook": [],
-        # "inserthooktimeout": 500,
+        # "inserthooktimeout": 250,
         # "insertpchooks_string": False,
         # "needinserthookcode": [],
         # "removeforeverhook": [],
@@ -192,7 +181,6 @@ def getdefaultsavehook(title=None):
         # "tts_skip_regex": [],
         # "gamejsonfile": [],  # 之前是"",后面改成[]
         # "gamesqlitefile": "",
-        # "relationlinks": [],
         # "istitlesetted": False,
         # "currentvisimage": None,
         # "currentmainimage": "",
@@ -218,7 +206,7 @@ def getdefaultsavehook(title=None):
         "usertags": [],
         "developers": [],
         "webtags": [],  # 标签
-        # "description": "",  # 简介
+        # "createtime":xx  添加时间
     }
     if title and len(title):
         default["title"] = title  # metadata
@@ -335,15 +323,6 @@ def syncconfig(config1, default, drop=False, deep=0):
 
 syncconfig(globalconfig, defaultglobalconfig)
 syncconfig(transerrorfixdictconfig, defaulterrorfix)
-if True:  # transerrorfixdictconfig cast v1 to v2:
-    if "dict" in transerrorfixdictconfig:
-        for key in transerrorfixdictconfig["dict"]:
-            value = transerrorfixdictconfig["dict"][key]
-            transerrorfixdictconfig["dict_v2"].append(
-                {"key": key, "value": value, "regex": False}
-            )
-        transerrorfixdictconfig.pop("dict")
-
 
 syncconfig(magpie_config, dfmagpie_config)
 syncconfig(
@@ -413,6 +392,8 @@ def __partagA(match: re.Match):
 def _TR(k: str) -> str:
     if not k:
         return ""
+    if k == "√":
+        return k
     if "[[" in k and "]]" in k:
         return re.sub(r"(.*)\[\[(.*?)\]\](.*)", __parsenottr, k)
     if k.startswith("(") and k.endswith(")"):
@@ -439,52 +420,43 @@ def _TRL(kk):
     return x
 
 
-def getlang_inner2show(langcode):
-    return dict(
-        zip(
-            [_.code for _ in TransLanguages],
-            [_.zhsname for _ in TransLanguages],
-        )
-    ).get(langcode, "??")
-
-
-def unsafesave(fname: str, js, beatiful=True, isconfig=True):
+def unsafesave(fname: str, js, beatiful=True):
     # 有时保存时意外退出，会导致config文件被清空
     os.makedirs(os.path.dirname(fname), exist_ok=True)
-    if isconfig and os.path.isfile(fname):
-        backup = os.path.join(os.path.dirname(fname), "backup")
-        os.makedirs(backup, exist_ok=True)
-        shutil.copy(fname, os.path.join(backup, os.path.basename(fname)))
+
     js = json.dumps(
         js, ensure_ascii=False, sort_keys=False, indent=4 if beatiful else None
     )
-    with open(fname, "w", encoding="utf-8") as ff:
+    with open(fname + ".tmp", "w", encoding="utf-8") as ff:
         ff.write(js)
+    os.replace(fname + ".tmp", fname)
 
 
-def safesave(*argc, **kw):
+def safesave(errorcollect: list, *argc, **kw):
     try:
         unsafesave(*argc, **kw)
-    except:
+    except Exception as e:
+        errorcollect.append((e, argc[0]))
         print_exc()
 
 
 def saveallconfig(test=False):
-
-    safesave("userconfig/config.json", globalconfig)
-    safesave("userconfig/postprocessconfig.json", postprocessconfig)
-    safesave("userconfig/transerrorfixdictconfig.json", transerrorfixdictconfig)
-    safesave("userconfig/translatorsetting.json", translatorsetting)
-    safesave("userconfig/ocrerrorfix.json", ocrerrorfix)
-    safesave("userconfig/ocrsetting.json", ocrsetting)
+    errorcollect = []
+    safesave(errorcollect, "userconfig/config.json", globalconfig)
+    safesave(errorcollect, "userconfig/postprocessconfig.json", postprocessconfig)
     safesave(
+        errorcollect, "userconfig/transerrorfixdictconfig.json", transerrorfixdictconfig
+    )
+    safesave(errorcollect, "userconfig/translatorsetting.json", translatorsetting)
+    safesave(errorcollect, "userconfig/ocrerrorfix.json", ocrerrorfix)
+    safesave(errorcollect, "userconfig/ocrsetting.json", ocrsetting)
+    safesave(
+        errorcollect,
         "userconfig/savegamedata_5.3.1.json",
         [savehook_new_list, savehook_new_data, savegametaged, None, extradatas],
         beatiful=False,
     )
-    safesave("userconfig/Magpie/config.json", magpie_config, isconfig=False)
+    safesave(errorcollect, "userconfig/Magpie/config.json", magpie_config)
     if not test:
-        safesave(
-            "files/lang/{}.json".format(getlanguse()), languageshow, isconfig=False
-        )
-
+        safesave(errorcollect, "files/lang/{}.json".format(getlanguse()), languageshow)
+    return errorcollect

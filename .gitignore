@@ -25,12 +25,16 @@ builds/
 
 .vscode/settings.json
 src/.cache
-src/userconfig
-src/userconfig1
+src/userconfig*
 src/cache
 src/chrome_cache
 src/files/ocrmodel
-src/files/plugins
+src/files/*.exe
+src/files/DLL32
+src/files/DLL64
+src/files/LunaHook
+src/files/Magpie
+src/files/Locale
 src/run37.bat
 src/run3732.bat
 src/cpp/.vscode/settings.json

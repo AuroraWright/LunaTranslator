@@ -1,5 +1,5 @@
 from qtsymbols import *
-import functools
+import functools, NativeUtils
 import gobject, os
 from myutils.config import globalconfig, static_data
 from myutils.utils import dynamiclink
@@ -7,38 +7,45 @@ from traceback import print_exc
 from language import TransLanguages
 from gui.setting.textinput_ocr import getocrgrid_table
 from gui.gamemanager.dialog import dialog_savedgame_integrated
+from gui.dynalang import LLabel
+from textio.textsource.mssr import getlocaleandlv, findallmodel
 from gui.usefulwidget import (
     D_getsimplecombobox,
     D_getspinbox,
     D_getIconButton,
+    SuperCombo,
     getIconButton,
     makegrid,
     listediter,
     yuitsu_switch,
     D_getsimpleswitch,
+    getboxwidget,
     makesubtab_lazy,
     makescrollgrid,
     FocusFontCombo,
+    getboxlayout,
     getsmalllabel,
 )
 
 
 def __create(self):
-    self.selectbutton = getIconButton(
-        gobject.baseobject.createattachprocess,
+    selectbutton = getIconButton(
+        gobject.base.createattachprocess,
         icon=globalconfig["toolbutton"]["buttons"]["selectgame"]["icon"],
         enable=globalconfig["sourcestatus2"]["texthook"]["use"],
     )
-    return self.selectbutton
+    gobject.base.selecthookbuttonstatus.connect(selectbutton.setEnabled)
+    return selectbutton
 
 
 def __create2(self):
-    self.selecthookbutton = getIconButton(
-        lambda: gobject.baseobject.hookselectdialog.showsignal.emit(),
+    selecthookbutton = getIconButton(
+        lambda: gobject.base.hookselectdialog.showsignal.emit(),
         icon=globalconfig["toolbutton"]["buttons"]["selecttext"]["icon"],
         enable=globalconfig["sourcestatus2"]["texthook"]["use"],
     )
-    return self.selecthookbutton
+    gobject.base.selecthookbuttonstatus.connect(selecthookbutton.setEnabled)
+    return selecthookbutton
 
 
 def gethookgrid_em(self):
@@ -48,7 +55,7 @@ def gethookgrid_em(self):
             D_getsimpleswitch(
                 globalconfig["embedded"],
                 "clearText",
-                callback=lambda _: gobject.baseobject.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.flashembedsettings(),
             ),
             "",
             "",
@@ -61,7 +68,7 @@ def gethookgrid_em(self):
                 ["翻译", "原文_翻译", "翻译_原文"],
                 globalconfig["embedded"],
                 "displaymode",
-                callback=lambda _: gobject.baseobject.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.flashembedsettings(),
             ),
         ],
         [
@@ -74,7 +81,7 @@ def gethookgrid_em(self):
                 "timeout_translate",
                 double=True,
                 step=0.1,
-                callback=lambda x: gobject.baseobject.textsource.flashembedsettings(),
+                callback=lambda x: gobject.base.textsource.flashembedsettings(),
             ),
         ],
         [
@@ -96,7 +103,7 @@ def gethookgrid_em(self):
             D_getsimpleswitch(
                 globalconfig["embedded"],
                 "changefont",
-                callback=lambda _: gobject.baseobject.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.flashembedsettings(),
             ),
             creategamefont_comboBox,
         ],
@@ -125,7 +132,7 @@ def gethookgrid(self):
                     static_data["codepage_display"],
                     globalconfig,
                     "codepage_value",
-                    lambda x: gobject.baseobject.textsource.setsettings(),
+                    lambda x: gobject.base.textsource.setsettings(),
                     internal=static_data["codepage_real"],
                 ),
                 2,
@@ -141,7 +148,7 @@ def gethookgrid(self):
                     10000,
                     globalconfig,
                     "textthreaddelay",
-                    callback=lambda x: gobject.baseobject.textsource.setsettings(),
+                    callback=lambda x: gobject.base.textsource.setsettings(),
                 ),
                 2,
             ),
@@ -154,7 +161,7 @@ def gethookgrid(self):
                     1000000,
                     globalconfig,
                     "maxBufferSize",
-                    callback=lambda x: gobject.baseobject.textsource.setsettings(),
+                    callback=lambda x: gobject.base.textsource.setsettings(),
                 ),
                 2,
             ),
@@ -167,7 +174,7 @@ def gethookgrid(self):
                     1000000000,
                     globalconfig,
                     "maxHistorySize",
-                    callback=lambda x: gobject.baseobject.textsource.setsettings(),
+                    callback=lambda x: gobject.base.textsource.setsettings(),
                 ),
                 2,
             ),
@@ -184,7 +191,7 @@ def creategamefont_comboBox():
     def callback(x):
         globalconfig["embedded"].__setitem__("changefont_font", x)
         try:
-            gobject.baseobject.textsource.flashembedsettings()
+            gobject.base.textsource.flashembedsettings()
         except:
             pass
 
@@ -261,12 +268,12 @@ def selectfile(self):
         globalconfig["sourcestatus2"],
         "sourceswitchs",
         "filetrans",
-        gobject.baseobject.starttextsource,
+        gobject.base.starttextsource,
     )
 
     try:
         callback(True)
-        gobject.baseobject.textsource.starttranslatefile(res)
+        gobject.base.textsource.starttranslatefile(res)
     except:
         print_exc()
 
@@ -281,19 +288,136 @@ def createdownloadprogress(self):
         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
     )
 
-    def __set(_d, text, i):
+    def __set(_d: QProgressBar, text, i):
         _d.setValue(i)
         _d.setFormat(text)
 
-    self.progresssignal2.connect(functools.partial(__set, downloadprogress))
-    self.progresssignal3.connect(lambda x: downloadprogress.setRange(0, x))
+    gobject.base.connectsignal(
+        gobject.base.progresssignal2, functools.partial(__set, downloadprogress)
+    )
+    gobject.base.connectsignal(
+        gobject.base.progresssignal3, lambda x: downloadprogress.setRange(0, x)
+    )
     return downloadprogress
 
 
+def loadmssrsource(self):
+    curr = globalconfig["sourcestatus2"]["mssr"]["source"]
+    sources = ["loopback"]
+    vis = ["环回录制"]
+    if 1:
+        sources.append("i")
+        vis.append("麦克风")
+    else:
+        sources.append("i")
+        vis.append("DefaultMicrophoneInput")
+        for _, _id in NativeUtils.ListEndpoints(True):
+            sources.append(_id)
+            vis.append("[[" + _ + "]]")
+        sources.append("o")
+        vis.append("DefaultSpeakerOutput")
+        for _, _id in NativeUtils.ListEndpoints(False):
+            sources.append(_id)
+            vis.append("[[" + _ + "]]")
+    mssrsource: SuperCombo = self.mssrsource
+    mssrsource.blockSignals(True)
+    mssrsource.clear()
+    mssrsource.addItems(vis, internals=sources)
+    mssrsource.setCurrentData(curr)
+    mssrsource.blockSignals(False)
+
+
+def __srcofig(grids: list, self):
+    __vis, paths = findallmodel()
+    if not paths:
+        return
+
+    self.mssrsource = D_getsimplecombobox(
+        [""],
+        globalconfig["sourcestatus2"]["mssr"],
+        "source",
+        internal=[0],
+        callback=lambda _: gobject.base.textsource.init(),
+    )()
+    loadmssrsource(self)
+    __w = getboxwidget(
+        [
+            getsmalllabel("语言"),
+            D_getsimplecombobox(
+                __vis,
+                globalconfig["sourcestatus2"]["mssr"],
+                "path",
+                internal=paths,
+                callback=lambda _: gobject.base.textsource.init(),
+            ),
+            "",
+            getsmalllabel("刷新间隔"),
+            D_getspinbox(
+                0,
+                10,
+                globalconfig["sourcestatus2"]["mssr"],
+                "refreshinterval",
+                True,
+                0.1,
+            ),
+            "",
+            getsmalllabel("音源"),
+            self.mssrsource,
+        ]
+    )
+    __w.setEnabled(globalconfig["sourcestatus2"]["mssr"]["use"])
+
+    __ = dict(
+        type="grid",
+        title="Windows_语音识别",
+        grid=[
+            [
+                getsmalllabel("使用"),
+                D_getsimpleswitch(
+                    globalconfig["sourcestatus2"]["mssr"],
+                    "use",
+                    name="mssr",
+                    parent=self,
+                    callback=functools.partial(
+                        yuitsu_switch,
+                        self,
+                        globalconfig["sourcestatus2"],
+                        "sourceswitchs",
+                        "mssr",
+                        lambda _, _2: (
+                            loadmssrsource(self),
+                            gobject.base.starttextsource(_, _2),
+                            __w.setEnabled(_2),
+                        ),
+                    ),
+                    pair="sourceswitchs",
+                ),
+                __w,
+            ],
+        ],
+    )
+    grids.insert(0, [__])
+
+
+class MDLabel2(QLabel):
+    def __init__(self, md):
+        super().__init__()
+        self.setText(md)
+        self.setOpenExternalLinks(False)
+        self.setWordWrap(True)
+        self.linkActivated.connect(self._linkActivated)
+
+    def _linkActivated(self, url: str):
+        link = "http://127.0.0.1:{}{}".format(globalconfig["networktcpport"], url)
+        os.startfile(link)
+
+
 def filetranslate(self):
+    fuckyou = lambda _: '<a href="{}">{}</a>'.format(_, _)
     grids = [
         [
             dict(
+                type="grid",
                 title="文件翻译",
                 grid=[
                     [
@@ -302,12 +426,75 @@ def filetranslate(self):
                             functools.partial(selectfile, self),
                             icon="fa.folder-open",
                         ),
+                        "",
+                        functools.partial(createdownloadprogress, self),
                     ],
-                    [functools.partial(createdownloadprogress, self)],
+                ],
+            ),
+        ],
+        [],
+        [
+            dict(
+                title="网络服务",
+                grid=[
+                    [
+                        "开启",
+                        getboxlayout(
+                            [
+                                D_getsimpleswitch(
+                                    globalconfig,
+                                    "networktcpenable",
+                                    callback=lambda _: gobject.base.serviceinit(),
+                                ),
+                                D_getIconButton(
+                                    lambda: os.startfile(
+                                        dynamiclink("/apiservice.html", docs=True)
+                                    ),
+                                    "fa.question",
+                                    tips="使用说明",
+                                ),
+                                "",
+                            ]
+                        ),
+                    ],
+                    [
+                        "端口号",
+                        getboxlayout(
+                            [
+                                D_getspinbox(
+                                    0,
+                                    65535,
+                                    globalconfig,
+                                    "networktcpport",
+                                    callback=lambda _: gobject.base.serviceinit(),
+                                ),
+                                functools.partial(__portconflict, self),
+                            ]
+                        ),
+                    ],
+                    [],
+                    [
+                        functools.partial(
+                            MDLabel2,
+                            ("&nbsp;" * 4).join(
+                                fuckyou(_)
+                                for _ in (
+                                    "/",
+                                    "/page/mainui",
+                                    "/page/transhist",
+                                    "/page/dictionary",
+                                    "/page/translate",
+                                    "/page/ocr",
+                                    "/page/tts",
+                                )
+                            ),
+                        )
+                    ],
                 ],
             ),
         ],
     ]
+    __srcofig(grids, self)
     return grids
 
 
@@ -322,56 +509,10 @@ def getpath():
     return None
 
 
-def open___(url):
-    link = "http://127.0.0.1:{}{}".format(globalconfig["networktcpport"], url)
-    os.startfile(link)
-
-
-def createlabellink(url):
-    l = QLabel('<a href="{}">{}</a>'.format(url, url))
-    l.linkActivated.connect(open___)
-    return l
-
-
-def outputgrid():
-
-    grids = [
-        [
-            D_getIconButton(
-                lambda: os.startfile(dynamiclink("/apiservice.html", docs=True)),
-                "fa.question",
-            ),
-        ],
-        [
-            "开启",
-            D_getsimpleswitch(
-                globalconfig,
-                "networktcpenable",
-                callback=lambda _: gobject.baseobject.serviceinit(),
-            ),
-            "",
-            "",
-            "",
-        ],
-        [
-            "端口号",
-            D_getspinbox(
-                0,
-                65535,
-                globalconfig,
-                "networktcpport",
-                callback=lambda _: gobject.baseobject.serviceinit(),
-            ),
-        ],
-        [],
-        [(functools.partial(createlabellink, "/"), -1)],
-        [(functools.partial(createlabellink, "/page/mainui"), -1)],
-        [(functools.partial(createlabellink, "/page/transhist"), -1)],
-        [(functools.partial(createlabellink, "/page/dictionary"), -1)],
-        [(functools.partial(createlabellink, "/page/translate"), -1)],
-        [(functools.partial(createlabellink, "/page/ocr"), -1)],
-    ]
-    return grids
+def __portconflict(self):
+    _ = LLabel()
+    gobject.base.connectsignal(gobject.base.portconflict, _.setText)
+    return _
 
 
 def setTablanglz():
@@ -458,7 +599,7 @@ def setTabOne_lazy(self, basel: QVBoxLayout):
                     globalconfig["sourcestatus2"],
                     "sourceswitchs",
                     key,
-                    gobject.baseobject.starttextsource,
+                    gobject.base.starttextsource,
                 ),
                 pair="sourceswitchs",
             )
@@ -470,13 +611,12 @@ def setTabOne_lazy(self, basel: QVBoxLayout):
     ]
     gridlayoutwidget, do = makegrid(tab1grids, delay=True)
     basel.addWidget(gridlayoutwidget)
-    titles = ["HOOK设置", "OCR设置", "剪贴板", "其他", "网络服务"]
+    titles = ["HOOK设置", "OCR设置", "剪贴板", "其他"]
     funcs = [
         lambda l: setTabOne_lazy_h(self, l),
         lambda l: getocrgrid_table(self, l),
         lambda l: makescrollgrid(getTabclip(), l),
         lambda l: makescrollgrid(filetranslate(self), l),
-        lambda l: makescrollgrid(outputgrid(), l),
     ]
 
     tab, dotab = makesubtab_lazy(
@@ -488,3 +628,11 @@ def setTabOne_lazy(self, basel: QVBoxLayout):
     basel.setSpacing(0)
     do()
     dotab()
+
+    def __(k, x):
+        btn: QPushButton = self.sourceswitchs.get(k)
+        if not btn:
+            return
+        btn.setChecked(x)
+
+    gobject.base.sourceswitchs.connect(__)

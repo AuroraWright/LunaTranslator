@@ -1,7 +1,6 @@
 from hashlib import sha1
 import time, random, hmac, base64, uuid, hashlib, json
 from ocrengines.baseocrclass import baseocr, OCRResult
-import zhconv
 from language import Languages
 
 
@@ -20,9 +19,11 @@ class OCR(baseocr):
         except:
             return "ap-beijing"
 
-    def langmap(self):
+    @property
+    def langocr(self):
         # https://cloud.tencent.com/document/product/866/33526
-        return {
+        s = self.srclang_1
+        m = {
             Languages.Chinese: "zh",
             Languages.TradChinese: "zh",
             Languages.Japanese: "jap",
@@ -40,18 +41,18 @@ class OCR(baseocr):
             Languages.Thai: "tha",
             Languages.Arabic: "ara",
         }
+        return m.get(s, "auto")
 
-    @property
-    def langocr(self):
-        s = self.srclang_1
-        return self.langmap().get(s, "auto")
+    def langmap(self):
+        # https://cloud.tencent.com/document/product/551/17232
+        return {Languages.TradChinese: "zh-TW"}
 
     def ocr_fy(self, imagebinary):
         self.checkempty(["SecretId", "SecretKey"])
 
         encodestr = str(base64.b64encode(imagebinary), "utf-8")
         req_para = {
-            "Source": self.langocr,
+            "Source": self.srclang,
             "Target": self.tgtlang,
             "ProjectId": int(self.multiapikeycurrent["ProjectId"]),
             "Data": encodestr,
@@ -145,11 +146,7 @@ class OCR(baseocr):
                 for _ in r.json()["Response"]["ImageRecord"]["Value"]
             ]
             texts = [
-                (
-                    zhconv.convert(_["TargetText"], "zh-tw")
-                    if (Languages.TradChinese == self.tgtlang_1)
-                    else _["TargetText"]
-                )
+                self.checklangzhconv(self.tgtlang_1, _["TargetText"])
                 for _ in r.json()["Response"]["ImageRecord"]["Value"]
             ]
             return OCRResult(boxs=boxs, texts=texts, isocrtranslate=True)

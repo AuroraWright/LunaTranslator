@@ -2,15 +2,12 @@
 
 ## 下载
 
-### Windows 7 及以上系统
+| 操作系统 | 32位 | 64位 | 说明 |
+| - | - | - | - |
+| Windows 10 & 11 新版本 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | 该版本只支持较新的Windows 10版本，以获取更高性能，更新的系统特性，及更低的病毒误报率。
+| Windows 7 及以上 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> |
+| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | 该版本仅用于支持提取仅能在XP虚拟机内运行的很老游戏的文本，功能残缺、不稳定、运行缓慢，一般不要使用。
 
-<a href="https://lunatranslator.org/Resource/DownloadLuna/64"> 64位 <img style="display:inline-block" src="https://img.shields.io/badge/download_64bit-blue"/> </a>
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/32"> 32位 <img style="display:inline-block" src="https://img.shields.io/badge/download_32bit-blue"/> </a>
-
-### Windows XP & Vista系统
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/xp"> 32位 <img style="display:inline-block" src="https://img.shields.io/badge/download_32bit_XP-blue"/></a>
 
 ## 启动
 
@@ -26,7 +23,7 @@
 
 **LunaTranslator_debug.bat** 会显示命令行窗口
 
-## 无法启动软件
+## 常见错误
 
 ### 找不到重要组件
 
@@ -45,8 +42,14 @@
 ![img](https://image.lunatranslator.org/zh/cantstart/3.png) 
 ::: 
 
+### Error/FileNotFoundError
+
+如果没有预先添加好信任，有可能在软件运行一段时间后，部分必要组件才被杀毒软件删除。然后等到HOOK模式选取进程之后，报出这个错误。解决方法同上。
+
+<img src="https://image.lunatranslator.org/zh/notfound.png" width=400>
+
 ### Error/PermissionError
 
 如果软件被放到`C:\Program Files`等特殊文件夹，可能会无法正常运行。
 
-<img src="https://image.lunatranslator.org/zh/cantstart/6.png"  width=400>
+<img src="https://image.lunatranslator.org/zh/cantstart/6.png" width=400>

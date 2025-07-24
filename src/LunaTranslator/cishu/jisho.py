@@ -1,10 +1,10 @@
-from urllib.parse import quote
 import re, threading
 from cishu.cishubase import cishubase
 from myutils.utils import get_element_by, simplehtmlparser_all, localcachehelper
 
 
 class jisho(cishubase):
+    backgroundparser = "document.querySelectorAll('.lunajishocsswrapper').forEach((ele) => { ele.style.backgroundColor = {color} });"
 
     def init(self):
         self.style = localcachehelper("cishucss/jisho")
@@ -98,7 +98,7 @@ function onclickbtn_xxxxxx_internal(_id) {
 
     def paradown(self, word, key, saver):
 
-        link = "https://jisho.org/{}/{}".format(key, quote(word))
+        link = "https://jisho.org/{}/{}".format(key, word)
         url = link
         html = self.proxysession.get(url).text
 
@@ -152,7 +152,7 @@ function onclickbtn_xxxxxx_internal(_id) {
         ts = []
         saver = {}
         for key in ("word", "search"):
-            ts.append(threading.Thread(target=self.paradown, args=(word, key, saver)))
+            ts.append(threading.Thread(target=self.paradown, args=(word, key, saver), daemon=True))
             ts[-1].start()
         for t in ts:
             t.join()

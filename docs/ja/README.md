@@ -2,15 +2,12 @@
 
 ## ダウンロード
 
-### Windows 7 以降のシステム
+| OS | 32ビット | 64ビット | 説明 |
+| - | - | - | - |
+| Windows 10 & 11（新しいバージョン） |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | このバージョンは、より高い性能、新しいシステム機能、およびより低いウイルスの誤検知率を得るために、新しいWindows 10バージョンのみをサポートしています。
+| Windows 7 以降 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> | |
+| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | このバージョンはXP仮想環境でしか動作しない古いゲームのテキスト抽出専用です。機能制限あり、不安定で動作が遅いため、通常使用
 
-<a href="https://lunatranslator.org/Resource/DownloadLuna/64"> 64ビット <img style="display:inline-block" src="https://img.shields.io/badge/download_64bit-blue"/> </a>
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/32"> 32ビット <img style="display:inline-block" src="https://img.shields.io/badge/download_32bit-blue"/> </a>
-
-### Windows XP & Vista システム
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/xp"> 32ビット <img style="display:inline-block" src="https://img.shields.io/badge/download_32bit_XP-blue"/></a>
 
 ## 起動
 
@@ -26,7 +23,7 @@
 
 - **LunaTranslator_debug.bat** はコマンドラインウィンドウを表示します。
 
-## ソフトウェアが起動しない
+## よくあるエラー
 
 ### 重要なコンポーネントが見つからない
 
@@ -45,7 +42,13 @@
 ![img](https://image.lunatranslator.org/zh/cantstart/3.png) 
 ::: 
 
-### エラー/PermissionError
+### Error/FileNotFoundError
+
+事前に信頼リストに追加していない場合、ソフトウェアがしばらく動作した後で必要なコンポーネントがウイルス対策ソフトに削除される可能性があります。その後、HOOKモードでプロセスを選択した際にこのエラーが発生します。解決方法は上記と同じです。
+
+<img src="https://image.lunatranslator.org/zh/notfound.png" width=400>
+
+### Error/PermissionError
 
 ソフトウェアが`C:\Program Files`などの特殊なフォルダーに配置されている場合、正常に動作しない可能性があります。
 

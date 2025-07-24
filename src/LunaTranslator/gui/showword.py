@@ -16,6 +16,7 @@ from myutils.utils import (
     checkmd5reloadmodule,
     getimageformat,
 )
+from cishu.cishubase import DictTree
 from sometypes import WordSegResult
 from myutils.mecab import mecab
 from myutils.wrapper import threader, tryprint
@@ -39,7 +40,6 @@ from gui.usefulwidget import (
     getsimpleswitch,
     makesubtab_lazy,
     getIconButton,
-    saveposwindow,
     tabadd_lazy,
     threeswitch,
     VisLFormLayout,
@@ -47,6 +47,14 @@ from gui.usefulwidget import (
 from gui.dynalang import LPushButton, LLabel, LTabWidget, LTabBar, LAction
 from myutils.audioplayer import bass_code_cast
 from tts.basettsclass import TTSResult
+
+
+def cishusX():
+    __ = []
+    for K in globalconfig["cishu"]:
+        if os.path.isfile("LunaTranslator/cishu/{}.py".format(K)):
+            __.append(K)
+    return __
 
 
 class AnkiWindow(QWidget):
@@ -71,16 +79,16 @@ class AnkiWindow(QWidget):
 
     def langdu(self):
         self.audiopath.sig = uuid.uuid4()
-        if gobject.baseobject.reader:
-            gobject.baseobject.reader.ttscallback(
+        if gobject.base.reader:
+            gobject.base.reader.ttscallback(
                 self.currentword,
                 functools.partial(self.callbacktts, self.audiopath, self.audiopath.sig),
             )
 
     def langdu2(self):
         self.audiopath_sentence.sig = uuid.uuid4()
-        if gobject.baseobject.reader:
-            gobject.baseobject.reader.ttscallback(
+        if gobject.base.reader:
+            gobject.base.reader.ttscallback(
                 self.example.toPlainText(),
                 functools.partial(
                     self.callbacktts,
@@ -94,12 +102,12 @@ class AnkiWindow(QWidget):
         self.__ocrsettext.emit(ocr_run(img).textonly)
 
     def crophide(self, s=False):
-        currpos = gobject.baseobject.translation_ui.pos()
+        currpos = gobject.base.translation_ui.pos()
         currpos2 = self.window().pos()
         # hide会有隐藏动画残影
         if s:
             self.window().move(-9999, -9999)
-            gobject.baseobject.translation_ui.move(-9999, -9999)
+            gobject.base.translation_ui.move(-9999, -9999)
 
         def ocroncefunction(rect, img=None):
             if not img:
@@ -115,7 +123,7 @@ class AnkiWindow(QWidget):
         def __ocroncefunction(rect, img=None):
             ocroncefunction(rect, img=img)
             if s:
-                gobject.baseobject.translation_ui.move(currpos)
+                gobject.base.translation_ui.move(currpos)
                 self.window().move(currpos2)
 
         rangeselct_function(__ocroncefunction)
@@ -164,7 +172,7 @@ class AnkiWindow(QWidget):
         if idx == 2:
             self.refreshhtml.emit()
 
-    def parse_template(self, template, data):
+    def parse_template(self, template: str, data):
         result = ""
         i = 0
         while i < len(template):
@@ -233,10 +241,10 @@ class AnkiWindow(QWidget):
         self.previewtab.addTab("正面")
         self.previewtab.addTab("背面")
         self.loadedits()
-        self.fronttext.textChanged.connect(lambda: self.refreshhtml.emit())
-        self.backtext.textChanged.connect(lambda: self.refreshhtml.emit())
-        self.csstext.textChanged.connect(lambda: self.refreshhtml.emit())
-        self.previewtab.currentChanged.connect(lambda: self.refreshhtml.emit())
+        self.fronttext.textChanged.connect(self.refreshhtml)
+        self.backtext.textChanged.connect(self.refreshhtml)
+        self.csstext.textChanged.connect(self.refreshhtml)
+        self.previewtab.currentChanged.connect(self.refreshhtml)
 
     def loadedits(self):
         for text, object in zip(
@@ -258,12 +266,12 @@ class AnkiWindow(QWidget):
 
     def loadfileds(self):
         word = self.currentword
-        dictionarys = self.refsearchw.generate_dictionarys()
+        dictionarys = self.refsearchw.wordviewer.generate_dictionarys()
         remarks = self.remarks.toPlainText()
         example = self.example.toPlainText()
         if globalconfig["ankiconnect"]["boldword"]:
             if self.example_hiras is None:
-                _hs = gobject.baseobject.parsehira(example)
+                _hs = gobject.base.parsehira(example)
                 self.example_hiras = mecab.parseastarget(_hs)
             collect = []
             for hira in self.example_hiras:
@@ -281,7 +289,7 @@ class AnkiWindow(QWidget):
             )
 
             dictionaryContent[_["dict"]] = quote(
-                _["content"] + self.refsearchw.loadmdictfoldstate(_["dict"])
+                _["content"] + self.refsearchw.wordviewer.loadmdictfoldstate(_["dict"])
             )
         fields = {
             "word": word,
@@ -382,7 +390,11 @@ class AnkiWindow(QWidget):
         layout.addRow(
             "截图保存格式",
             getsimplecombobox(
-                getimageformatlist(), globalconfig, "imageformat", static=True
+                getimageformatlist(),
+                globalconfig,
+                "imageformat2",
+                static=True,
+                internal=getimageformatlist(),
             ),
         )
         layout.addRow(
@@ -437,8 +449,8 @@ class AnkiWindow(QWidget):
             self,
             "不添加辞书",
             globalconfig["ignoredict"],
-            candidates=list(globalconfig["cishu"].keys()),
-            namemapfunction=lambda k: dynamiccishuname(k),
+            candidates=cishusX(),
+            namemapfunction=dynamiccishuname,
             exec=True,
         )
 
@@ -451,7 +463,7 @@ class AnkiWindow(QWidget):
         if not keystring:
             return
         try:
-            windows.SetForegroundWindow(gobject.baseobject.hwnd)
+            windows.SetForegroundWindow(gobject.base.hwnd)
             time.sleep(0.1)
         except:
             pass
@@ -467,7 +479,7 @@ class AnkiWindow(QWidget):
         for mode in modes:
             windows.keybd_event(mode, 0, windows.KEYEVENTF_KEYUP, 0)
 
-    def startorendrecord(self, btn: QPushButton, ii, target: QLineEdit, idx):
+    def startorendrecord(self, btn: QPushButton, ii: int, target: QLineEdit, idx):
         if idx:
             try:
                 self.recorders[ii] = loopbackrecorder()
@@ -485,7 +497,7 @@ class AnkiWindow(QWidget):
             self.settextsignal.emit(target, file)
 
     def createaddtab(self):
-        self.recorders = {}
+        self.recorders: "dict[int, loopbackrecorder]" = {}
         wid = QWidget()
         layout = QVBoxLayout(wid)
         soundbutton = IconButton("fa.music")
@@ -496,7 +508,12 @@ class AnkiWindow(QWidget):
         cropbutton = getIconButton(
             icon="fa.crop",
             callback=functools.partial(self.crophide, False),
-            callback2=functools.partial(self.crophide, True),
+            tips="截图",
+        )
+        cropbutton2 = getIconButton(
+            icon="fa.crop",
+            callback=functools.partial(self.crophide, True),
+            tips="隐藏并截图",
         )
         grabwindowbtn = getIconButton(
             icon="fa.camera",
@@ -504,11 +521,16 @@ class AnkiWindow(QWidget):
                 getimageformat(),
                 functools.partial(self.settextsignal.emit, self.editpath),
             ),
-            callback2=lambda: grabwindow(
+            tips="窗口截图_gdi",
+        )
+        grabwindowbtn2 = getIconButton(
+            icon="fa.camera",
+            callback=lambda: grabwindow(
                 getimageformat(),
                 functools.partial(self.settextsignal.emit, self.editpath),
                 usewgc=True,
             ),
+            tips="窗口截图_winrt",
         )
 
         def createtbn(target: QLineEdit):
@@ -678,7 +700,9 @@ class AnkiWindow(QWidget):
                                     LLabel("截图"),
                                     self.editpath,
                                     cropbutton,
+                                    cropbutton2,
                                     grabwindowbtn,
+                                    grabwindowbtn2,
                                     folder_open3,
                                     functools.partial(createtbn, self.editpath),
                                 ]
@@ -704,7 +728,7 @@ class AnkiWindow(QWidget):
             pix = QPixmap.fromImage(QImage(src))
         self.viewimagelabel.showpixmap(pix)
 
-    def selecfile2(self, item):
+    def selecfile2(self, item: QLineEdit):
         f = QFileDialog.getOpenFileName(filter=getimagefilefilter() + ";;*")
         res = f[0]
         if res != "":
@@ -719,14 +743,14 @@ class AnkiWindow(QWidget):
     def wordedit_t(self, text):
         self.currentword = text
         if text and len(text):
-            _hs = gobject.baseobject.parsehira(text)
+            _hs = gobject.base.parsehira(text)
             self.zhuyinedit.setPlainText(mecab.makerubyhtml(_hs))
         else:
             self.zhuyinedit.clear()
 
     def maybereset(self, text):
         self.wordedit.setText(text)
-        if gobject.baseobject.currenttext != self.example.toPlainText():
+        if gobject.base.currenttext != self.example.toPlainText():
             self.editpath.clear()
             self.audiopath.clear()
             self.audiopath_sentence.clear()
@@ -769,11 +793,17 @@ class AnkiWindow(QWidget):
             with open("userconfig/anki_2/style.css", "r", encoding="utf8") as ff:
                 model_css = ff.read()
         except:
-            with open("files/html/anki/back.html", "r", encoding="utf8") as ff:
+            with open(
+                r"LunaTranslator\htmlcode/anki/back.html", "r", encoding="utf8"
+            ) as ff:
                 model_htmlback = ff.read()
-            with open("files/html/anki/front.html", "r", encoding="utf8") as ff:
+            with open(
+                r"LunaTranslator\htmlcode/anki/front.html", "r", encoding="utf8"
+            ) as ff:
                 model_htmlfront = ff.read()
-            with open("files/html/anki/style.css", "r", encoding="utf8") as ff:
+            with open(
+                r"LunaTranslator\htmlcode/anki/style.css", "r", encoding="utf8"
+            ) as ff:
                 model_css = ff.read()
         return model_htmlfront, model_htmlback, model_css
 
@@ -888,8 +918,6 @@ class CustomTabBar(LTabBar):
         return self.savesizehint
 
 
-from cishu.cishubase import DictTree
-
 DictNodeRole = Qt.ItemDataRole.UserRole + 1
 DeterminedhasChildren = DictNodeRole + 1
 isWordNode = DeterminedhasChildren + 1
@@ -930,6 +958,7 @@ class DynamicTreeModel(QStandardItemModel):
                 t = c
                 has = False
             else:
+                c: QLineEdit = c
                 t = c.text()
                 has = True
             item = QStandardItem(t.replace("\n", ""))
@@ -949,8 +978,8 @@ class DynamicTreeModel(QStandardItemModel):
     def onDoubleClicked(self, index: QModelIndex):
         if not self.data(index, isWordNode):
             return
-        gobject.baseobject.searchwordW.search_word.emit(
-            self.itemFromIndex(index).text(), False
+        gobject.base.searchwordW.search_word.emit(
+            self.itemFromIndex(index).text(), None, False
         )
 
 
@@ -1071,9 +1100,12 @@ class showdiction(QWidget):
         self.model.clear()
         root = self.model.invisibleRootItem()
         rows = []
-        cishus = []
+
+        from cishu.mdict import mdict
+
+        cishus: list[mdict] = []
         for k in globalconfig["cishuvisrank"]:
-            cishu = gobject.baseobject.cishus.get(k)
+            cishu = gobject.base.cishus.get(k)
             if not hasattr(cishu, "tree"):
                 continue
             cishus.append(cishu)
@@ -1101,55 +1133,55 @@ class showdiction(QWidget):
         root.setData(len(rows) > 0, DeterminedhasChildren)
 
 
-class showwordfastwebview(auto_select_webview):
-    def _createwebview(self, *argc, **kw):
-        web = super()._createwebview(*argc, **kw)
-        if isinstance(web, WebviewWidget):
-            web.html_limit = 1
-        return web
+class WordViewer(QWidget):
+    from_webview_search_word = pyqtSignal(str)
+    from_webview_search_word_in_new_window = pyqtSignal(str)
+    __show_dict_result = pyqtSignal(object, str, str)
+    first_result_shown = pyqtSignal()
+    use_bg_color_parser = False
 
+    @property
+    def readyData(self):
+        _ = {}
+        for __ in self.bad_result:
+            _[__] = None
+        _.update(self.cache_results)
+        return _, self.cache_results_highlighted, self.savemdictfoldstate
 
-class searchwordW(closeashidewindow):
-    search_word = pyqtSignal(str, bool)
-    show_dict_result = pyqtSignal(float, str, str)
-    search_word_in_new_window = pyqtSignal(str)
-    ocr_once_signal = pyqtSignal()
+    @property
+    def currWord(self):
+        return self.__curr_word
 
-    def __init__(self, parent):
-        super(searchwordW, self).__init__(parent, globalconfig["sw_geo"])
-        # self.setWindowFlags(self.windowFlags()&~Qt.WindowMinimizeButtonHint)
-        self.search_word.connect(self.__click_word_search_function)
-        self.search_word_in_new_window.connect(self.searchwinnewwindow)
-        self.show_dict_result.connect(self.__show_dict_result_function)
-        self.ocr_once_signal.connect(lambda: rangeselct_function(self.ocr_do_function))
-        self.state = 0
+    def searchword(
+        self, word: str, sentence: str = None, readydata: dict = None, unuse=None
+    ):
+        word = word.strip()
+        self.__curr_word = word
+        self.save_sentence = sentence
+        current = uuid.uuid4()
+        self.reset(current, unuse=unuse)
+        searchkeys = list(gobject.base.cishus.keys())
+        if readydata:
+            readydata, cache_results_highlighted, savemdictfoldstate = readydata
+            for k, data in readydata.items():
+                self.__show_dict_result.emit(current, k, data)
+                searchkeys.remove(k)
+            self.cache_results_highlighted = cache_results_highlighted
+            self.savemdictfoldstate = savemdictfoldstate
+            if readydata and not self.hasclicked:
+                self.tab.setCurrentIndex(0)
+                self.tab.tabBarClicked.emit(0)
+                self.hasclicked = True
 
-    @threader
-    def ocr_do_function(self, rect, img=None):
-        if not rect:
-            return
-        if not img:
-            img = imageCut(0, rect[0][0], rect[0][1], rect[1][0], rect[1][1])
-        result = ocr_run(img)
-        if result.error:
-            return result.displayerror()
-        self.search_word.emit(result.textonly, False)
-
-    def __load(self):
-        if self.state != 0:
-            return
-        self.state = 1
-        self.setupUi()
-        self.state = 2
-
-    def showEvent(self, e):
-        super().showEvent(e)
-        self.__load()
-        self.activate()
-
-    def activate(self):
-        self.activateWindow()
-        self.searchtext.setFocus()
+        for k in searchkeys:
+            if unuse:
+                if k in unuse:
+                    continue
+            gobject.base.cishus[k].safesearch(
+                functools.partial(self.__show_dict_result.emit, current, k),
+                word,
+                sentence,
+            )
 
     @tryprint
     def __show_dict_result_function(self, timestamp, k, res):
@@ -1165,6 +1197,7 @@ class searchwordW(closeashidewindow):
                 self.tab.tabBarClicked.emit(0)
                 self.hasclicked = True
             self.thisps.pop(k)
+            self.bad_result.add(k)
             return
         self.cache_results[k] = res
 
@@ -1176,10 +1209,184 @@ class searchwordW(closeashidewindow):
         self.tabks.insert(idx, k)
         self.tab.insertTab(idx, (dynamiccishuname(k)))
         if not self.hasclicked:
-            if thisp == max(self.thisps.values()):
+            if self.tabonehide or thisp == max(self.thisps.values()):
                 self.tab.setCurrentIndex(0)
                 self.tab.tabBarClicked.emit(0)
                 self.hasclicked = True
+        if self.__firstresult != timestamp:
+            self.__firstresult = timestamp
+            self.first_result_shown.emit()
+
+    def generate_dictionarys(self):
+        res = []
+        tabks = []
+        for k in self.cache_results:
+            if k in globalconfig["ignoredict"]:
+                continue
+            v = self.cache_results_highlighted.get(k, self.cache_results[k])
+            if len(v) == 0:
+                continue
+            thisp = self.thisps.get(k, 0)
+
+            idx = 0
+            for i in tabks:
+                if i >= thisp:
+                    idx += 1
+            tabks.append(thisp)
+            res.insert(idx, {"dict": k, "content": v})
+        return res
+
+    def reset(self, current, unuse=None):
+        self.current = current
+        pxx = 999
+        use = 0
+        for k in globalconfig["cishuvisrank"]:
+            self.thisps[k] = pxx
+            pxx -= 1
+            if unuse and k in unuse:
+                continue
+            use += 1
+
+        self.hasclicked = False
+        for _ in range(self.tab.count()):
+            self.tab.removeTab(0)
+        self.tabks.clear()
+        if self.tabonehide:
+            self.tab.setVisible(use > 1)
+        self.textOutput.clear()
+        # 状态
+        self.cache_results.clear()
+        self.bad_result.clear()
+        self.cache_results_highlighted.clear()
+        self.savemdictfoldstate.clear()
+
+    def __tabcurrentChanged(self, idx):
+        if self.tabcurrentindex == idx:
+            return
+        self.tabcurrentindex = idx
+        if idx == -1:
+            return
+        if not self.hasclicked:
+            return
+        self.tabclicked(idx)
+
+    internalsizechanged = pyqtSignal(QSize)
+    internalmoved = pyqtSignal(QPoint)
+
+    def __init__(self, parent=None, tabonehide=False, transp=False):
+        super().__init__(parent)
+        self.tabonehide = tabonehide
+        self.__curr_word = ""
+        self.save_sentence = None
+        self.__firstresult = None
+        tablayout = QVBoxLayout(self)
+        self.current = None
+        self.hasclicked = False
+        self.thisps = {}
+        self.tabks = []
+        self.cache_results = {}
+        self.bad_result = set()
+        self.cache_results_highlighted = {}
+        self.tab = CustomTabBar()
+        self.__show_dict_result.connect(self.__show_dict_result_function)
+        self.tab.tabBarClicked.connect(self.tabclicked)
+        self.tabcurrentindex = -1
+
+        self.tab.currentChanged.connect(self.__tabcurrentChanged)
+        self.tabks = []
+
+        class showwordfastwebview(auto_select_webview):
+            def moveEvent(_, a0: QMouseEvent):
+                self.internalmoved.emit(a0.pos())
+                return super().moveEvent(a0)
+
+            def resizeEvent(_, a0: QResizeEvent):
+                self.internalsizechanged.emit(a0.size())
+                return super().resizeEvent(a0)
+
+            def _createwebview(_, *argc, **kw):
+                web = super()._createwebview(transp=transp, *argc, **kw)
+                if isinstance(web, WebviewWidget):
+                    web.html_limit = 1
+                return web
+
+        self.textOutput = showwordfastwebview(self, True)
+        nexti = self.textOutput.add_menu(
+            0, lambda: _TR("查词"), self.from_webview_search_word.emit
+        )
+        nexti = self.textOutput.add_menu(
+            nexti,
+            lambda: _TR("在新窗口中查词"),
+            threader(self.from_webview_search_word_in_new_window.emit),
+        )
+        nexti = self.textOutput.add_menu(
+            nexti, lambda: _TR("翻译"), gobject.base.textgetmethod
+        )
+        nexti = self.textOutput.add_menu(
+            nexti, lambda: _TR("朗读"), gobject.base.read_text
+        )
+        nexti = self.textOutput.add_menu(
+            nexti,
+            lambda: _TR("加亮"),
+            lambda _: self.textOutput.eval("highlightSelection()"),
+        )
+        self.ishightlight = False
+        nexti = self.textOutput.add_menu_noselect(
+            0,
+            lambda: _TR("加亮模式"),
+            lambda: self.textOutput.eval("switch_hightlightmode()"),
+            checkable=True,
+            getchecked=lambda: self.callvalue(),
+        )
+        nexti = self.textOutput.add_menu_noselect(
+            nexti, lambda: _TR("清除加亮"), self.clear_hightlight
+        )
+        self.textOutput.set_zoom(globalconfig.get("ZoomFactor", 1))
+        self.textOutput.on_ZoomFactorChanged.connect(
+            functools.partial(globalconfig.__setitem__, "ZoomFactor")
+        )
+        self.savemdictfoldstate = {}
+        self.textOutput.bind(
+            "switch_hightlightmode_callback", self.switch_hightlightmode_callback
+        )
+        self.textOutput.bind("mdict_fold_callback", self.mdict_fold_callback)
+        self.textOutput.bind(
+            "luna_recheck_current_html", self.luna_recheck_current_html
+        )
+        self.textOutput.bind("luna_search_word", self.from_webview_search_word.emit)
+        self.textOutput.bind(
+            "luna_audio_play_b64",
+            lambda b64: gobject.base.audioplayer.play(
+                base64.b64decode(b64.encode()), force=True
+            ),
+        )
+        tablayout.setContentsMargins(0, 0, 0, 0)
+        tablayout.setSpacing(0)
+        tablayout.addWidget(self.tab)
+        tablayout.addWidget(self.textOutput)
+
+    def callvalue(self):
+        if isinstance(self.textOutput.internal, WebviewWidget):
+            self.textOutput.eval("iswebview2=true")
+            return self.ishightlight
+        # mshtml会死锁。
+        self.ishightlight = not self.ishightlight
+        return self.ishightlight
+
+    def luna_recheck_current_html(self, html):
+        self.cache_results_highlighted[self.tabks[self.tab.currentIndex()]] = html
+
+    def switch_hightlightmode_callback(self, ishightlight):
+        self.ishightlight = ishightlight
+
+    def mdict_fold_callback(self, i, display):
+        self.savemdictfoldstate[i] = display == "none"
+
+    def clear_hightlight(self):
+        self.textOutput.eval("clear_hightlight()")
+        k = self.tabks[self.tab.currentIndex()]
+        if k in self.cache_results_highlighted:
+            self.cache_results_highlighted.pop(k)
 
     def tabclicked(self, idx):
         self.tab.setCurrentIndex(idx)
@@ -1187,12 +1394,29 @@ class searchwordW(closeashidewindow):
         try:
             k = self.tabks[idx]
             html = self.cache_results_highlighted.get(k, self.cache_results[k])
+            backgroundparser = gobject.base.cishus[k].backgroundparser
+            use_github_md_css = gobject.base.cishus[k].use_github_md_css
         except:
             return
-        path = r"files\html\uiwebview\dictionary.html"
-        with open(path, "r", encoding="utf8") as ff:
+        with open(
+            r"LunaTranslator\htmlcode\uiwebview\dictionary.html", "r", encoding="utf8"
+        ) as ff:
             frame = ff.read()
-        html = frame.replace("__luna_dict_internal_view__", html)
+        if use_github_md_css:
+            with open(
+                r"files\static\github-markdown-css\template.html", "r", encoding="utf8"
+            ) as ff:
+                template = ff.read()
+            html = template.replace("__MARKDOWN__BODY__", html)
+        if self.use_bg_color_parser:
+            backgroundparser = backgroundparser.replace(
+                "{color}", "(e.matches ? '' : 'rgba(0,0,0,0)')"
+            )
+        else:
+            backgroundparser = ""
+        html = frame.replace("__luna_dict_internal_view__", html).replace(
+            "__luna_dict_internal_handle_bgcolor__", backgroundparser
+        )
         html += self.loadmdictfoldstate(k)
         self.textOutput.setHtml(html)
 
@@ -1212,17 +1436,60 @@ class searchwordW(closeashidewindow):
             return ""
         return """<script>{}</script>""".format("".join(datas))
 
+
+class searchwordW(closeashidewindow):
+    search_word = pyqtSignal(str, str, bool)
+    search_word_in_new_window = pyqtSignal(str)
+    ocr_once_signal = pyqtSignal()
+
+    def __init__(self, parent):
+        super(searchwordW, self).__init__(parent, globalconfig["sw_geo"])
+        self.search_word.connect(self._click_word_search_function)
+        self.search_word_in_new_window.connect(self.searchwinnewwindow)
+        self.ocr_once_signal.connect(lambda: rangeselct_function(self.ocr_do_function))
+        self.__state = 0
+
+    @threader
+    def ocr_do_function(self, rect, img=None):
+        if not rect:
+            return
+        if not img:
+            img = imageCut(0, rect[0][0], rect[0][1], rect[1][0], rect[1][1])
+        result = ocr_run(img)
+        if result.error:
+            return result.displayerror()
+        self.search_word.emit(result.textonly, None, False)
+
+    def __load(self):
+        if self.__state != 0:
+            return
+        self.__state = 1
+        self.setupUi()
+        self.__state = 2
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        self.__load()
+        self.activate()
+
+    def activate(self):
+        self.activateWindow()
+        self.searchtext.setFocus()
+
+    cachenewwindow: "list[searchwordW]" = []
+
     def searchwinnewwindow(self, word):
-
-        class searchwordWx(searchwordW):
-            def closeEvent(self1, event: QCloseEvent):
-                self1.deleteLater()
-                super(saveposwindow, self1).closeEvent(event)
-
-        _ = searchwordWx(self.parent())
+        # 不应销毁，否则容易崩溃
+        X = None
+        for _ in self.cachenewwindow + [gobject.base.searchwordW]:
+            if not _.isVisible():
+                X = _
+                break
+        if not X:
+            _ = searchwordW(gobject.base.searchwordW.parent())
+            self.cachenewwindow.append(_)
         _.move(_.pos() + QPoint(20, 20))
-        _.show()
-        _.search_word.emit(word, False)
+        _.search_word.emit(word, None, False)
 
     def _createnewwindowsearch(self, _):
         word = self.searchtext.text()
@@ -1255,8 +1522,6 @@ class searchwordW(closeashidewindow):
         self.setWindowTitle("查词")
         self.ankiwindow = AnkiWindow(self)
         self.setWindowIcon(qtawesome.icon("fa.search"))
-        self.thisps = {}
-        self.hasclicked = False
         ww = QWidget(self)
         self.vboxlayout = QVBoxLayout(ww)
         self.searchlayout = QHBoxLayout()
@@ -1284,7 +1549,7 @@ class searchwordW(closeashidewindow):
 
         self.soundbutton = getIconButton(
             icon="fa.music",
-            callback=lambda: gobject.baseobject.read_text(self.searchtext.text()),
+            callback=lambda: gobject.base.read_text(self.searchtext.text()),
             callback2=self.showmenu_auto_sound,
         )
         self.searchlayout.addWidget(self.soundbutton)
@@ -1298,85 +1563,17 @@ class searchwordW(closeashidewindow):
         self.ankiconnect = ankiconnect
         self.searchlayout.addWidget(ankiconnect)
 
-        self.tab = CustomTabBar()
-        self.tab.tabBarClicked.connect(self.tabclicked)
-        self.tabcurrentindex = -1
-
-        def __(idx):
-            if self.tabcurrentindex == idx:
-                return
-            self.tabcurrentindex = idx
-            if idx == -1:
-                return
-            if not self.hasclicked:
-                return
-            self.tabclicked(idx)
-
-        self.tab.currentChanged.connect(__)
-        self.tabks = []
         self.setCentralWidget(ww)
-        self.textOutput = showwordfastwebview(self, True)
-        nexti = self.textOutput.add_menu(
-            0, lambda: _TR("查词"), lambda w: self.search_word.emit(w, False)
-        )
-        nexti = self.textOutput.add_menu(
-            nexti,
-            lambda: _TR("在新窗口中查词"),
-            threader(self.search_word_in_new_window.emit),
-        )
-        nexti = self.textOutput.add_menu(
-            nexti, lambda: _TR("翻译"), gobject.baseobject.textgetmethod
-        )
-        nexti = self.textOutput.add_menu(
-            nexti, lambda: _TR("朗读"), gobject.baseobject.read_text
-        )
-        nexti = self.textOutput.add_menu(
-            nexti,
-            lambda: _TR("加亮"),
-            lambda _: self.textOutput.eval("highlightSelection()"),
-        )
-        self.ishightlight = False
-        nexti = self.textOutput.add_menu_noselect(
-            0,
-            lambda: _TR("加亮模式"),
-            lambda: self.textOutput.eval("switch_hightlightmode()"),
-            checkable=True,
-            getchecked=lambda: self.callvalue(),
-        )
-        nexti = self.textOutput.add_menu_noselect(
-            nexti, lambda: _TR("清除加亮"), self.clear_hightlight
-        )
-        self.textOutput.set_zoom(globalconfig.get("ZoomFactor", 1))
-        self.textOutput.on_ZoomFactorChanged.connect(
-            functools.partial(globalconfig.__setitem__, "ZoomFactor")
-        )
-        self.savemdictfoldstate = {}
-        self.textOutput.bind(
-            "switch_hightlightmode_callback", self.switch_hightlightmode_callback
-        )
-        self.textOutput.bind("mdict_fold_callback", self.mdict_fold_callback)
-        self.textOutput.bind(
-            "luna_recheck_current_html", self.luna_recheck_current_html
-        )
-        self.textOutput.bind(
-            "luna_search_word", lambda word: self.search_word.emit(word, False)
-        )
-        self.textOutput.bind(
-            "luna_audio_play_b64",
-            lambda b64: gobject.baseobject.audioplayer.play(
-                base64.b64decode(b64.encode()), force=True
-            ),
-        )
-        self.cache_results = {}
-        self.cache_results_highlighted = {}
 
         self.spliter = QSplitter()
-        w = QWidget()
-        tablayout = QVBoxLayout(w)
-        tablayout.setContentsMargins(0, 0, 0, 0)
-        tablayout.setSpacing(0)
-        tablayout.addWidget(self.tab)
-        tablayout.addWidget(self.textOutput)
+
+        self.wordviewer = WordViewer()
+        self.wordviewer.from_webview_search_word.connect(
+            lambda _1: self.search_word.emit(_1, None, False)
+        )
+        self.wordviewer.from_webview_search_word_in_new_window.connect(
+            self.search_word_in_new_window
+        )
         self.vboxlayout.addWidget(self.spliter)
         self.isfirstshowdictwidget = True
         self.spliter.setOrientation(
@@ -1386,7 +1583,7 @@ class searchwordW(closeashidewindow):
         )
 
         self.dict_textoutput_spl = QSplitter()
-        self.dict_textoutput_spl.addWidget(w)
+        self.dict_textoutput_spl.addWidget(self.wordviewer)
         self.spliter.addWidget(self.dict_textoutput_spl)
         self.dictbutton.clicked.connect(self.onceaddshowdictwidget)
         self.spliter.addWidget(self.ankiwindow)
@@ -1401,29 +1598,6 @@ class searchwordW(closeashidewindow):
         self.spliter.setStretchFactor(1, 0)
         self.ankiwindow.setMinimumHeight(1)
         self.ankiwindow.setMinimumWidth(1)
-
-    def mdict_fold_callback(self, i, display):
-        self.savemdictfoldstate[i] = display == "none"
-
-    def callvalue(self):
-        if isinstance(self.textOutput.internal, WebviewWidget):
-            self.textOutput.eval("iswebview2=true")
-            return self.ishightlight
-        # mshtml会死锁。
-        self.ishightlight = not self.ishightlight
-        return self.ishightlight
-
-    def switch_hightlightmode_callback(self, ishightlight):
-        self.ishightlight = ishightlight
-
-    def clear_hightlight(self):
-        self.textOutput.eval("clear_hightlight()")
-        k = self.tabks[self.tab.currentIndex()]
-        if k in self.cache_results_highlighted:
-            self.cache_results_highlighted.pop(k)
-
-    def luna_recheck_current_html(self, html):
-        self.cache_results_highlighted[self.tabks[self.tab.currentIndex()]] = html
 
     def onceaddshowdictwidget(self, idx):
         if idx:
@@ -1450,41 +1624,22 @@ class searchwordW(closeashidewindow):
         else:
             self.ankiwindow.hide()
 
-    def generate_dictionarys(self):
-        res = []
-        tabks = []
-        for k in self.cache_results:
-            if k in globalconfig["ignoredict"]:
-                continue
-            v = self.cache_results_highlighted.get(k, self.cache_results[k])
-            if len(v) == 0:
-                continue
-            thisp = self.thisps.get(k, 0)
-
-            idx = 0
-            for i in tabks:
-                if i >= thisp:
-                    idx += 1
-            tabks.append(thisp)
-            res.insert(idx, {"dict": k, "content": v})
-        return res
-
-    def __click_word_search_function(self, word: str, append):
+    def _click_word_search_function(self, word: str, sentence, append, readydata=None):
         self.showNormal()
-        if self.state != 2:
+        if self.__state != 2:
             return
         word = word.strip()
         if append:
             word = self.searchtext.text() + word
         self.searchtext.setText(word)
         self.activate()
-        self.search(word, append)
-        self.ankiwindow.example.setPlainText(gobject.baseobject.currenttext)
+        self.search(word, sentence, append, readydata)
+        self.ankiwindow.example.setPlainText(gobject.base.currenttext)
         if globalconfig["ankiconnect"]["autoruntts"]:
             self.ankiwindow.langdu()
         if globalconfig["ankiconnect"]["autoruntts2"]:
             self.ankiwindow.langdu2()
-        self.ankiwindow.remarks.setPlainText(gobject.baseobject.currenttranslate)
+        self.ankiwindow.remarks.setPlainText(gobject.base.currenttranslate)
         if globalconfig["ankiconnect"]["autocrop"]:
             grabwindow(
                 getimageformat(),
@@ -1501,30 +1656,12 @@ class searchwordW(closeashidewindow):
         self.historys.insert(0, word)
         self.history_btn.setEnabled(True)
 
-    def search(self, word: str, append=False):
-        current = time.time()
-        self.current = current
+    def search(self, word: str, sentence: str = None, append=False, readydata=None):
         word = word.strip()
         if not word:
             return
         self.__parsehistory(word, append)
         if globalconfig["is_search_word_auto_tts"]:
-            gobject.baseobject.read_text(self.searchtext.text())
+            gobject.base.read_text(self.searchtext.text())
         self.ankiwindow.maybereset(word)
-        for i in range(self.tab.count()):
-            self.tab.removeTab(0)
-        self.tabks.clear()
-        self.textOutput.clear()
-        self.cache_results.clear()
-        self.cache_results_highlighted.clear()
-        self.savemdictfoldstate.clear()
-        self.thisps.clear()
-        self.hasclicked = False
-        pxx = 999
-        for k in globalconfig["cishuvisrank"]:
-            self.thisps[k] = pxx
-            pxx -= 1
-        for k, cishu in gobject.baseobject.cishus.items():
-            cishu.safesearch(
-                word, functools.partial(self.show_dict_result.emit, current, k)
-            )
+        self.wordviewer.searchword(word, sentence, readydata=readydata)

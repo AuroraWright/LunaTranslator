@@ -1,5 +1,6 @@
 from translator.basetranslator import basetrans
 import base64
+from language import Languages
 
 
 def crypt(if_de=True):
@@ -14,7 +15,7 @@ def crypt(if_de=True):
     return {v: k for k, v in zip(cipher_key, normal_key)}
 
 
-def encrypt(plain_text):
+def encrypt(plain_text: str):
     encrypt_dictionary = crypt(if_de=False)
     _cipher_text = base64.b64encode(plain_text.encode()).decode()
     return "".join(list(map(lambda k: encrypt_dictionary[k], _cipher_text)))
@@ -26,9 +27,10 @@ def decrypt(cipher_text):
 
 
 class TS(basetrans):
+    def langmap(self):
+        return {Languages.TradChinese: "zh-Hant"}
+
     def init(self):
-        # self.engine=Caiyun()
-        # self.engine._=None
 
         self.token = "token:qgemv4jr1y38jyq6vhvi"
         self.bid = "beba19f9d7f10c74c98334c9e8afcd34"
@@ -53,7 +55,6 @@ class TS(basetrans):
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "cross-site",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 Edg/106.0.1370.52",
             "x-authorization": self.token,
         }
 
@@ -65,11 +66,15 @@ class TS(basetrans):
             headers=headers,
             json=json_data,
         )
-        self.jwt = self.proxysession.post(
+        response = self.proxysession.post(
             "https://api.interpreter.caiyunai.com/v1/user/jwt/generate",
             headers=headers,
             json=json_data,
-        ).json()["jwt"]
+        )
+        try:
+            self.jwt = response.json()["jwt"]
+        except:
+            raise Exception(response)
 
         headers = {
             "authority": "api.interpreter.caiyunai.com",
@@ -90,7 +95,6 @@ class TS(basetrans):
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "cross-site",
             "t-authorization": self.jwt,
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 Edg/106.0.1370.52",
             "x-authorization": self.token,
         }
 

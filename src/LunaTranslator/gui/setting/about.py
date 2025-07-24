@@ -1,25 +1,23 @@
 from qtsymbols import *
-import functools
-import NativeUtils, queue, hashlib, threading
-from myutils.config import globalconfig, static_data, _TR
-from gobject import is_xp, is_bit_64
-from myutils.wrapper import threader, tryprint, trypass
-from myutils.hwnd import getcurrexe
+import functools, re
+import NativeUtils
+from myutils.config import globalconfig, static_data
+from gobject import runtime_for_xp, runtime_bit_64, runtime_for_win10
+from myutils.wrapper import threader
 from myutils.utils import makehtml, getlanguse, dynamiclink
 import requests, importlib
-import shutil, gobject
-from myutils.proxy import getproxy
-import zipfile, os
-import subprocess
+import gobject
+import os
 from traceback import print_exc
 from gui.usefulwidget import (
     D_getsimpleswitch,
     makescrollgrid,
     createfoldgrid,
-    D_getsimplecombobox,
-    D_getIconButton,
+    SuperCombo,
+    getIconButton,
     getsmalllabel,
     getboxlayout,
+    MDLabel,
     NQGroupBox,
     VisLFormLayout,
     clearlayout,
@@ -27,241 +25,44 @@ from gui.usefulwidget import (
 )
 from language import UILanguages, Languages
 from gui.dynalang import LLabel
-
-versionchecktask = queue.Queue()
-
-
-def tryqueryfromhost():
-    wait = threading.Semaphore(0)
-    results = []
-    proxy = getproxy()
-    for i, main_server in enumerate(static_data["main_server"]):
-
-        @threader
-        @trypass
-        def __(i, main_server, proxy):
-
-            res = requests.get(
-                "{main_server}/version".format(main_server=main_server),
-                verify=False,
-                proxies=proxy,
-            )
-            res = res.json()
-            results.append((i, res))
-            wait.release()
-
-        __(i, main_server, proxy)
-        if proxy.get("https"):
-            __(i, main_server, None)
-    wait.acquire()
-    gobject.serverindex = results[0][0]
-    return results[0][1]["version"], results[0][1]
-
-
-def tryqueryfromgithub():
-
-    res = requests.get(
-        "https://api.github.com/repos/HIllya51/LunaTranslator/releases/latest",
-        verify=False,
-    )
-    link = {
-        "64": "https://github.com/HIllya51/LunaTranslator/releases/latest/download/LunaTranslator.zip",
-        "32": "https://github.com/HIllya51/LunaTranslator/releases/latest/download/LunaTranslator_x86.zip",
-    }
-    return res.json()["tag_name"], link
-
-
-def trygetupdate():
-
-    bit = (("32", "64")[is_bit_64], "xp")[is_xp]
-    try:
-        version, links = tryqueryfromhost()
-    except:
-        print_exc()
-        try:
-            version, links = tryqueryfromgithub()
-        except:
-            return None
-    return version, links[bit], links.get("sha256", {}).get(bit, None)
-
-
-def doupdate():
-    if not gobject.baseobject.update_avalable:
-        return
-    if is_xp:
-        _6432 = "32"
-        bit = "_x86_winxp"
-    elif is_bit_64:
-        bit = ""
-        _6432 = "64"
-    else:
-        bit = "_x86"
-        _6432 = "32"
-    shutil.copy(
-        r".\files\plugins\shareddllproxy{}.exe".format(_6432),
-        gobject.getcachedir("Updater.exe"),
-    )
-    subprocess.Popen(
-        r".\cache\Updater.exe update {} .\cache\update\LunaTranslator{}".format(
-            int(gobject.baseobject.istriggertoupdate), bit
-        )
-    )
-
-
-def updatemethod_checkalready(size, savep, sha256):
-    if not os.path.exists(savep):
-        return False
-    if not sha256:
-        return True
-    with open(savep, "rb") as ff:
-        newsha256 = hashlib.sha256(ff.read()).hexdigest()
-        # print(newsha256, sha256)
-        return newsha256 == sha256
-
-
-@tryprint
-def updatemethod(urls, self):
-    url, sha256 = urls
-    check_interrupt = lambda: not (
-        globalconfig["autoupdate"] and versionchecktask.empty()
-    )
-
-    savep = gobject.getcachedir("update/" + url.split("/")[-1])
-    if not savep.endswith(".zip"):
-        savep += ".zip"
-    wait = threading.Semaphore(0)
-    results = []
-    proxies = [None]
-    if getproxy().get("https"):
-        proxies.append(getproxy())
-    for proxy in proxies:
-
-        @threader
-        @trypass
-        def __(proxy):
-
-            r2 = requests.head(url, verify=False, proxies=proxy)
-            results.append((proxy, r2))
-            wait.release()
-
-        __(proxy)
-    wait.acquire()
-    size = int(results[0][1].headers["Content-Length"])
-    if check_interrupt():
-        return
-    if updatemethod_checkalready(size, savep, sha256):
-        return savep
-    with open(savep, "wb") as file:
-        sess = requests.Session()
-        r = sess.get(
-            url,
-            stream=True,
-            verify=False,
-            proxies=results[0][0],
-            headers={"Accept-Encoding": ""},
-        )
-        file_size = 0
-        for i in r.iter_content(chunk_size=1024 * 32):
-            if check_interrupt():
-                return
-            if not i:
-                continue
-            file.write(i)
-            thislen = len(i)
-            file_size += thislen
-
-            prg = int(10000 * file_size / size)
-            prg100 = prg / 100
-            sz = int(1000 * (int(size / 1024) / 1024)) / 1000
-            self.progresssignal4.emit(
-                _TR("总大小_{} MB _进度_{:0.2f}%").format(sz, prg100),
-                prg,
-            )
-
-    if check_interrupt():
-        return
-    if updatemethod_checkalready(size, savep, sha256):
-        return savep
-
-
-def uncompress(self, savep):
-    self.progresssignal4.emit(_TR("正在解压"), 10000)
-    shutil.rmtree(gobject.getcachedir("update/LunaTranslator/"))
-    with zipfile.ZipFile(savep) as zipf:
-        zipf.extractall(gobject.getcachedir("update"))
-
-
-@threader
-def versioncheckthread(self):
-    versionchecktask.put(True)
-    while True:
-        x = versionchecktask.get()
-        gobject.baseobject.update_avalable = False
-        self.progresssignal4.emit("", 0)
-        if not x:
-            continue
-        self.versiontextsignal.emit("获取中")  # ,'',url,url))
-        _version = trygetupdate()
-
-        if _version is None:
-            sversion = "获取失败"
-        else:
-            sversion = _version[0]
-        self.versiontextsignal.emit(sversion)
-        if getcurrexe().endswith("python.exe"):
-            continue
-        version = NativeUtils.QueryVersion(getcurrexe())
-        need = (
-            version
-            and _version
-            and version < tuple(int(_) for _ in _version[0][1:].split("."))
-        )
-        if not (need and globalconfig["autoupdate"]):
-            continue
-        self.progresssignal4.emit("……", 0)
-        savep = updatemethod(_version[1:], self)
-        if not savep:
-            self.progresssignal4.emit(_TR("自动更新失败，请手动更新"), 0)
-            continue
-
-        uncompress(self, savep)
-        gobject.baseobject.update_avalable = True
-        self.progresssignal4.emit(_TR("准备完毕，等待更新"), 10000)
-        gobject.baseobject.showtraymessage(
-            sversion,
-            _TR("准备完毕，等待更新") + "\n" + _TR("点击消息后退出并开始更新"),
-            gobject.baseobject.triggertoupdate,
-        )
+from myutils.updater import versionchecktask
 
 
 def createversionlabel(self):
 
-    versionlabel = LLabel()
+    versionlabel = getsmalllabel()()
     versionlabel.setOpenExternalLinks(False)
     versionlabel.linkActivated.connect(
         lambda _: os.startfile(dynamiclink("/ChangeLog"))
     )
     versionlabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse)
-    try:
-        versionlabel.setText(self.versionlabel_cache)
-    except:
-        pass
-    self.versionlabel = versionlabel
-    return self.versionlabel
+
+    gobject.base.connectsignal(
+        gobject.base.versiontextsignal,
+        functools.partial(versionlabelmaybesettext, versionlabel),
+    )
+    return versionlabel
 
 
-def versionlabelmaybesettext(self, x):
+def versionlabelmaybesettext(versionlabel: QLabel, x):
     x = '<a href="fuck">{}</a>'.format(x)
-    try:
-        self.versionlabel.setText(x)
-    except:
-        self.versionlabel_cache = x
+    versionlabel.setText(x)
 
 
 def delayloadlinks(key):
-    sources = static_data["aboutsource"][key]
+    sources: "list[dict]" = static_data["aboutsource"][key]
     grid = []
     for source in sources:
+        link = source.get("link")
+        if link:
+            grid.append(
+                [
+                    source.get("name", ""),
+                    (makehtml(link, source.get("vis", None)), 2),
+                    source.get("about", ""),
+                ]
+            )
+            continue
         __grid = []
         function = source.get("function")
         if function:
@@ -282,6 +83,7 @@ def delayloadlinks(key):
                     ]
                     + ([link.get("about")] if link.get("about") else [])
                 )
+
         grid.append([dict(title=source.get("name", None), type="grid", grid=__grid)])
     return grid
 
@@ -295,60 +97,129 @@ def changeUIlanguage(_):
     languageChangeEvent = QEvent(QEvent.Type.LanguageChange)
     QApplication.sendEvent(QApplication.instance(), languageChangeEvent)
     try:
-        gobject.baseobject.textsource.setlang()
+        gobject.base.textsource.setlang()
     except:
         pass
 
 
-def updatexx(self):
-    version = NativeUtils.QueryVersion(getcurrexe())
-    if version is None:
-        versionstring = "unknown"
-    else:
-        vs = ".".join(str(_) for _ in version)
-        if vs.endswith(".0"):
-            vs = vs[:-2]
-        versionstring = ("v{}").format(vs)
+def validator(createproxyedit_check: QLabel, text):
+    regExp = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}):(\d{1,5})$")
+    mch = regExp.match(text)
+    for _ in (1,):
 
-    w = NQGroupBox(self)
-    l = VisLFormLayout(w)
-    self.updatelayout = l
-    l.addRow(
-        getboxlayout(
-            [
-                "自动更新",
-                D_getsimpleswitch(
-                    globalconfig,
-                    "autoupdate",
-                    callback=versionchecktask.put,
+        if not mch:
+            break
+        _1, _2, _3, _4, _p = [int(_) for _ in mch.groups()]
+        if _p > 65535:
+            break
+        if any([_ > 255 for _ in [_1, _2, _3, _4]]):
+            break
+        globalconfig["proxy"] = text
+        createproxyedit_check.hide()
+        return
+    if not createproxyedit_check.isVisible():
+        createproxyedit_check.show()
+    createproxyedit_check.setText("Invalid")
+
+
+def proxyusage(self):
+    hbox = QHBoxLayout()
+    hbox.setContentsMargins(0, 0, 0, 0)
+    w2 = QWidget()
+    w2.setEnabled(globalconfig["useproxy"])
+    switch1 = D_getsimpleswitch(globalconfig, "useproxy", callback=w2.setEnabled)()
+    hbox.addWidget(switch1)
+    hbox.addWidget(w2)
+    hbox2 = QHBoxLayout(w2)
+    hbox2.setContentsMargins(0, 0, 0, 0)
+    hbox2.addWidget(QLabel())
+    hbox2.addWidget(LLabel("使用系统代理"))
+
+    w3 = QWidget()
+    hbox3 = QHBoxLayout(w3)
+    hbox3.setContentsMargins(0, 0, 0, 0)
+
+    def __(x):
+        x = not x
+        w3.setVisible(x)
+        if x:
+            if hbox2.count() > 4:
+                hbox2.takeAt(hbox2.count() - 1)
+        else:
+            hbox2.addStretch(0)
+
+    switch2 = D_getsimpleswitch(globalconfig, "usesysproxy", callback=__)()
+    hbox2.addWidget(switch2)
+    hbox2.addWidget(w3)
+    __(globalconfig["usesysproxy"])
+    hbox3.addWidget(QLabel())
+    hbox3.addWidget(LLabel("手动设置代理"))
+    proxy = QLineEdit(globalconfig["proxy"])
+    check = QLabel()
+    hbox3.addWidget(proxy)
+    hbox3.addWidget(check)
+    validator(check, globalconfig["proxy"])
+    proxy.textChanged.connect(functools.partial(validator, check))
+    return hbox
+
+
+def updatexx(self):
+    return getboxlayout(
+        [
+            D_getsimpleswitch(
+                globalconfig,
+                "autoupdate",
+                callback=lambda _: (
+                    versionchecktask.put(_),
+                    (
+                        self.aboutlayout.layout().setRowVisible(3, False)
+                        if not _
+                        else ""
+                    ),
                 ),
-                "",
-                "当前版本",
-                versionstring,
-                "",
-                "最新版本",
-                functools.partial(createversionlabel, self),
-            ]
-        )
+            ),
+            getsmalllabel(""),
+            getsmalllabel("最新版本"),
+            functools.partial(createversionlabel, self),
+            "",
+        ]
     )
 
+
+def progress___(self):
+
     downloadprogress = QProgressBar(self)
-    self.downloadprogress = downloadprogress
     downloadprogress.setRange(0, 10000)
     downloadprogress.setAlignment(
         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
     )
+    self.downloadprogress = downloadprogress
+    return downloadprogress
 
-    try:
-        text, val = self.downloadprogress_cache
-    except:
-        return
+
+def _progresssignal4(
+    updatelayout: VisLFormLayout, downloadprogress: QProgressBar, text, val
+):
     downloadprogress.setValue(val)
     downloadprogress.setFormat(text)
-    l.addRow(downloadprogress)
+    if (val or text) and globalconfig["autoupdate"]:
+        updatelayout.setRowVisible(3, True)
 
-    l.setRowVisible(1, val or text)
-    return w
+
+class MDLabel1(MDLabel):
+    def __init__(self, md, static=False):
+        super().__init__(md, static)
+        self.setOpenExternalLinks(False)
+        self.linkActivated.connect(self._linkActivated)
+
+    def setText(self, t):
+        t = re.sub("<a(.*?)>", '<a\\1 style="color: #E91E63;">', t)
+        super().setText(t)
+
+    def _linkActivated(self, link: str):
+        if link == "/":
+            link = dynamiclink("/", docs=True)
+        os.startfile(link)
 
 
 class aboutwidget(NQGroupBox):
@@ -379,44 +250,25 @@ class aboutwidget(NQGroupBox):
             return
         self.lastlan = getlanguse()
         clearlayout(self.grid)
-        commonlink = [
-            getsmalllabel(
-                makehtml("/Github/LunaTranslator", show="Github")
-            ),
-            getsmalllabel(makehtml("/", show="项目网站")),
-            getsmalllabel(makehtml("", show="使用说明", docs=True)),
-        ]
-        qqqun = [
-            getsmalllabel(makehtml("/Resource/Bilibili", show="Bilibili")),
-            getsmalllabel(
-                makehtml("/Resource/QQGroup", show="QQ群_963119821")
-            ),
-        ]
-        discord = [
-            getsmalllabel(
-                makehtml("/Resource/DiscordGroup", show="Discord")
-            )
-        ]
+        t2 = "软件维护不易，如果您感觉该软件对你有帮助，欢迎微信扫码赞助，您的支持将成为软件长期维护的助力，谢谢~"
+        t3 = "如果使用中遇到困难，可以查阅[使用说明](/)、观看[我的B站视频](https://space.bilibili.com/592120404/video)，也欢迎加入[QQ群963119821](https://qm.qq.com/q/I5rr3uEpi2)、发起[issue](https://github.com/HIllya51/LunaTranslator/issues)来与我交流。"
+        t4 = "软件维护不易，如果您感觉该软件对你有帮助，欢迎成为我的[sponsor](https://patreon.com/HIllya51)，您的支持将成为软件长期维护的助力，谢谢~"
+        t7 = "軟體維護不易，如果您感覺該軟體對你有幫助，歡迎微信掃碼贊助，或成為我的[sponsor](https://patreon.com/HIllya51)，您的支持將成為軟體長期維護的助力，謝謝~"
+        t5 = "如果使用中遇到困難，可以查閱[使用說明](/)、觀看[我的B站影片](https://space.bilibili.com/592120404/video)，也歡迎加入[Discord](https://discord.com/invite/ErtDwVeAbhtB)/[QQ群96311982](https://qm.qq.com/q/I5rr3uEpi2)、發起[issue](https://github.com/HIllya51/LunaTranslator/issues)來與我交流。"
+        t6 = "如果使用中遇到困难，可以查阅[使用说明](/)，也欢迎加入[Discord](https://discord.com/invite/ErtDwVeAbB)、发起[issue](https://github.com/HIllya51/LunaTranslator/issues)来与我交流。"
         if getlanguse() == Languages.Chinese:
-            commonlink += qqqun + [""]
             shuominggrid = [
-                [getboxlayout(commonlink)],
-                ["如果你感觉该软件对你有帮助，欢迎微信扫码赞助，谢谢~"],
+                [functools.partial(MDLabel1, "\n\n".join([t3, t2]), static=True)],
                 [self.createimageview],
             ]
 
-        else:
-            if getlanguse() == Languages.TradChinese:
-                discord = qqqun + discord
-            commonlink += discord + [""]
+        elif getlanguse() == Languages.TradChinese:
             shuominggrid = [
-                [getboxlayout(commonlink)],
-                [],
-                ["如果你感觉该软件对你有帮助，"],
-                [
-                    '欢迎成为我的<a href="https://patreon.com/HIllya51">sponsor</a>。谢谢~'
-                ],
+                [functools.partial(MDLabel1, "\n\n".join([t5, t7]), static=True)],
+                [self.createimageview],
             ]
+        else:
+            shuominggrid = [[functools.partial(MDLabel1, "\n\n".join([t6, t4]))]]
 
         makeforms(self.grid, shuominggrid)
 
@@ -458,34 +310,42 @@ def makelink(repo):
     ]
 
 
+class __delayloadlangs(QHBoxLayout):
+    def __init__(self):
+        super().__init__()
+        self.como = SuperCombo(static=True)
+        self.como.addItem(Languages.fromcode(globalconfig["languageuse2"]).nativename)
+        # Qt6的脑残fontmerging机制导致变得很慢。
+        QTimer.singleShot(0, self.delayload)
+        self.addWidget(self.como)
+
+    def delayload(self):
+        self.como.clear()
+        inner, vis = [_.code for _ in UILanguages], [_.nativename for _ in UILanguages]
+        self.como.addItems(vis, inner)
+        self.como.setCurrentData(globalconfig["languageuse2"])
+        self.como.currentIndexChanged.connect(
+            lambda _: (
+                globalconfig.__setitem__("languageuse2", self.como.getCurrentData()),
+                changeUIlanguage(0),
+            )
+        )
+
+
 def setTab_about(self, basel):
 
-    inner, vis = [_.code for _ in UILanguages], [_.nativename for _ in UILanguages]
     makescrollgrid(
         [
-            [functools.partial(updatexx, self)],
             [
                 dict(
-                    type="grid",
+                    name="aboutlayout",
+                    parent=self,
+                    hiderows=[2, 3],
                     grid=[
-                        [
-                            getsmalllabel("软件显示语言"),
-                            D_getsimplecombobox(
-                                vis,
-                                globalconfig,
-                                "languageuse2",
-                                callback=changeUIlanguage,
-                                static=True,
-                                internal=inner,
-                            ),
-                            D_getIconButton(
-                                callback=lambda: os.startfile(
-                                    os.path.abspath(
-                                        "files/lang/{}.json".format(getlanguse())
-                                    )
-                                ),
-                            ),
-                        ],
+                        ["UI语言", __delayloadlangs],
+                        ["使用代理", functools.partial(proxyusage, self)],
+                        ["自动更新", functools.partial(updatexx, self)],
+                        [functools.partial(progress___, self)],
                     ],
                 ),
             ],
@@ -499,7 +359,10 @@ def setTab_about(self, basel):
                                 delayloadsvg,
                                 "HIllya51/LunaTranslator",
                             ),
-                            '<a href="https://github.com/HIllya51/LunaTranslator">LunaTranslator</a> 使用 <a href="https://github.com/HIllya51/LunaTranslator/blob/main/LICENSE">GPLv3</a> 许可证。',
+                            functools.partial(
+                                MDLabel,
+                                "[LunaTranslator](https://github.com/HIllya51/LunaTranslator)使用[GPLv3](https://github.com/HIllya51/LunaTranslator/blob/main/LICENSE)许可证。",
+                            ),
                         ],
                         [("引用的项目", -1)],
                         makelink("opencv/opencv"),
@@ -529,10 +392,23 @@ def setTab_about(self, basel):
                         makelink("swigger/wechat-ocr"),
                         makelink("rupeshk/MarkdownHighlighter"),
                         makelink("sindresorhus/github-markdown-css"),
+                        makelink("gexgd0419/NaturalVoiceSAPIAdapter"),
+                        makelink("microsoft/PowerToys"),
                     ],
                     "LICENSE",
                 )
             ],
         ],
         basel,
+    )
+
+    gobject.base.connectsignal(
+        gobject.base.progresssignal4,
+        functools.partial(
+            _progresssignal4, self.aboutlayout.layout(), self.downloadprogress
+        ),
+    )
+    gobject.base.connectsignal(
+        gobject.base.showupdatebtn,
+        lambda: self.aboutlayout.layout().setRowVisible(2, True),
     )

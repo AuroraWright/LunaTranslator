@@ -1,6 +1,4 @@
-# Speech Synthesis
-
-## Text-to-Speech Using Different Voices for Different Characters
+# Using Different Voices for Different Characters
 
 First, if the current text does not contain names or other identifying information, you can additionally select the name text in the text selector. The displayed text will be arranged in the order of selection.
 
@@ -9,9 +7,6 @@ Then, in `Game Settings` -> `Voice` (or `Voice Settings` in the settings interfa
 ![img](https://image.lunatranslator.org/zh/tts/1.png) 
 
 However, since the name text is additionally selected, the displayed and translated content includes the name, and the voice will also read the name. To solve this problem, activate `Voice Correction`, where you can use regular expressions to filter out the name and its symbols.
-If `Apply to Translation` is also activated, this voice correction will also remove the name from the displayed and translated content, making the displayed content the same as when the name entry is not selected.
-
-![img](https://image.lunatranslator.org/zh/tts/3.png)   
 
 ## Detailed Explanation of Voice Assignment
 

@@ -12,6 +12,7 @@ from gui.usefulwidget import (
     D_getcolorbutton,
     D_getsimpleswitch,
     clearlayout,
+    ClickableLabel,
     getboxlayout,
     TableViewW,
     saveposwindow,
@@ -21,28 +22,33 @@ from gui.usefulwidget import (
     SuperCombo,
     NQGroupBox,
     getsmalllabel,
-    threebuttons,
+    manybuttonlayout,
     makesubtab_lazy,
     makescrollgrid,
 )
+from traceback import print_exc
 from myutils.keycode import vkcode_map
-import gobject, qtawesome
-from gui.dynalang import LFormLayout, LDialog, LAction
+import gobject, qtawesome, importlib
+from gui.dynalang import LFormLayout, LDialog, LAction, LLabel
 from myutils.ocrutil import ocr_end, ocr_init, ocr_run
 from myutils.wrapper import threader, Singleton
 from gui.setting.about import offlinelinks
-from ocrengines.baseocrclass import OCRResult
+from ocrengines.baseocrclass import OCRResultParsed
 
 
 def __label1(self):
     threshold1label = QLabel()
-    self.thresholdsett1.connect(threshold1label.setText)
+    gobject.base.connectsignal(
+        gobject.base.thresholdsett1, threshold1label.setText
+    )
     return threshold1label
 
 
 def __label2(self):
     threshold2label = QLabel()
-    self.thresholdsett2.connect(threshold2label.setText)
+    gobject.base.connectsignal(
+        gobject.base.thresholdsett2, threshold2label.setText
+    )
     return threshold2label
 
 
@@ -71,7 +77,7 @@ class triggereditor(LDialog):
 
     def __init__(self, parent) -> None:
         super().__init__(parent)
-        self.list = globalconfig["ocr_trigger_events"]
+        self.list: "list[dict]" = globalconfig["ocr_trigger_events"]
 
         self.setWindowTitle("触发事件")
         model = LStandardItemModel()
@@ -84,7 +90,7 @@ class triggereditor(LDialog):
         table.horizontalHeader().setStretchLastSection(True)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode((QAbstractItemView.SelectionMode.SingleSelection))
+        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setWordWrap(False)
         table.setModel(model)
         table.getindexdata = self.__getindexwidgetdata
@@ -99,17 +105,19 @@ class triggereditor(LDialog):
             self.hcmodel.insertRow(row, [QStandardItem(), QStandardItem()])
             combo = SuperCombo()
             combo.addItems(self.vkeys)
-            combo.setCurrentIndex(self.vkeys.index(k["vkey"]))
+            try:
+                combo.setCurrentIndex(self.vkeys.index(k["vkey"]))
+            except:
+                pass
             self.hctable.setIndexWidget(self.hcmodel.index(row, 0), combo)
             combo = SuperCombo()
             combo.addItems(["按下", "松开"])
-            combo.setCurrentIndex(k["event"])
+            combo.setCurrentIndex(k.get("event", 0))
             self.hctable.setIndexWidget(self.hcmodel.index(row, 1), combo)
-        self.buttons = threebuttons(texts=["添加行", "删除行"])
-        self.buttons.btn1clicked.connect(self.click1)
-        self.buttons.btn2clicked.connect(self.hctable.removeselectedrows)
-
-        formLayout.addWidget(self.buttons)
+        buttons = manybuttonlayout(
+            (("添加行", self.click1), ("删除行", self.hctable.removeselectedrows))
+        )
+        formLayout.addLayout(buttons)
         self.resize(600, self.sizeHint().height())
         self.show()
 
@@ -134,6 +142,42 @@ class triggereditor(LDialog):
         self.hctable.setIndexWidget(self.hcmodel.index(0, 1), combo)
 
 
+def safeloadfunction(p, args, file, func, name):
+    try:
+        func = getattr(importlib.import_module(file), func)
+        func(p, args, name)
+    except:
+        print_exc()
+
+
+def checkclickable(name: ClickableLabel):
+    name.setClickable(globalconfig["useproxy"])
+
+
+def renameapi(qlabel: QLabel, apiuid):
+    menu = QMenu(qlabel)
+    useproxy = LAction("使用代理", menu)
+    useproxy.setCheckable(True)
+
+    menu.addAction(useproxy)
+    useproxy.setChecked(globalconfig["ocr"][apiuid].get("useproxy", True))
+    pos = QCursor.pos()
+    action = menu.exec(pos)
+
+    if action == useproxy:
+        globalconfig["ocr"][apiuid]["useproxy"] = useproxy.isChecked()
+
+
+def getrenameablellabel(uid):
+    if globalconfig["ocr"][uid].get("type") in ("offline",):
+        return LLabel(globalconfig["ocr"][uid]["name"])
+    name = ClickableLabel(globalconfig["ocr"][uid]["name"])
+    fn = functools.partial(renameapi, name, uid)
+    name.clicked.connect(fn)
+    name.beforeEnter.connect(functools.partial(checkclickable, name))
+    return name
+
+
 def initgridsources(self, names):
     line = []
     i = 0
@@ -142,7 +186,18 @@ def initgridsources(self, names):
         _f = "Lunatranslator/ocrengines/{}.py".format(name)
         if os.path.exists(_f) == False:
             continue
-        if name in ocrsetting:
+        if globalconfig["ocr"][name].get("argstype", None):
+            _3 = D_getIconButton(
+                callback=functools.partial(
+                    safeloadfunction,
+                    self,
+                    ocrsetting[name]["args"],
+                    "ocrengines." + name,
+                    globalconfig["ocr"][name].get("argstype", None),
+                    globalconfig["ocr"][name]["name"],
+                )
+            )
+        elif name in ocrsetting:
             items = autoinitdialog_items(ocrsetting[name])
             _3 = D_getIconButton(
                 callback=functools.partial(
@@ -160,7 +215,7 @@ def initgridsources(self, names):
             _3 = ""
 
         line += [
-            globalconfig["ocr"][name]["name"],
+            functools.partial(getrenameablellabel, name),
             D_getsimpleswitch(
                 globalconfig["ocr"][name],
                 "use",
@@ -277,15 +332,11 @@ def _ocrparam(self):
     _ocrparam_create(self, globalconfig["ocr_auto_method_v2"])
     return self._ocrparam
 
-
 @Singleton
 class showocrimage(saveposwindow):
-    setimage = pyqtSignal(QImage)
-    setresult = pyqtSignal(list)
-
     def closeEvent(self, e):
-        gobject.baseobject.showocrimage = None
         super().closeEvent(e)
+        self.deleteLater()
 
     def openff(self):
         f = QFileDialog.getOpenFileName(filter=getimagefilefilter())
@@ -314,7 +365,7 @@ class showocrimage(saveposwindow):
         if len(files):
             self.ocrfile(files[0])
 
-    def __init__(self, parent, cached, cached2):
+    def __init__(self, parent):
         self.originimage = None
         super().__init__(parent, poslist=globalconfig["showocrgeo"])
         self.setWindowIcon(qtawesome.icon("fa.picture-o"))
@@ -324,11 +375,13 @@ class showocrimage(saveposwindow):
         self.layout1 = QVBoxLayout(qw)
         self.setAcceptDrops(True)
         self.setCentralWidget(qw)
-        icon = getIconButton(callback=self.openff, icon="fa.folder-open")
+        icon = getIconButton(callback=self.openff, icon="fa.file-image-o")
         button = getIconButton(callback=self.retest, icon="fa.rotate-right")
+        button2 = getIconButton(callback=self.retest2, icon="fa.rotate-right")
         hb = QHBoxLayout()
         hb.addWidget(icon)
         hb.addWidget(button)
+        hb.addWidget(button2)
         self.dial = QSpinBox(self)
         self.dial.setRange(0, 359)
         self.dial.setWrapping(True)
@@ -336,13 +389,14 @@ class showocrimage(saveposwindow):
         self.dial.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         hb.addWidget(self.dial)
         self.layout1.addLayout(hb)
+        self.timecost = QLabel()
+        self.timecost.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.layout1.addWidget(self.timecost)
         self.layout1.addWidget(self.originlabel)
-        self.setimage.connect(self.setimagefunction)
-        self.setresult.connect(self.setocr)
-        if cached:
-            self.setimagefunction(cached)
-        if cached2:
-            self.setocr(cached2)
+        gobject.base.connectsignal(gobject.base.setimage, self.setimagefunction)
+        gobject.base.connectsignal(gobject.base.setresult, self.setocr)
 
     def onValueChanged(self, value):
         if not self.originimage:
@@ -352,21 +406,24 @@ class showocrimage(saveposwindow):
         rotated_image = self.originimage.transformed(transform)
         self.originlabel.showpixmap(QPixmap.fromImage(rotated_image))
 
+    def retest2(self):
+        gobject.base.textgetmethod(self.retest(), is_auto_run=False)
+
     def retest(self):
         if self.originimage is None:
             return
         transform = QTransform()
         transform.rotate(self.dial.value())
         result = ocr_run(self.originimage.transformed(transform))
-        result = result.maybeerror()
+        return result.maybeerror()
 
     def setimagefunction(self, originimage):
         self.originimage = originimage
         self.originlabel.showpixmap(QPixmap.fromImage(originimage))
 
-    def setocr(self, result):
-        result: OCRResult = result[0]
-        self.originlabel.showboxtext(result)
+    def setocr(self, result: OCRResultParsed):
+        self.timecost.setText("time: {}".format(result.timecost))
+        self.originlabel.showboxtext(result.result)
 
 
 def internal(self):
@@ -378,14 +435,16 @@ def internal(self):
     engines = [
         [
             D_getIconButton(
-                callback=gobject.baseobject.createshowocrimage,
+                callback=lambda: showocrimage(self).show(),
                 icon="fa.picture-o",
+                tips="查看",
             ),
             D_getIconButton(
                 callback=lambda: os.startfile(
                     dynamiclink("/useapis/ocrapi.html", docs=True)
                 ),
                 icon="fa.question",
+                tips="使用说明",
             ),
             "",
         ],
@@ -442,7 +501,7 @@ def internal(self):
             D_getsimpleswitch(
                 globalconfig,
                 "multiregion",
-                callback=lambda _: gobject.baseobject.textsource.leaveone(),
+                callback=lambda _: gobject.base.textsource.leaveone(),
             ),
             "",
             "易错内容修正",
@@ -466,7 +525,7 @@ def internal(self):
                 self,
                 globalconfig,
                 "ocrrangecolor",
-                callback=lambda: gobject.baseobject.textsource.setstyle(),
+                callback=lambda _: gobject.base.textsource.setstyle(),
             ),
             "",
             "范围框宽度",
@@ -475,7 +534,7 @@ def internal(self):
                 100,
                 globalconfig,
                 "ocrrangewidth",
-                callback=lambda x: gobject.baseobject.textsource.setstyle(),
+                callback=lambda _: gobject.base.textsource.setstyle(),
             ),
             "",
             "",

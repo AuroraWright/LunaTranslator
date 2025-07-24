@@ -36,7 +36,7 @@ class TS(basetrans):
 
     def unsafegetcurrentgameconfig(self):
         try:
-            gameuid = gobject.baseobject.gameuid
+            gameuid = gobject.base.gameuid
             _path = savehook_new_data[gameuid].get("gamejsonfile", [])
             if isinstance(_path, str):
                 _path = [_path]
@@ -136,5 +136,5 @@ class TS(basetrans):
         if not res:
             res = self.tryfindtranslate_single(content)
         if not res:
-            raise Exception("can't find: " + content)
+            return
         return "\n".join(res)

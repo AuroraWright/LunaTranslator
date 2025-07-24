@@ -1,4 +1,4 @@
-#include "engine32/LovaGame.h"
+﻿#include "engine32/LovaGame.h"
 #include "engine32/VanillawareGC.h"
 #include "engine32/V8.h"
 #include "engine32/cef.h"
@@ -6,6 +6,7 @@
 #include "engine32/Tarte.h"
 #include "engine32/sakanagl.h"
 #include "engine32/H_do_C.h"
+#include "engine32/PixelGameMakerMVplayer.h"
 #include "engine32/LCScript.h"
 #include "engine32/Hug.h"
 #include "engine32/Cage.h"
@@ -27,6 +28,7 @@
 #include "engine32/mirage.h"
 #include "engine32/RScript.h"
 #include "engine32/Sprite.h"
+#include "engine32/Nekotaro.h"
 #include "engine32/PONScripter.h"
 #include "engine32/Stronger.h"
 #include "engine32/Fizz.h"
@@ -44,6 +46,7 @@
 #include "engine32/Bishop.h"
 #include "engine32/HXP.h"
 #include "engine32/morning.h"
+#include "engine32/NUGSystem.h"
 #include "engine32/LucaSystem.h"
 #include "engine32/TSSystem.h"
 #include "engine32/ScrPlayer.h"
@@ -168,6 +171,7 @@
 #include "engine32/ShinyDaysGame.h"
 #include "engine32/MarineHeart.h"
 #include "engine32/ShinaRio.h"
+#include "engine32/LizardFactory.h"
 #include "engine32/CaramelBox.h"
 #include "engine32/Escude.h"
 #include "engine32/Ryokucha.h"
@@ -195,12 +199,11 @@
 #include "engine32/DAC.h"
 #include "engine32/ACTGS.h"
 #include "engine32/e_Erekiteru.h"
-#include "engine32/GuruGuruSMF4.h"
 #include "NoEngine.h"
 #include "engines/mono/mono.h"
 #include "engines/lua/lua51.h"
 #include "engines/python/Renpy.h"
-#include "engines/ppsspp/ppsspp.h"
+#include "emulators/ppsspp.h"
 std::vector<ENGINE *> check_engines()
 {
     return {
@@ -212,6 +215,7 @@ std::vector<ENGINE *> check_engines()
         new mono,
         new sakanagl,
         new PONScripter,
+        new Patisserie,
         new Renpy,
         new Lightvn,
         new KiriKiri,
@@ -368,7 +372,6 @@ std::vector<ENGINE *> check_engines()
         new CaramelBox2,
         new TeethingRing,
         new lua51,
-        new GuruGuruSMF4,
         new A98SYS,
         new godot,
         new Erogos,
@@ -423,7 +426,6 @@ std::vector<ENGINE *> check_engines()
         new Onscripter,
         new TACTICS,
         new RealliveX,
-        new TextXtra_x32,
         new Stronger,
         new RPGMaker,
         new Aisystem6,
@@ -454,5 +456,9 @@ std::vector<ENGINE *> check_engines()
         new GJ,
         new Pinpai,
         new ADVSystem,
+        new NUGSystem,
+        new LizardFactory,
+        new Nekotaro,
+        new PixelGameMakerMVplayer,
     };
 }

@@ -7,12 +7,14 @@ from gui.rendertext.texttype import (
     FenciColor,
 )
 import gobject, windows, json, os, functools, time
+import hashlib, NativeUtils
 from urllib.parse import quote
 from myutils.config import globalconfig, static_data, _TR
 from myutils.wrapper import threader
 import copy, uuid
 from gui.usefulwidget import WebviewWidget
 from sometypes import WordSegResult
+from gui.rendertext.tooltipswidget import tooltipswidget
 
 
 class wordwithcolor:
@@ -30,7 +32,6 @@ class somecommon(dataget):
     def __init__(self):
         self.colorset = set()
         self.ts_klass = {}
-        self.saveiterclasspointer = {}
 
     def debugeval(self, js: str): ...
     def refreshcontent(self): ...
@@ -38,7 +39,6 @@ class somecommon(dataget):
         self.colorset.clear()
         self.ts_klass.clear()
         self.setselectable(globalconfig["selectable"])
-        self.seteditable(globalconfig["editable"])
         self.showhideerror(globalconfig["showtranexception"])
         self.showhideorigin(globalconfig["isshowrawtext"])
         self.showhidetranslate(globalconfig["showfanyi"])
@@ -49,18 +49,23 @@ class somecommon(dataget):
         self.setfontstyle()
         self.setdisplayrank(globalconfig["displayrank"])
         self.sethovercolor(globalconfig["hovercolor"])
+        self.settooltipsstyle(
+            globalconfig["word_hover_bg_color"],
+            globalconfig["word_hover_text_color"],
+            globalconfig["word_hover_border"],
+            globalconfig["word_hover_border_R"],
+        )
         self.verticalhorizontal(globalconfig["verticalhorizontal"])
+        self.setwordhoveruse(globalconfig["word_hover_action_usewb2"])
+        self.set_word_hover_show_word_info(globalconfig["word_hover_show_word_info"])
         self.refreshcontent()
 
     # js api
     def sethovercolor(self, color):
-        self.debugeval('sethovercolor("{}")'.format(quote(color)))
+        self.debugeval('sethovercolor("{}")'.format(self._qcolor_as_rgba(color)))
 
     def setdisplayrank(self, rank):
         self.debugeval("setdisplayrank({})".format(int(rank)))
-
-    def seteditable(self, b):
-        self.debugeval("seteditable({})".format(int(b)))
 
     def setselectable(self, b):
         self.debugeval("setselectable({})".format(int(b)))
@@ -72,8 +77,11 @@ class somecommon(dataget):
         self.debugeval("showhidert({})".format(int(show)))
 
     def showhideclick(self, _=None):
-        show = globalconfig["usesearchword"] or globalconfig["usecopyword"]
-        self.debugeval("showhideclick({})".format(int(show)))
+        self.debugeval(
+            "showhideclick({},{})".format(
+                int(self._clickhovershow), int(self._clickable)
+            )
+        )
 
     def showhidename(self, show):
         self.debugeval("showhidename({})".format(int(show)))
@@ -84,11 +92,30 @@ class somecommon(dataget):
     def showhideorigin(self, show):
         self.debugeval("showhideorigin({})".format(int(show)))
 
+    def setwordhoveruse(self, v):
+        self.debugeval("setwordhoveruse({})".format(int(v)))
+
     def verticalhorizontal(self, v):
         self.debugeval("verticalhorizontal({})".format(int(v)))
 
+    def set_word_hover_show_word_info(self, action):
+        self.debugeval('set_word_hover_show_word_info("{}")'.format(action))
+
     def showhideerror(self, show):
         self.debugeval("showhideerror({})".format(int(show)))
+
+    def _qcolor_as_rgba(self, color: str):
+        c = QColor(color)
+        return "#{:02x}{:02x}{:02x}{:02x}".format(
+            c.red(), c.green(), c.blue(), c.alpha()
+        )
+
+    def settooltipsstyle(self, c1, c2, pd, r):
+        self.debugeval(
+            'settooltipsstyle("{}","{}",{},{})'.format(
+                self._qcolor_as_rgba(c1), self._qcolor_as_rgba(c2), pd, r
+            )
+        )
 
     # native api end
     def setfontstyle(self):
@@ -137,31 +164,35 @@ class somecommon(dataget):
     def clear_all(self):
         self.debugeval("clear_all()")
 
-    def create_internal_text(self, style, styleargs, _id, name, text, args):
+    def create_internal_text(self, clear, style, styleargs, _id, name, text, args):
         name = quote(name)
         text = quote(text)
         args = quote(json.dumps(args))
         styleargs = quote(json.dumps(styleargs))
         self.debugeval(
-            'create_internal_text("{}","{}","{}","{}","{}","{}");'.format(
-                style, styleargs, _id, name, text, args
+            'create_internal_text({},"{}","{}","{}","{}","{}","{}");'.format(
+                int(clear), style, styleargs, _id, name, text, args
             )
         )
 
     def create_internal_rubytext(
-        self, style, styleargs, _id, tag: "list[wordwithcolor]", args
+        self, clear, style, styleargs, _id, tag: "list[wordwithcolor]", args
     ):
         tag = quote(json.dumps(tuple(_.as_dict() for _ in tag)))
         args = quote(json.dumps(args))
         styleargs = quote(json.dumps(styleargs))
         self.debugeval(
-            'create_internal_rubytext("{}","{}","{}","{}","{}");'.format(
-                style, styleargs, _id, tag, args
+            'create_internal_rubytext({},"{}","{}","{}","{}","{}");'.format(
+                int(clear), style, styleargs, _id, tag, args
             )
         )
 
+    def updatetext(self, texttype: TextType, text, hira, color: ColorControl):
+        self.append(False, False, texttype, "", text, hira, color, None)
+
     def iter_append(
         self,
+        clear,
         iter_context_class,
         texttype: TextType,
         name,
@@ -169,23 +200,34 @@ class somecommon(dataget):
         color: ColorControl,
         klass,
     ):
-
-        if iter_context_class not in self.saveiterclasspointer:
-            _id = self.createtextlineid(texttype, klass)
-            self.saveiterclasspointer[iter_context_class] = _id
-
-        _id = self.saveiterclasspointer[iter_context_class]
-        self._webview_append(_id, name, text, [], color)
+        _id = self.createtextlineid(texttype, klass)
+        self._webview_append(clear, _id, name, text, [], color)
 
     def createtextlineid(self, texttype: TextType, klass: str):
         self.setfontextra(klass)
-        _id = "luna_{}".format(uuid.uuid4())
+        _id = "luna_{}".format(
+            hashlib.md5((str(texttype) + str(klass)).encode()).hexdigest()
+        )
         self.create_div_line_id(_id, texttype, klass)
         return _id
 
-    def append(self, texttype: TextType, name, text, tag, color: ColorControl, klass):
+    def append(
+        self,
+        updateTranslate,
+        clear,
+        texttype: TextType,
+        name,
+        text,
+        tag,
+        color: ColorControl,
+        klass,
+    ):
         _id = self.createtextlineid(texttype, klass)
-        self._webview_append(_id, name, text, tag, color)
+        if updateTranslate:
+            if clear:
+                self.debugeval('cleartranslate("{}")'.format(_id))
+            return
+        self._webview_append(clear, _id, name, text, tag, color)
 
     def _getstylevalid(self):
         currenttype = globalconfig["rendertext_using_internal"]["webview"]
@@ -197,7 +239,13 @@ class somecommon(dataget):
         return currenttype
 
     def _webview_append(
-        self, _id, name, text: str, tag: "list[WordSegResult]", color: ColorControl
+        self,
+        clear,
+        _id,
+        name,
+        text: str,
+        tag: "list[WordSegResult]",
+        color: ColorControl,
     ):
         self._setcolors(color)
         style = self._getstylevalid()
@@ -214,21 +262,18 @@ class somecommon(dataget):
                 color=color.asklass(),
                 kanacolor=SpecialColor.KanaColor.asklass(),
             )
-            self.create_internal_rubytext(style, styleargs, _id, tagx, args)
+            self.create_internal_rubytext(clear, style, styleargs, _id, tagx, args)
         else:
             sig = "LUNASHOWHTML"
             userawhtml = text.startswith(sig)
             if userawhtml:
                 text = text[len(sig) :]
-
             args = dict(color=color.asklass(), userawhtml=userawhtml)
-
-            self.create_internal_text(style, styleargs, _id, name, text, args)
+            self.create_internal_text(clear, style, styleargs, _id, name, text, args)
 
     def clear(self):
 
         self.clear_all()
-        self.saveiterclasspointer.clear()
 
     def _setcolors(self, color: ColorControl = None):
         if color in self.colorset:
@@ -263,6 +308,7 @@ class TextBrowser(WebviewWidget, somecommon):
     contentsChanged = pyqtSignal(QSize)
     _switchcursor = pyqtSignal(Qt.CursorShape)
     _isDragging = pyqtSignal(bool)
+    __tooltipshelper = pyqtSignal(object)
 
     def event(self, a0: QEvent) -> bool:
         if a0.type() == QEvent.Type.User + 2:
@@ -270,35 +316,19 @@ class TextBrowser(WebviewWidget, somecommon):
         return super().event(a0)
 
     def __starttrans0checker(self):
-        if gobject.baseobject.translation_ui.transparent_value_actually == 0:
-            self.trans0checker.start()
+        if gobject.base.translation_ui.transparent_value_actually == 0:
+            self.trans0checker.start(50)
         else:
             self.trans0checker.stop()
 
     def __checkmousestate(self):
         if not self.geometry().contains(self.mapFromGlobal(QCursor.pos())):
             return
-        lb = windows.GetKeyState(windows.VK_LBUTTON) < 0
-        rb = windows.GetKeyState(windows.VK_RBUTTON) < 0
-        if not lb and not rb:
-            return
-        uid = uuid.uuid4()
-        self.trans0checkercheck = uid
-        self.eval(
-            "report_clickword_positions()", functools.partial(self.__callback, rb, uid)
-        )
+        self.eval("report_clickword_positions()", self.__callback)
 
-    @threader
-    def __callback(self, rb1, uid, result):
-        time.sleep(0.05)
-        if uid != self.trans0checkercheck:
-            return
-        lb = windows.GetKeyState(windows.VK_LBUTTON) < 0
-        rb = windows.GetKeyState(windows.VK_RBUTTON) < 0
-        if lb or rb:
-            return
+    def getundermouseword(self, result):
+
         z = self.get_zoom()
-
         for ww in json.loads(result):
             __ = ww["x"], ww["y"], ww["w"], ww["h"]
             x, y, w, h = (_ * z for _ in __)
@@ -309,34 +339,62 @@ class TextBrowser(WebviewWidget, somecommon):
             rect.setHeight(h)
             if not rect.contains(QCursor.pos()):
                 continue
-            gobject.baseobject.clickwordcallback(ww["word"], rb1)
-            break
+            return ww["word"]
+
+    @threader
+    def __callback(self, result):
+        word = self.getundermouseword(result)
+        if not word:
+            self.__tooltipshelper.emit(tooltipswidget.hidetooltipwindow)
+            return
+        self.__tooltipshelper.emit(
+            functools.partial(
+                tooltipswidget.tracetooltipwindow,
+                WordSegResult.from_dict(word),
+                QCursor.pos(),
+            )
+        )
+        lb = windows.GetKeyState(windows.VK_LBUTTON) < 0
+        rb1 = windows.GetKeyState(windows.VK_RBUTTON) < 0
+        if not lb and not rb1:
+            return
+        uid = uuid.uuid4()
+        self.trans0checkercheck = uid
+        time.sleep(0.05)
+        if uid != self.trans0checkercheck:
+            return
+        lb = windows.GetKeyState(windows.VK_LBUTTON) < 0
+        rb = windows.GetKeyState(windows.VK_RBUTTON) < 0
+        if lb or rb:
+            return
+        gobject.base.clickwordcallback(word, rb1)
+
+    @threader
+    def menusearchword(self, w: str):
+        sentence = gobject.base.currenttext
+        if w not in sentence:
+            sentence = None
+        gobject.base.searchwordW.search_word.emit(
+            w.replace("\n", "").strip(), sentence, False
+        )
 
     def __init__(self, parent) -> None:
         super().__init__(parent, transp=True, loadext=globalconfig["webviewLoadExt"])
         # webview2当会执行alert之类的弹窗js时，若qt窗口不可视，会卡住
         self.setMouseTracking(True)
-        nexti = self.add_menu(
-            0,
-            lambda: _TR("查词"),
-            threader(
-                lambda w: gobject.baseobject.searchwordW.search_word.emit(
-                    w.replace("\n", "").strip(), False
-                )
-            ),
-        )
+        nexti = self.add_menu(0, lambda: _TR("查词"), self.menusearchword)
         nexti = self.add_menu(
             nexti,
             lambda: _TR("翻译"),
-            lambda w: gobject.baseobject.textgetmethod(w.replace("\n", "").strip()),
+            lambda w: gobject.base.textgetmethod(w.strip()),
         )
         nexti = self.add_menu(
             nexti,
             lambda: _TR("朗读"),
-            lambda w: gobject.baseobject.read_text(w.replace("\n", "").strip()),
+            lambda w: gobject.base.read_text(w.strip()),
         )
         self.add_menu_noselect(0, lambda: _TR("清空"), self.___cleartext)
-        self.bind("calllunaclickedword", gobject.baseobject.clickwordcallback)
+        self.bind("calllunaclickedword", gobject.base.clickwordcallback)
         self.bind("calllunaMouseMove", self.calllunaMouseMove)
         self.bind("calllunaMousePress", self.calllunaMousePress)
         self.bind("calllunaMouseRelease", self.calllunaMouseRelease)
@@ -344,6 +402,7 @@ class TextBrowser(WebviewWidget, somecommon):
         self.bind("calllunaEnter", self.calllunaEnter)
         self.bind("calllunaLeave", self.calllunaLeave)
         self.bind("calllunaloadready", self.calllunaloadready)
+        self.bind("calllunaMouseHoverWord", self.calllunaMouseHoverWord)
         self.set_zoom(globalconfig.get("ZoomFactor2", 1))
         self.on_ZoomFactorChanged.connect(
             functools.partial(globalconfig.__setitem__, "ZoomFactor2")
@@ -356,16 +415,17 @@ class TextBrowser(WebviewWidget, somecommon):
             lambda b: self.setselectable(False if b else globalconfig["selectable"])
         )
         self.loadex()
+        self.__tooltipshelper.connect(lambda f: f())
         self.trans0checkercheck = None
         self.trans0checker = QTimer(self)
         self.trans0checker.timeout.connect(self.__checkmousestate)
 
     def ___cleartext(self):
-        self.parent().clear()
-        gobject.baseobject.currenttext = ""
+        self.parent().clear(False)
+        gobject.base.currenttext = ""
 
     def refreshcontent(self):
-        gobject.baseobject.translation_ui.translate_text.refreshcontent()
+        gobject.base.translation_ui.translate_text.refreshcontent()
 
     def refreshcontent_before(self):
         self.debugeval("refreshcontent_before()")
@@ -404,7 +464,7 @@ class TextBrowser(WebviewWidget, somecommon):
     def loadex_(extra=None):
         if not extra:
             extra = TextBrowser.loadextra()
-        basepath = r"files\html\uiwebview\mainui.html"
+        basepath = r"LunaTranslator\htmlcode\uiwebview\mainui.html"
         if not extra:
             return os.path.abspath(basepath)
         with open(basepath, "r", encoding="utf8") as ff:
@@ -420,7 +480,7 @@ class TextBrowser(WebviewWidget, somecommon):
             return
         for _ in [
             "userconfig/extrahtml.html",
-            r"files\html\uiwebview\extrahtml\mainui.html",
+            r"LunaTranslator\htmlcode\uiwebview\extrahtml\mainui.html",
         ]:
             if not os.path.exists(_):
                 continue
@@ -432,12 +492,13 @@ class TextBrowser(WebviewWidget, somecommon):
         self.eval(js)
 
     def calllunaheightchange(self, h):
-        self.contentsChanged.emit(
-            QSize(
-                self.width(),
-                int(h * self.get_zoom()),
-            )
+        sz = QSizeF(
+            self.width(),
+            h * self.get_zoom(),
         )
+        if gobject.runtime_for_xp:
+            sz *= NativeUtils.GetDevicePixelRatioF(int(self.winId()))
+        self.contentsChanged.emit(sz.toSize())
 
     def parsemousebutton(self, i):
         btn_map = {
@@ -484,6 +545,15 @@ class TextBrowser(WebviewWidget, somecommon):
             Qt.KeyboardModifier.NoModifier,
         )
         QApplication.sendEvent(self, event)
+
+    def calllunaMouseHoverWord(self, event, x, y, word: str):
+        if event in ("mouseenter", "mousemove"):
+            tooltipswidget.tracetooltipwindow(
+                WordSegResult.from_dict((word)),
+                self.mapToGlobal(self.parsexyaspos(x, y).toPoint()),
+            )
+        elif event == "mouseleave":
+            tooltipswidget.hidetooltipwindow()
 
     def calllunaMouseMove(self, x, y):
         if globalconfig["selectable"] and globalconfig["selectableEx"]:

@@ -1,10 +1,10 @@
 import json, base64, re, string, random, codecs
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode, urlsplit, quote, parse_qsl, urlunsplit
 from functools import partial
 from myutils.config import globalconfig
 from network.structures import CaseInsensitiveDict
 
-default_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+default_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
 
 default_timeout = 10
 
@@ -58,7 +58,7 @@ class Response:
         try:
             return self.content.decode(self.charset)
         except:
-            raise Exception("unenable to decode with {}".format(self.charset))
+            raise RequestException("unenable to decode with {}".format(self.charset))
 
     @property
     def charset(self):
@@ -172,10 +172,13 @@ class Requester_common:
             return data
 
     def _parseurl(self, url: str, param):
-        url = url.strip()
-        scheme, server, path, query, _ = urlsplit(url)
+        url = url.lstrip()
+        scheme, server, path, query, frag = urlsplit(url)
+        path = quote(path, safe=":/")
         if scheme not in ["https", "http"]:
-            raise Exception("unknown scheme " + scheme)
+            raise RequestException(
+                "unknown scheme {} for invalid url {}".format(scheme, url)
+            )
         spl = server.split(":")
         if len(spl) == 2:
             server = spl[0]
@@ -187,12 +190,16 @@ class Requester_common:
             else:
                 port = 80
         else:
-            raise Exception("invalid url")
+            raise RequestException("invalid url " + url)
+        query = urlencode(parse_qsl(query), doseq=True)
         if param:
             param = self._encode_params(param)
-            query += ("&" if len(query) else "") + param
-        if len(query):
+            query += ("&" if query else "") + param
+
+        if query:
             path += "?" + query
+        if frag:
+            path += "#" + frag
         url = scheme + "://" + server + path
         return scheme, server, port, path, url
 
@@ -402,12 +409,11 @@ class Session:
         if self._libidx == idx:
             return self._requester
         if idx == 1:
-            from network.libcurl.requester import Requester
+            from network.client.libcurl.requester import Requester
         elif idx == 0:
-            from network.winhttp.requester import Requester
+            from network.client.winhttp.requester import Requester
         self._requester = Requester()
         self._libidx = idx
-        # 不需要设置Accept-Encoding，会自动处理。设置了反而有问题。
         self.headers.update({"User-Agent": self._requester.default_UA})
         return self._requester
 

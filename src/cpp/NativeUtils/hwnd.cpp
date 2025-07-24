@@ -1,6 +1,17 @@
 ﻿#include <dbghelp.h>
 #include <uiautomation.h>
 #include "osversion.hpp"
+#ifndef WINXP
+#include <shellscalingapi.h>
+#else
+#include "../xpundef/xp_shellscalingapi.h"
+#endif
+
+#ifndef WINXP
+#define FUCKPRIVI PROCESS_QUERY_LIMITED_INFORMATION
+#else
+#define FUCKPRIVI (GetOSVersion().IsleWinXP() ? PROCESS_QUERY_INFORMATION : PROCESS_QUERY_LIMITED_INFORMATION)
+#endif
 
 DECLARE_API void SetWindowInTaskbar(HWND hwnd, bool show, bool tool)
 {
@@ -23,11 +34,6 @@ DECLARE_API void SetWindowInTaskbar(HWND hwnd, bool show, bool tool)
     }
     SetWindowLong(hwnd, GWL_EXSTYLE, style_ex);
 }
-#ifndef WINXP
-#define FUCKPRIVI PROCESS_QUERY_LIMITED_INFORMATION
-#else
-#define FUCKPRIVI (GetOSVersion().IsleWinXP() ? PROCESS_QUERY_INFORMATION : PROCESS_QUERY_LIMITED_INFORMATION)
-#endif
 DECLARE_API bool IsProcessRunning(DWORD pid)
 {
     CHandle hprocess{OpenProcess(FUCKPRIVI, FALSE, pid)};
@@ -181,13 +187,9 @@ DECLARE_API bool GetSelectedText(void (*cb)(const wchar_t *))
     }
     return succ;
 }
-DECLARE_API HANDLE SimpleCreateEvent(LPCWSTR N)
+DECLARE_API LPSECURITY_ATTRIBUTES GetSecurityAttributes()
 {
-    return CreateEventW(&allAccess, FALSE, FALSE, N);
-}
-DECLARE_API HANDLE SimpleCreateMutex(LPCWSTR N)
-{
-    return CreateMutexW(&allAccess, FALSE, N);
+    return &allAccess;
 }
 DECLARE_API HANDLE CreateAutoKillProcess(LPCWSTR command, LPCWSTR path, DWORD *pid)
 {
@@ -265,7 +267,7 @@ typedef struct
     DWORD BasePriority;
     ULONG UniqueProcessId;
     ULONG InheritedFromUniqueProcessId;
-} PROCESS_BASIC_INFORMATION;
+} __PROCESS_BASIC_INFORMATION;
 
 #define ProcessBasicInformation 0
 typedef LONG(__stdcall *PROCNTQSIP)(HANDLE, UINT, PVOID, ULONG, PULONG);
@@ -274,7 +276,7 @@ DECLARE_API DWORD GetParentProcessID(DWORD dwProcessId)
 {
     LONG status;
     DWORD dwParentPID = (DWORD)-1;
-    PROCESS_BASIC_INFORMATION pbi;
+    __PROCESS_BASIC_INFORMATION pbi;
 
     PROCNTQSIP NtQueryInformationProcess = (PROCNTQSIP)GetProcAddress(
         GetModuleHandle(L"ntdll"), "NtQueryInformationProcess");
@@ -294,7 +296,7 @@ DECLARE_API DWORD GetParentProcessID(DWORD dwProcessId)
     status = NtQueryInformationProcess(hProcess,
                                        ProcessBasicInformation,
                                        (PVOID)&pbi,
-                                       sizeof(PROCESS_BASIC_INFORMATION),
+                                       sizeof(__PROCESS_BASIC_INFORMATION),
                                        NULL);
 
     // Copy parent Id on success
@@ -311,23 +313,7 @@ DECLARE_API void MouseMoveWindow(HWND hwnd)
     SendMessage(hwnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, NULL);
 }
 
-#ifndef WINXP
-#include <shellscalingapi.h>
-#else
-typedef enum MONITOR_DPI_TYPE
-{
-    MDT_EFFECTIVE_DPI = 0,
-    MDT_ANGULAR_DPI = 1,
-    MDT_RAW_DPI = 2,
-    MDT_DEFAULT = MDT_EFFECTIVE_DPI
-} MONITOR_DPI_TYPE;
-STDAPI GetDpiForMonitor(
-    _In_ HMONITOR hmonitor,
-    _In_ MONITOR_DPI_TYPE dpiType,
-    _Out_ UINT *dpiX,
-    _Out_ UINT *dpiY);
-#endif
-DECLARE_API bool NeedUseSysMove()
+DECLARE_API bool IsMultiDifferentDPI()
 {
     int numMonitors = GetSystemMetrics(SM_CMONITORS);
     if (numMonitors <= 1)

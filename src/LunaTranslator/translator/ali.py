@@ -1,11 +1,9 @@
-import re, html
+import html
 from translator.basetranslator import basetrans
-from language import Languages
 
 
 class TS(basetrans):
-    def langmap(self):
-        return {Languages.TradChinese: "zh-tw"}
+    needzhconv = True
 
     def init(self):
 
@@ -31,7 +29,6 @@ class TS(basetrans):
                 "sec-fetch-site": "same-origin",
                 "sec-fetch-user": "?1",
                 "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53",
             },
         ).text
 
@@ -61,7 +58,6 @@ class TS(basetrans):
             "sec-fetch-site": "same-origin",
             "sec-fetch-user": "?1",
             "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53",
         }
         form_data = {
             "srcLang": self.srclang,

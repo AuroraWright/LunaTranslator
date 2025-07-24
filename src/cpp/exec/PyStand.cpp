@@ -5,6 +5,26 @@
 #include <sstream>
 #include <chrono>
 #include <ctime>
+#include <filesystem>
+#include <shlwapi.h>
+#include <atlbase.h>
+#include "../common.hpp"
+
+#ifdef WIN10ABOVE
+#define RUNTIME L"runtime31264"
+#else
+#ifdef WINXP
+#define RUNTIME L"runtime3432"
+#else
+#ifdef _WIN64
+#define RUNTIME L"runtime3764"
+#else
+#define RUNTIME L"runtime3732"
+#endif
+#endif
+#endif
+#define FILES L"files\\"
+#define FILESRUNTIME FILES RUNTIME
 
 //---------------------------------------------------------------------
 // dtor
@@ -119,6 +139,25 @@ bool PyStand::LoadPython()
 	SetCurrentDirectoryW(runtime.c_str());
 	// LoadLibrary
 
+#ifdef WIN10ABOVE
+	// win10版将runtime路径设为DLL搜索路径，优先使用自带的高级vcrt
+	//  这样，即使将主exe静态编译，也能加载runtime中的vcrt
+	SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+	SetDllDirectoryW(runtime.c_str());
+#else
+	WCHAR env[65535];
+	GetEnvironmentVariableW(L"PATH", env, 65535);
+	auto newenv = std::wstring(env) + L";" + runtime;
+#ifndef WINXP
+	// win7版优先使用系统自带的，系统没有再用自带的
+	;
+#else
+	// xp版把这些路径都加进去
+	newenv += L";" + runtime + L"Lib/site-packages/PyQt5";
+#endif
+	SetEnvironmentVariableW(L"PATH", newenv.c_str());
+#endif
+
 	std::wstring pydll = runtime + L"\\" + PYDLL;
 	_hDLL = (HINSTANCE)LoadLibraryW(pydll.c_str());
 	if (_hDLL)
@@ -177,7 +216,8 @@ int PyStand::RunString(const wchar_t *script)
 
 #ifdef WINXP
 	auto Py_SetPath = (void (*)(const wchar_t *))GetProcAddress(_hDLL, "Py_SetPath");
-	Py_SetPath(L"./files/runtime/Lib;./files/runtime/DLLs;./files/runtime/Lib/site-packages");
+	std::wstring path = std::wstring(FILESRUNTIME) + L"\\Lib;" + FILESRUNTIME + L"\\DLLs;" + FILESRUNTIME + L"\\Lib\\site-packages";
+	Py_SetPath(path.c_str());
 #endif
 	hr = _Py_Main((int)_py_args.size(), &_py_args[0]);
 	return hr;
@@ -203,7 +243,7 @@ int PyStand::DetectScript()
 	_script.clear();
 
 	std::wstring test;
-	test = _home + L"\\LunaTranslator\\LunaTranslator_main.py";
+	test = _home + L"\\LunaTranslator\\main.py";
 	if (PathFileExistsW(test.c_str()))
 	{
 		_script = test;
@@ -322,7 +362,8 @@ int main()
 			return 0;
 	}
 	CHandle __handle{CreateMutexA(&allAccess, FALSE, "LUNA_UPDATER_BLOCK")};
-	PyStand ps(L"files\\runtime");
+
+	PyStand ps(FILESRUNTIME);
 	if (ps.DetectScript() != 0)
 	{
 		return 3;

@@ -184,9 +184,9 @@ https://ocr.space/
 
 == 本地OCR
 
-内置仅已包含日语识别模型。
+内置已包含中日英语的轻量级识别模型。如果需要识别其他语言，需要在`资源下载`中添加对应语言的识别模型。
 
-如果需要识别其他语言，需要在`资源下载`中添加对应语言的识别模型。
+`资源下载`中还提供了中日英语的高精度模型。如果使用的软件版本为Win10版，或系统为Windows11，还可以设置使用GPU运行模型，来提高高精度模型的识别效率。
 
 == SnippingTool
 
@@ -248,7 +248,7 @@ GPU整合包 https://lunatranslator.org/Resource/IntegrationPack/manga_ocr/gpu
 
 若要返回所有支持的语言包的列表，请以管理员身份打开 PowerShell（右键单击，然后选择“以管理员身份运行”），并输入以下命令：
 
-```
+```powershell
 Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*' }
 ```
 
@@ -277,8 +277,8 @@ State : NotPresent
 
 以下为安装“en-US”OCR 包的命令：
 
-```
-$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }`
+```powershell
+$Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Add-WindowsCapability -Online
 ```
 
@@ -286,7 +286,7 @@ $Capability | Add-WindowsCapability -Online
 
 以下为移除“en-US”OCR 包的命令：
 
-```
+```powershell
 $Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
 $Capability | Remove-WindowsCapability -Online
 ```

@@ -1,7 +1,7 @@
 from qtsymbols import *
 import os, functools
 import gobject
-from myutils.utils import splitocrtypes
+from myutils.utils import splitocrtypes, dynamiclink
 from myutils.config import globalconfig
 from gui.inputdialog import (
     autoinitdialog_items,
@@ -9,6 +9,7 @@ from gui.inputdialog import (
     autoinitdialog,
     yuyinzhidingsetting,
 )
+from gui.dynalang import LAction, LLabel
 from tts.basettsclass import TTSbase
 from gui.setting.about import offlinelinks
 from gui.usefulwidget import (
@@ -20,6 +21,7 @@ from gui.usefulwidget import (
     D_getsimpleswitch,
     getboxlayout,
     getboxwidget,
+    ClickableLabel,
     check_grid_append,
 )
 
@@ -27,42 +29,24 @@ from gui.usefulwidget import (
 def showvoicelist(self, obj: TTSbase):
 
     if obj is None:
-        try:
-            self.voicecombo.clear()
-        except:
-            pass
-        try:
-            self.pitch____.setEnabled(False)
-        except:
-            pass
-        try:
-            self.rate____.setEnabled(False)
-        except:
-            pass
+        self.voicecombo.clear()
+        self.pitch____.setEnabled(False)
+        self.rate____.setEnabled(False)
         return
     vl = obj.voiceshowlist
     idx = obj.voicelist.index(obj.voice)
-    try:
-        self.pitch____.setEnabled("pitch" not in obj.arg_not_sup)
-    except:
-        self.pitch____c = "pitch" not in obj.arg_not_sup
-    try:
-        self.rate____.setEnabled("rate" not in obj.arg_not_sup)
-    except:
-        self.rate____c = "rate" not in obj.arg_not_sup
-    try:
+    self.pitch____.setEnabled(obj.arg_support_pitch)
+    self.rate____.setEnabled(obj.arg_support_speed)
 
-        self.voicecombo.clear()
-        self.voicecombo.addItems(vl)
-        self.voicecombo.setCurrentIndex(idx)
-    except:
-        self.voicecombo_cache = vl, idx
+    self.voicecombo.clear()
+    self.voicecombo.addItems(vl)
+    self.voicecombo.setCurrentIndex(idx)
 
 
 def changevoice(self, _):
-    if gobject.baseobject.reader is None:
+    if gobject.base.reader is None:
         return
-    gobject.baseobject.reader.voice = gobject.baseobject.reader.voicelist[
+    gobject.base.reader.voice = gobject.base.reader.voicelist[
         self.voicecombo.currentIndex()
     ]
 
@@ -81,10 +65,6 @@ def createrate(self):
             ),
         ],
     )
-    try:
-        self.rate____.setEnabled(self.rate____c)
-    except:
-        self.rate____.setEnabled(False)
     return self.rate____
 
 
@@ -102,29 +82,51 @@ def createpitch(self):
             ),
         ],
     )
-    try:
-        self.pitch____.setEnabled(self.pitch____c)
-    except:
-        self.pitch____.setEnabled(False)
     return self.pitch____
 
 
 def createvoicecombo(self):
 
-    self.voicecombo = FocusCombo()
+    self.voicecombo = FocusCombo(sizeX=True)
     self.voicecombo.currentTextChanged.connect(lambda x: changevoice(self, x))
-    try:
-        vl, idx = self.voicecombo_cache
-        self.voicecombo.addItems(vl)
-        if idx >= 0:
-            self.voicecombo.setCurrentIndex(idx)
-    except:
-        pass
+
     return self.voicecombo
 
 
 def setTab5(self, l):
     makescrollgrid(setTab5lz(self), l)
+
+    gobject.base.connectsignal(
+        gobject.base.voicelistsignal, functools.partial(showvoicelist, self)
+    )
+
+
+def renameapi(qlabel: QLabel, apiuid):
+    menu = QMenu(qlabel)
+    useproxy = LAction("使用代理", menu)
+    useproxy.setCheckable(True)
+
+    menu.addAction(useproxy)
+    useproxy.setChecked(globalconfig["reader"][apiuid].get("useproxy", True))
+    pos = QCursor.pos()
+    action = menu.exec(pos)
+
+    if action == useproxy:
+        globalconfig["reader"][apiuid]["useproxy"] = useproxy.isChecked()
+
+
+def checkclickable(name: ClickableLabel):
+    name.setClickable(globalconfig["useproxy"])
+
+
+def getrenameablellabel(uid):
+    if globalconfig["reader"][uid].get("type") in ("offline",):
+        return LLabel(globalconfig["reader"][uid]["name"])
+    name = ClickableLabel(globalconfig["reader"][uid]["name"])
+    fn = functools.partial(renameapi, name, uid)
+    name.beforeEnter.connect(functools.partial(checkclickable, name))
+    name.clicked.connect(fn)
+    return name
 
 
 def getttsgrid(self, names):
@@ -141,7 +143,7 @@ def getttsgrid(self, names):
         if "args" in globalconfig["reader"][name]:
             items = autoinitdialog_items(globalconfig["reader"][name])
             items[-1]["callback"] = functools.partial(
-                gobject.baseobject.startreader, name, True, True
+                gobject.base.startreader, name, True, True
             )
             _3 = D_getIconButton(
                 callback=functools.partial(
@@ -160,7 +162,7 @@ def getttsgrid(self, names):
             _3 = ""
 
         line += [
-            globalconfig["reader"][name]["name"],
+            functools.partial(getrenameablellabel, name),
             D_getsimpleswitch(
                 globalconfig["reader"][name],
                 "use",
@@ -172,7 +174,7 @@ def getttsgrid(self, names):
                     globalconfig["reader"],
                     "ttswitchs",
                     name,
-                    gobject.baseobject.startreader,
+                    gobject.base.startreader,
                 ),
                 pair="ttswitchs",
             ),
@@ -201,6 +203,12 @@ def setTab5lz(self):
         [
             dict(
                 title="引擎",
+                button=D_getIconButton(
+                    icon="fa.question",
+                    callback=lambda: os.startfile(
+                        dynamiclink("/ttsengines.html", docs=True)
+                    ),
+                ),
                 grid=[
                     [dict(title="离线", type="grid", grid=offilesgrid)],
                     [dict(title="在线", type="grid", grid=getttsgrid(self, online))],
@@ -300,8 +308,11 @@ def setTab5lz(self):
                                             ],
                                             "语音修正",
                                             ["正则", "转义", "原文", "替换"],
+                                            extraX=globalconfig["ttscommon"],
                                         )
                                     ),
+                                    "",
+                                    "",
                                     "",
                                 ],
                             ],

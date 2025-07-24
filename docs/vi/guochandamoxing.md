@@ -1,15 +1,17 @@
-# Dịch Thuật Trực Tuyến Mô Hình Lớn
+# Giao diện dịch mô hình lớn
+
+## Dịch Thuật Trực Tuyến Mô Hình Lớn
 
 ::: details Sử Dụng Nhiều Giao Diện Mô Hình Lớn Đồng Thời?
 Nếu bạn chỉ có nhiều khóa khác nhau và muốn luân phiên sử dụng chúng, chỉ cần tách chúng bằng `|`.
 
 Tuy nhiên, đôi khi bạn có thể muốn sử dụng nhiều địa chỉ giao diện API, lời nhắc, mô hình hoặc tham số khác nhau đồng thời để so sánh kết quả dịch thuật. Đây là cách thực hiện:
 
-1. Nhấp vào nút "+" ở góc dưới bên phải.
+1. Nhấp vào nút "+" ở phía trên
    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi1.png)
-2. Một cửa sổ sẽ xuất hiện. Chọn giao diện mô hình lớn chung và đặt tên cho nó. Điều này sẽ sao chép các cài đặt và API của giao diện mô hình lớn chung hiện tại.
+1. Một cửa sổ sẽ xuất hiện. Chọn giao diện mô hình lớn chung và đặt tên cho nó. Điều này sẽ sao chép các cài đặt và API của giao diện mô hình lớn chung hiện tại.
    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi2.png)
-3. Kích hoạt giao diện đã sao chép và cấu hình nó riêng biệt. Giao diện đã sao chép có thể chạy song song với giao diện gốc, cho phép bạn sử dụng nhiều cài đặt khác nhau đồng thời.
+1. Kích hoạt giao diện đã sao chép và cấu hình nó riêng biệt. Giao diện đã sao chép có thể chạy song song với giao diện gốc, cho phép bạn sử dụng nhiều cài đặt khác nhau đồng thời.
    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi3.png)
 :::
 
@@ -148,3 +150,11 @@ Thay thế `{endpoint}` và `{deployName}` bằng endpoint và deployName của 
 **API Key** https://platform.minimaxi.com/document/Fast%20access?key=66701cf51d57f38758d581b2
 
 :::
+
+## Dịch Ngoại Tuyến Mô Hình Lớn
+
+### Giao Diện Chung Cho Mô Hình Lớn
+
+Bạn cũng có thể sử dụng các công cụ như [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama), [one-api](https://github.com/songquanpeng/one-api) để triển khai các mô hình, sau đó điền địa chỉ và mô hình.
+
+Bạn cũng có thể sử dụng các nền tảng như Kaggle để triển khai mô hình lên đám mây, trong trường hợp này bạn có thể cần sử dụng SECRET_KEY; nếu không, bạn có thể bỏ qua tham số SECRET_KEY.

@@ -2,15 +2,11 @@
 
 ## Tải xuống
 
-### Hệ thống Windows 7 trở lên
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/64"> 64-bit <img style="display:inline-block" src="https://img.shields.io/badge/download_64bit-blue"/> </a>
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/32"> 32-bit <img style="display:inline-block" src="https://img.shields.io/badge/download_32bit-blue"/> </a>
-
-### Hệ thống Windows XP & Vista
-
-<a href="https://lunatranslator.org/Resource/DownloadLuna/xp"> 32-bit <img style="display:inline-block" src="https://img.shields.io/badge/download_32bit_XP-blue"/></a>
+| Hệ điều hành | 32-bit | 64-bit | Mô tả |
+| - | - | - | - |
+| Windows 10 & 11 (phiên bản mới) |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | Phiên bản này chỉ hỗ trợ các phiên bản Windows 10 mới hơn để đạt hiệu suất cao hơn, tính năng hệ thống cập nhật và tỷ lệ dương tính giả vi-rút thấp hơn.
+| Windows 7 trở lên | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> | |
+| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | Phiên bản này chỉ dùng để trích xuất văn bản từ các game rất cũ chỉ chạy được trên máy ảo XP. Chức năng hạn chế, không ổn định và chạy chậm. Không khuyến nghị dùng thường xuyên.
 
 ## Khởi chạy
 
@@ -26,7 +22,7 @@ Nhưng vui lòng không đặt phần mềm vào các đường dẫn đặc bi�
 
 - **LunaTranslator_debug.bat** sẽ hiển thị cửa sổ dòng lệnh.
 
-## Không thể khởi động phần mềm
+## Lỗi Thường Gặp
 
 ::: danger
 Đôi khi phần mềm có thể bị gắn cờ bởi phần mềm diệt virus. Vui lòng thêm vào danh sách tin cậy và tải xuống, giải nén lại.
@@ -45,7 +41,13 @@ Lưu ý: Để thực hiện việc HOOK trích xuất văn bản trò chơi, c�
 ![img](https://image.lunatranslator.org/zh/cantstart/3.png) 
 ::: 
 
-### Lỗi/PermissionError
+### Error/FileNotFoundError
+
+Nếu không thêm vào danh sách tin cậy trước, có thể sau một thời gian phần mềm chạy, một số thành phần quan trọng sẽ bị phần mềm diệt virus xóa. Sau đó khi chọn tiến trình trong chế độ HOOK, lỗi này sẽ xuất hiện. Cách khắc phục giống như trên.
+
+<img src="https://image.lunatranslator.org/zh/notfound.png" width=400>
+
+### Error/PermissionError
 
 Nếu phần mềm được đặt trong các thư mục đặc biệt như `C:\Program Files`, có thể không hoạt động đúng cách.
 

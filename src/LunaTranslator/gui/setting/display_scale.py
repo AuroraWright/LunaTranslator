@@ -5,10 +5,11 @@ from gui.usefulwidget import (
     D_getspinbox,
     createfoldgrid,
     D_getsimpleswitch,
+    getsimplepatheditor,
     SuperCombo,
 )
 from myutils.magpie_builtin import AdapterService
-import functools
+import functools, os
 
 
 class SuperCombo__1(SuperCombo):
@@ -18,10 +19,15 @@ class SuperCombo__1(SuperCombo):
 def adapterchangedcallback(combo: SuperCombo, adapterinfos: list):
     combo.blockSignals(True)
     combo.clear()
-    adapterinfos.sort(key=lambda _: _[0])
+    print(adapterinfos)
     infosx = list(_[:3] for _ in adapterinfos)
     visx = list(_[3] for _ in adapterinfos)
-    combo.addItems(["默认"] + visx, [(-1, 0, 0)] + infosx)
+    default = "默认"
+    if visx:
+        default = "默认_[[({})]]".format(visx[0])
+    for i in range(len(visx)):
+        visx[i] = "[[{}]]".format(visx[i])
+    combo.addItems([default] + visx, [[-1, 0, 0]] + infosx)
     combo.blockSignals(False)
     graphicsCardId: dict = magpie_config["profiles"][globalconfig["profiles_index"]][
         "graphicsCardId"
@@ -31,10 +37,7 @@ def adapterchangedcallback(combo: SuperCombo, adapterinfos: list):
         graphicsCardId["vendorId"],
         graphicsCardId["deviceId"],
     )
-    if curr not in infosx:
-        combo.setCurrentIndex(0)
-    else:
-        combo.setCurrentIndex(infosx.index(curr) + 1)
+    combo.setCurrentData(list(curr))
 
 
 def __changed(combo: SuperCombo, idx):
@@ -52,8 +55,18 @@ def createadaptercombo():
     combo = SuperCombo__1()
     combo.signal.connect(functools.partial(adapterchangedcallback, combo))
     combo.currentIndexChanged.connect(functools.partial(__changed, combo))
-    AdapterService().init(combo.signal.emit)
+    AdapterService.init(combo.signal.emit)
     return combo
+
+
+def __getsavedir():
+    screenshotsDir = magpie_config["overlay"]["screenshotsDir"]
+    if not screenshotsDir:
+        try:
+            return os.path.join(os.environ["USERPROFILE"], r"Pictures\Screenshots")
+        except:
+            pass
+    return screenshotsDir
 
 
 def makescalew():
@@ -99,17 +112,36 @@ def makescalew():
                                 "3DGameMode",
                             ),
                         ],
-                        [
-                            "工具栏初始状态",
-                            D_getsimplecombobox(
-                                ["关闭", "始终显示", "自动隐藏"],
-                                magpie_config["overlay"],
-                                "initialToolbarState",
-                            ),
-                        ],
                     ]
                 ),
             ),
+        ],
+        [
+            dict(
+                title="工具栏",
+                grid=[
+                    [
+                        "工具栏初始状态",
+                        D_getsimplecombobox(
+                            ["关闭", "始终显示", "自动隐藏"],
+                            magpie_config["overlay"],
+                            "initialToolbarState",
+                        ),
+                    ],
+                    [
+                        "截图保存目录",
+                        functools.partial(
+                            getsimplepatheditor,
+                            text=__getsavedir(),
+                            isdir=True,
+                            clearset=__getsavedir,
+                            callback=functools.partial(
+                                magpie_config["overlay"].__setitem__, "screenshotsDir"
+                            ),
+                        ),
+                    ],
+                ],
+            )
         ],
         [
             dict(
@@ -252,10 +284,10 @@ def makescalew():
                         [
                             "最小帧率",
                             D_getsimplecombobox(
-                                ["0", "5", "10", "20", "30"],
+                                ["0", "5", "10", "15", "20", "30", "60"],
                                 magpie_config,
                                 "minFrameRate",
-                                internal=[0, 5, 10, 20, 30],
+                                internal=[0, 5, 10, 15, 20, 30, 60],
                             ),
                         ],
                         [

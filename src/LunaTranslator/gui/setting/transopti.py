@@ -1,5 +1,5 @@
 from qtsymbols import *
-import functools, os
+import functools, os, gobject
 from myutils.post import POSTSOLVE
 from myutils.utils import (
     selectdebugfile,
@@ -14,6 +14,8 @@ from gui.usefulwidget import (
     D_getIconButton_mousefollow,
     getIconButton,
     D_getsimpleswitch,
+    getcenterX,
+    getboxlayout,
     makescrollgrid,
     makesubtab_lazy,
 )
@@ -23,15 +25,6 @@ from gui.inputdialog import (
     autoinitdialog_items,
     postconfigdialog2x,
 )
-
-
-def delaysetcomparetext(self, s, x):
-    try:
-        self.__fromtext.setPlainText(s)
-        self.__totext.setPlainText(x)
-    except:
-        self.__fromtext_cache = s
-        self.__totext_cache = x
 
 
 def getcomparelayout(self):
@@ -48,13 +41,11 @@ def getcomparelayout(self):
     layout.addWidget(fromtext)
     layout.addWidget(solvebutton)
     layout.addWidget(totext)
-    self.__fromtext = fromtext
-    self.__totext = totext
-    try:
-        fromtext.setPlainText(self.__fromtext_cache)
-        totext.setPlainText(self.__totext_cache)
-    except:
-        pass
+    gobject.base.connectsignal(
+        gobject.base.showandsolvesig,
+        lambda s, x: (fromtext.setPlainText(s), totext.setPlainText(x)),
+    )
+
     return w
 
 
@@ -64,12 +55,14 @@ def setTab7_lazy(self, basel: QLayout):
             D_getIconButton(
                 lambda: os.startfile(dynamiclink("/textprocess.html", docs=True)),
                 "fa.question",
+                tips="使用说明",
             ),
             ("预处理方法", 5),
             "",
             "",
             "",
-            ("调整执行顺序", 6),
+            getcenterX("调整执行顺序"),
+            ("", 5),
         ]
     ]
     for k in postprocessconfig:
@@ -179,8 +172,17 @@ def setTab7_lazy(self, basel: QLayout):
             D_getsimpleswitch(postprocessconfig[post], "use"),
             config,
             "",
-            button_up,
-            button_down,
+            getcenterX(
+                getboxlayout(
+                    [
+                        "",
+                        button_up,
+                        button_down,
+                        "",
+                    ]
+                ),
+                widget=True,
+            ),
         ]
         grids.append(l)
     grids2 = [
@@ -188,6 +190,7 @@ def setTab7_lazy(self, basel: QLayout):
             D_getIconButton(
                 lambda: os.startfile(dynamiclink("/transoptimi.html", docs=True)),
                 "fa.question",
+                tips="使用说明",
             )
         ]
     ]
@@ -206,7 +209,7 @@ def setTab7_lazy(self, basel: QLayout):
             if setting:
                 kwarg = dict(callback=functools.partial(__, setting, self))
                 if name == "myprocess":
-                    kwarg.update(dict(icon="fa.edit"))
+                    kwarg.update(icon="fa.edit")
                 grids2[-1].append(D_getIconButton(**kwarg))
     grids2 += [[("", 15)]]
 

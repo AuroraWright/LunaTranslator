@@ -11,11 +11,16 @@ set(sources PyStand.cpp luna.rc ${versioninfo})
 add_executable(LunaTranslator WIN32 ${sources})
 if(NOT WINXP)
 add_executable(LunaTranslator_admin WIN32 ${sources})
-target_precompile_headers(LunaTranslator_admin REUSE_FROM pch) 
 endif()
-target_precompile_headers(LunaTranslator REUSE_FROM pch)
-#target_precompile_headers(LunaTranslator_debug REUSE_FROM pch) 
-
+set_target_properties(LunaTranslator PROPERTIES
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+)
+if(NOT WINXP)
+set_target_properties(LunaTranslator_admin PROPERTIES
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+)
+endif()
+if(MSVC)
 if(${CMAKE_SIZEOF_VOID_P} EQUAL 4)
     set_target_properties(LunaTranslator PROPERTIES LINK_FLAGS "/LARGEADDRESSAWARE")
     #set_target_properties(LunaTranslator_debug PROPERTIES LINK_FLAGS "/LARGEADDRESSAWARE")
@@ -24,4 +29,5 @@ if(${CMAKE_SIZEOF_VOID_P} EQUAL 4)
     endif()
 else()
     set_target_properties(LunaTranslator_admin PROPERTIES LINK_FLAGS "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\"")
+endif()
 endif()

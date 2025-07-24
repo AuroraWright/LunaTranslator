@@ -41,11 +41,6 @@ Some buttons have two icons to indicate two different states. Some buttons only 
     The actual meaning is to read text once from the clipboard regardless of the current default text input source and pass it on to the subsequent translation/tts/... process
 
     Right clicking the button will append the read text to the current text.
-1. #### <i class="fa fa-heart"></i> <i class="fa fa-icon fa-rotate-right"></i> Favorites
-    Able to create a small favorites folder for each game. It includes automatically query metadata for game-related pages such as vndb/bangumi/dlsite/, and you can also manually add some web pages associated with the game (such as game strategy pages) for easy viewing. It saves the trouble of creating and managing bookmarks in a browser.
-
-    Right clicking the button will bring up a menu listing the favorite web pages, while left clicking the button will bring up a window allowing editing of the favorite content.
-
 1. #### <i class="fa fa-futbol"></i> <i class="fa fa-icon fa-rotate-right"></i> Game Settings
     When using HOOK mode to connect to a game, or using OCR mode to bind a game window, you can directly open the current game's settings window through this button
 1. #### <i class="fa fa-mouse-pointer"></i> <i class="btnstatus2 fa fa-mouse-pointer"></i> Mouse Through Window
@@ -141,7 +136,7 @@ Some buttons have two icons to indicate two different states. Some buttons only 
   
     This reading will ignore `Skip` (if in `Voice Settings`, the current text target is matched as `Skip`, then using the button for reading will ignore the skip and force the reading).
 1. #### <i class="fa fa-copy"></i> <i class="fa fa-icon fa-rotate-right"></i> Copy to Clipboard
-    Copy the currently extracted text to the clipboard once. If you want to automatically extract to the clipboard, you should activate `Text Input` -> `Text Output` -> `Clipboard` -> `Auto Output`.
+    Copy the currently extracted text to the clipboard once. If you want to automatically extract to the clipboard, enable `Core Settings` → `Clipboard` → `Output` → `Auto Output Text` and underneath it `Content` → `Original Text`.
 1. #### <i class="fa fa-rotate-left"></i> <i class="fa fa-icon fa-rotate-right"></i> Show/Hide History Text  
     Open or close the history text window.
 1. #### <i class="fa fa-gamepad"></i> <i class="fa fa-icon fa-rotate-right"></i> Game Management
@@ -177,9 +172,6 @@ Some buttons have two icons to indicate two different states. Some buttons only 
     Make the text in the translation window's text area selectable.
 
     If the right mouse button is clicked during activation, dragging non-text areas to move the window will be prohibited.
-
-1. #### <i class="fa fa-italic"></i> <i class="btnstatus2 fa fa-italic"></i> Editable
-    Only valid when displayed in Webview2. Make the text within the window editable.
 
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> Look Up
     If there is currently text selected, the selected text will be queried and a word search window will be opened. Otherwise, it will only open or close the keyword search window.

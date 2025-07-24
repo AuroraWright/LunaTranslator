@@ -1,10 +1,25 @@
-class NoEngine : public ENGINE
+﻿class NoEngine : public ENGINE
 {
 public:
     bool attach_function()
     {
-        ConsoleOutput("IGNORE %s", getenginename());
+        ConsoleOutput("IGNORE %s", getenginename().c_str());
         return false;
+    }
+};
+class Patisserie : public NoEngine
+{
+public:
+    Patisserie()
+    {
+        // Patisserie
+        // DINGIR（ディンギル）
+        // 这作依赖于python23.dll，会被匹配到renpy，执行PyRun_SimpleString，PyGILState_Release。执行PyGILState_Release时会崩溃，原因未知，且GDI32函数就可以读取到文本，故予跳过。
+        check_by = CHECK_BY::CUSTOM;
+        check_by_target = []()
+        {
+            return GetModuleHandle(L"python23.dll") && GetModuleHandle(L"GR.dll") && Util::CheckFile(L"dingir/data/bg.bin") && Util::CheckFile(L"dingir/data/abb/*.abb");
+        };
     }
 };
 class oldSystem40ini : public NoEngine

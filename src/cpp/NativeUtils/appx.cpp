@@ -1,48 +1,15 @@
 ﻿
 #ifndef WINXP
 #include <appmodel.h>
+#include <roapi.h>
+#include <Windows.Management.Deployment.h>
+#include <Windows.Foundation.Collections.h>
 #else
-#define PACKAGE_FILTER_HEAD 0x00000010
-extern "C"
-{
-    WINBASEAPI
-    _Check_return_
-        _Success_(return == ERROR_SUCCESS)
-            _On_failure_(_Unchanged_(*count))
-                _On_failure_(_Unchanged_(*bufferLength))
-                    LONG
-        WINAPI
-        GetPackagesByPackageFamily(
-            _In_ PCWSTR packageFamilyName,
-            _Inout_ UINT32 *count,
-            _Out_writes_opt_(*count) PWSTR *packageFullNames,
-            _Inout_ UINT32 *bufferLength,
-            _Out_writes_opt_(*bufferLength) WCHAR *buffer);
-    WINBASEAPI
-    _Success_(return == ERROR_SUCCESS)
-        LONG
-        WINAPI
-        GetPackagePathByFullName(
-            _In_ PCWSTR packageFullName,
-            _Inout_ UINT32 *pathLength,
-            _Out_writes_opt_(*pathLength) PWSTR path);
-    WINBASEAPI
-    _Check_return_
-        _Success_(return == ERROR_SUCCESS)
-            _On_failure_(_Unchanged_(*count))
-                _On_failure_(_Unchanged_(*bufferLength))
-                    LONG
-        WINAPI
-        FindPackagesByPackageFamily(
-            _In_ PCWSTR packageFamilyName,
-            _In_ UINT32 packageFilters,
-            _Inout_ UINT32 *count,
-            _Out_writes_opt_(*count) PWSTR *packageFullNames,
-            _Inout_ UINT32 *bufferLength,
-            _Out_writes_opt_(*bufferLength) WCHAR *buffer,
-            _Out_writes_opt_(*count) UINT32 *packageProperties);
-}
+#include "../xpundef/xp_winrt.hpp"
+#include "../xpundef/xp_appmodel.h"
 #endif
+
+#include "winrt/hstring.hpp"
 
 std::optional<std::wstring> FindPackage(const wchar_t *packageFamilyName)
 {
@@ -124,4 +91,40 @@ DECLARE_API void GetPackagePathByPackageFamily(const wchar_t *packageFamilyName,
     if (!fn)
         return;
     cb(fn.value().c_str());
+}
+
+DECLARE_API void FindPackages(void (*cb)(LPCWSTR, LPCWSTR), LPCWSTR checkid)
+{
+    CComPtr<ABI::Windows::Management::Deployment::IPackageManager> packageManager;
+    CHECK_FAILURE_NORET(RoActivateInstance(AutoHString(RuntimeClass_Windows_Management_Deployment_PackageManager), reinterpret_cast<IInspectable **>(&packageManager)));
+
+    CComPtr<ABI::Windows::Foundation::Collections::IIterable<ABI::Windows::ApplicationModel::Package *>> packagesFoundRaw;
+    CHECK_FAILURE_NORET(packageManager->FindPackagesByUserSecurityId(AutoHString(L""), &packagesFoundRaw));
+
+    CComPtr<ABI::Windows::Foundation::Collections::IIterator<ABI::Windows::ApplicationModel::Package *>> packagesFoundRaw_itor;
+    CHECK_FAILURE_NORET(packagesFoundRaw->First(&packagesFoundRaw_itor));
+
+    boolean fHasCurrent;
+    CHECK_FAILURE_NORET(packagesFoundRaw_itor->get_HasCurrent(&fHasCurrent));
+    while (fHasCurrent)
+    {
+        CComPtr<ABI::Windows::ApplicationModel::IPackage> package;
+        CHECK_FAILURE_NORET(packagesFoundRaw_itor->get_Current(&package));
+        CComPtr<ABI::Windows::ApplicationModel::IPackageId> packageid;
+        CHECK_FAILURE_NORET(package->get_Id(&packageid));
+        AutoHString strname;
+        CHECK_FAILURE_NORET(packageid->get_Name(&strname));
+        PCWSTR _name = strname;
+        if (wcsstr(_name, checkid) == _name)
+        {
+            CComPtr<ABI::Windows::Storage::IStorageFolder> installpath;
+            CHECK_FAILURE_NORET(package->get_InstalledLocation(&installpath));
+            CComPtr<ABI::Windows::Storage::IStorageItem> item;
+            CHECK_FAILURE_NORET(installpath.QueryInterface(&item));
+            AutoHString str;
+            item->get_Path(&str);
+            cb(_name, str);
+        }
+        CHECK_FAILURE_NORET(packagesFoundRaw_itor->MoveNext(&fHasCurrent));
+    }
 }

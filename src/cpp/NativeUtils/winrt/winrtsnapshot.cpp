@@ -6,27 +6,29 @@
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <windows.graphics.directx.direct3d11.h>
 #include <windows.graphics.directx.direct3d11.h>
+#else
+#include "../../xpundef/xp_winrt.hpp"
+#endif
+
+#include "hstring.hpp"
+#include "../bmpx.hpp"
+
 using ABI::Windows::Foundation::GetActivationFactory;
 using ABI::Windows::Foundation::IClosable;
+using ABI::Windows::Foundation::ITypedEventHandler;
 using ABI::Windows::Graphics::SizeInt32;
 using ABI::Windows::Graphics::Capture::Direct3D11CaptureFramePool;
-using ABI::Windows::Graphics::Capture::GraphicsCaptureItem;
 using ABI::Windows::Graphics::Capture::IDirect3D11CaptureFrame;
 using ABI::Windows::Graphics::Capture::IDirect3D11CaptureFramePool;
 using ABI::Windows::Graphics::Capture::IDirect3D11CaptureFramePoolStatics;
 using ABI::Windows::Graphics::Capture::IGraphicsCaptureItem;
-using ABI::Windows::Graphics::Capture::IGraphicsCaptureItemStatics;
 using ABI::Windows::Graphics::Capture::IGraphicsCaptureSession;
 using ABI::Windows::Graphics::Capture::IGraphicsCaptureSession2;
 using ABI::Windows::Graphics::DirectX::DirectXPixelFormat;
 using ABI::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 using ABI::Windows::Graphics::DirectX::Direct3D11::IDirect3DSurface;
 using Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess;
-#else
-#include "xp.hpp"
-#endif
-#include "hstring.hpp"
-#include "../bmpx.hpp"
+
 _Use_decl_annotations_
     HRESULT
     GetTextureFromSurface(
@@ -38,7 +40,7 @@ _Use_decl_annotations_
     CHECK_FAILURE(spDXGIInterfaceAccess->GetInterface(IID_PPV_ARGS(ppTexture)));
     return S_OK;
 }
-struct FrameArrivedCallback : ComImpl<__FITypedEventHandler_2_Windows__CGraphics__CCapture__CDirect3D11CaptureFramePool_IInspectable>
+struct FrameArrivedCallback : ComImpl<ITypedEventHandler<Direct3D11CaptureFramePool *, IInspectable *>>
 {
     CComPtr<ID3D11Texture2D> &texture;
     std::atomic_flag &waitforloadflag;
@@ -88,11 +90,11 @@ void capture_window(HWND window_handle, void (*cb)(byte *, size_t))
     const auto size = SizeInt32{rect.right - rect.left, rect.bottom - rect.top};
 
     CComPtr<IDirect3D11CaptureFramePoolStatics> framepoolstatics;
-    CHECK_FAILURE_NORET(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Graphics_Capture_Direct3D11CaptureFramePool), &framepoolstatics));
+    CHECK_FAILURE_NORET(GetActivationFactory(AutoHString(RuntimeClass_Windows_Graphics_Capture_Direct3D11CaptureFramePool), &framepoolstatics));
     CComPtr<IDirect3D11CaptureFramePool> m_frame_pool;
     CHECK_FAILURE_NORET(framepoolstatics->Create(device, DirectXPixelFormat::DirectXPixelFormat_B8G8R8A8UIntNormalized, 2, size, &m_frame_pool));
     CComPtr<IGraphicsCaptureItemInterop> interop_factory;
-    CHECK_FAILURE_NORET(GetActivationFactory(AutoHStringRefX(RuntimeClass_Windows_Graphics_Capture_GraphicsCaptureItem), &interop_factory));
+    CHECK_FAILURE_NORET(GetActivationFactory(AutoHString(RuntimeClass_Windows_Graphics_Capture_GraphicsCaptureItem), &interop_factory));
     CComPtr<IGraphicsCaptureItem> capture_item = {nullptr};
     CHECK_FAILURE_NORET(interop_factory->CreateForWindow(window_handle, IID_PPV_ARGS(&capture_item)));
 
