@@ -1,10 +1,10 @@
-# Tải xuống và Khởi chạy
+# Tải xuống & Khởi chạy & Cập nhật
 
 ## Tải xuống
 
 | Hệ điều hành | 32-bit | 64-bit | Mô tả |
 | - | - | - | - |
-| Windows 10 & 11 (phiên bản mới) |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | Phiên bản này chỉ hỗ trợ các phiên bản Windows 10 mới hơn để đạt hiệu suất cao hơn, tính năng hệ thống cập nhật và tỷ lệ dương tính giả vi-rút thấp hơn.
+| Windows 10 & 11 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | Phiên bản này chỉ hỗ trợ các phiên bản hệ điều hành mới hơn để đạt hiệu suất cao hơn, các tính năng hệ thống được cập nhật và tỷ lệ dương tính giả vi-rút thấp hơn.
 | Windows 7 trở lên | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> | |
 | Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | Phiên bản này chỉ dùng để trích xuất văn bản từ các game rất cũ chỉ chạy được trên máy ảo XP. Chức năng hạn chế, không ổn định và chạy chậm. Không khuyến nghị dùng thường xuyên.
 
@@ -21,6 +21,15 @@ Nhưng vui lòng không đặt phần mềm vào các đường dẫn đặc bi�
 - **LunaTranslator_admin.exe** sẽ khởi động với quyền quản trị viên, cần thiết để hook một số trò chơi; chỉ sử dụng khi cần thiết, nếu không hãy khởi động ở chế độ bình thường.
 
 - **LunaTranslator_debug.bat** sẽ hiển thị cửa sổ dòng lệnh.
+
+## Cập nhật
+
+Mặc định sẽ tự động cập nhật. Nếu tự động cập nhật thất bại, có thể cập nhật thủ công.
+
+Nếu muốn cập nhật thủ công, chỉ cần tải phiên bản mới và giải nén đè lên thư mục trước đó.
+
+Nếu muốn xóa và tải lại, chú ý không xóa thư mục userconfig, nếu không sẽ mất thiết lập trước đó!!!
+
 
 ## Lỗi Thường Gặp
 

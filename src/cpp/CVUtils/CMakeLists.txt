@@ -10,7 +10,8 @@ include(FetchContent)
 
 FetchContent_Declare(clipper2 
     GIT_REPOSITORY https://github.com/AngusJohnson/Clipper2
-    GIT_TAG Clipper2_1.5.4
+    GIT_TAG main
+    GIT_SHALLOW TRUE
 )
 
 if(WIN10ABOVE)
@@ -54,6 +55,7 @@ if(NOT WINXP)
 endif()
 if(MSVC)
 target_link_libraries(CVUtils PRIVATE ${YY_Thunks})
+target_link_libraries(CVUtils PRIVATE NativeUtils)
 target_link_options(CVUtils PRIVATE "/DELAYLOAD:d3d12.dll")
 target_link_options(CVUtils PRIVATE "/DELAYLOAD:dxgi.dll")
 target_link_options(CVUtils PRIVATE "/DELAYLOAD:onnxruntime.dll")

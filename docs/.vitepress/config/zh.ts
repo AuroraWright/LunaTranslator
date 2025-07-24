@@ -71,18 +71,17 @@ export const zh = defineConfig({
             }
         },
         nav: [
-            { text: "官方网站", link: "https://lunatranslator.org/" },
+            // { text: "官方网站", link: "https://lunatranslator.org/" },
             { text: "视频教程", link: "https://space.bilibili.com/592120404/video" },
-            { text: "QQ群963119821", link: "https://qm.qq.com/q/I5rr3uEpi2" },
+            { text: "QQ群", link: "https://qm.qq.com/q/I5rr3uEpi2" },
             { text: "支持作者", link: "/zh/support" },
         ],
         sidebar: [
             {
                 text: '基本的',
                 items: [
-                    { text: '下载和启动', link: '/zh/README' },
+                    { text: '下载 & 启动 & 更新', link: '/zh/README' },
                     { text: '基本用法', link: '/zh/basicuse' },
-                    { text: '软件更新', link: '/zh/update' },
                     { text: '支持作者', link: '/zh/support' }
                 ]
             },
@@ -132,10 +131,12 @@ export const zh = defineConfig({
                         ]
                     },
                     {
-                        text: '分词&辞书&Anki', link: '/zh/qa1',
+                        text: '语言学习', link: '/zh/qa1',
                         collapsed: true,
                         items: [
-                            { text: '使用Mecab分词&词性颜色标注', link: '/zh/qa1' },
+                            { text: '日语分词及假名注音', link: '/zh/qa1' },
+                            { text: '使用内置查词工具', link: '/zh/internaldict' },
+                            { text: '安装Yomitan浏览器插件', link: '/zh/yomitan' },
                             { text: 'Anki集成', link: '/zh/qa2' },
                         ]
                     },

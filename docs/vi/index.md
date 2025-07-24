@@ -11,7 +11,7 @@ hero:
   #   alt: LunaTranslator  
   actions:  
     - theme: brand  
-      text: Tải xuống và bắt đầu  
+      text: Tải xuống & Khởi chạy & Cập nhật
       link: ./README  
     - theme: alt  
       text: Hướng dẫn cơ bản  
@@ -36,8 +36,8 @@ features:
   - title: API dịch phong phú  
     details: Hỗ trợ hầu hết các công cụ dịch, bao gồm dịch bằng mô hình ngôn ngữ lớn, dịch ngoại tuyến và nhiều hơn nữa.  
     link: ./useapis/tsapi
-  - title: Tích hợp từ điển & Anki  
-    details: Hỗ trợ Mecab, MDict, từ điển trực tuyến và AnkiConnect.  
+  - title: Học ngôn ngữ
+    details: Hỗ trợ phân đoạn từ tiếng Nhật và chú thích kana, hỗ trợ AnkiConnect, hỗ trợ plugin Yomitan
     link: ./qa1
   - title: Chuyển văn bản thành giọng nói  
     details: Hỗ trợ nhiều công cụ chuyển văn bản thành giọng nói trực tuyến & ngoại tuyến.  

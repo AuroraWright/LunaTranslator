@@ -12,7 +12,25 @@ namespace
     {
         return re::sub(s, LR"((?:\r\n|\n|^)\s*(?=\r\n|\n|$))");
     }
-
+    void F01001DC01486A000(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(<(.*?)\|(.*?)>)", "$1");
+        strReplace(s, "^");
+        buffer->from(s);
+    }
+    void T01001DC01486A000(hook_context *context, HookParam *hpx, TextBuffer *buffer, uintptr_t *split)
+    {
+        auto address = YUZU::emu_arg(context)[hpx->offset];
+        {
+            HookParam hp;
+            hp.address = address;
+            hp.filter_fun = F01001DC01486A000;
+            hp.type = CODEC_UTF8 | DIRECT_READ;
+            static auto _ = NewHook(hp, hpx->name);
+        }
+        buffer->from((char *)address);
+    }
     void T010012A017F18000(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
         auto address = YUZU::emu_arg(context)[2];
@@ -73,7 +91,7 @@ namespace
                     if (c == 0x0692c500)
                     {
                         for (int _ = 0; _ < count; _++)
-                            s += '-';
+                            s += u8"―";
                         address += 4;
                     }
                 }
@@ -758,7 +776,6 @@ namespace
 
     void F0100AB100E2FA000(TextBuffer *buffer, HookParam *hp)
     {
-
         auto s = buffer->strW();
         s = re::sub(s, LR"(\n)");
         s = re::sub(s, LR"(\u3000)");
@@ -1128,7 +1145,8 @@ namespace
     {
         auto s = buffer->strA();
         static std::string last;
-        s = re::sub(s, R"((#Ruby\[)([^,]+),(#\w+\[.\])?(.+?\]))", "$2");
+        s = re::sub(s, R"(#\w+\[\d+\])");
+        s = re::sub(s, R"(#Ruby\[(.*?),(.*?)\])", "$1");
         s = re::sub(s, R"(#\w+(\[.+?\])?)");
         s = re::sub(s, u8"　");
         if (last == s)
@@ -1199,7 +1217,8 @@ namespace
     void F01005A401D766000_2(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, R"((#Ruby\[)([^,]+).([^\]]+).)", "$2");
+        s = re::sub(s, R"(#\w+\[\d+\])");
+        s = re::sub(s, R"(#Ruby\[(.*?),(.*?)\])", "$1");
         s = re::sub(s, R"((\\n)+)");
         s = re::sub(s, R"((#[A-Za-z]+\[(\d*[.])?\d+\])+)");
         s = re::sub(s, R"(<color=.*>(.*)<\/color>)", "$1");
@@ -1577,7 +1596,8 @@ namespace
     void F0100BDD01AAE4000(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, "(#Ruby\\[)([^,]+).([^\\]]+).", "$2");
+        s = re::sub(s, R"(#\w+\[\d+\])");
+        s = re::sub(s, R"(#Ruby\[(.*?),(.*?)\])", "$1");
         s = re::sub(s, "(#n)+", " ");
         s = re::sub(s, "(#[A-Za-z]+[(\\d*[.])?\\d+])+");
         buffer->from(s);
@@ -1585,7 +1605,8 @@ namespace
     void F0100C310110B4000(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, "(#Ruby\\[)([^,]+).([^\\]]+).", "$2");
+        s = re::sub(s, R"(#\w+\[\d+\])");
+        s = re::sub(s, R"(#Ruby\[(.*?),(.*?)\])", "$1");
         s = re::sub(s, "#Color\\[[\\d]+\\]");
         s = re::sub(s, u8"(　#n)+", "#n");
         s = re::sub(s, "#n+", " ");
@@ -1875,9 +1896,10 @@ namespace
     void F0100D7E01E998000(TextBuffer *buffer, HookParam *hp)
     {
         StringFilterBetween(buffer, TEXTANDLEN(L"<"), TEXTANDLEN(L">"));
-        StringFilter(buffer, TEXTANDLEN(L"　\n"));
-        StringFilter(buffer, TEXTANDLEN(L"\n　"));
-        CharFilter(buffer, L'\n');
+        auto s = buffer->strW();
+        s = re::sub(s, L"<(.*?)>");
+        s = re::sub(s, L"　*\n　*");
+        buffer->from(s);
     }
     void F01007A901E728000(TextBuffer *buffer, HookParam *hp)
     {
@@ -2185,7 +2207,6 @@ namespace
         s = re::sub(s, "\\\\n", " ");
         buffer->from(s);
     }
-
     void F010065301A2E0000(TextBuffer *buffer, HookParam *hp)
     {
 
@@ -2543,8 +2564,9 @@ namespace
 
     void F010042300C4F6000_1(TextBuffer *buffer, HookParam *)
     {
-        StringFilter(buffer, TEXTANDLEN(L"\n　"));
-        CharFilter(buffer, L'\n');
+        auto s = buffer->strW();
+        s = re::sub(s, L"　*\n　*");
+        buffer->from(s);
     }
     std::wstring F0100D4601FD60000S;
     void F0100D4601FD60000_1(TextBuffer *buffer, HookParam *)
@@ -2557,22 +2579,20 @@ namespace
         auto s = buffer->strW();
         F0100D4601FD60000S = s;
         s = re::sub(s, L"<color=.*?>(.*?)<\\/color>", L"$1");
+        s = re::sub(s, L"　*\n　*");
         buffer->from(s);
-        StringFilter(buffer, TEXTANDLEN(L"\n　"));
-        CharFilter(buffer, L'\n');
     }
     void F01008D20101DE000(TextBuffer *buffer, HookParam *)
     {
         CharFilter(buffer, L'\n');
         StringCharReplacer(buffer, TEXTANDLEN(L"<sprite=\"Emoji\" name=\"heart\">"), L'♥');
     }
+    void NewLineCharToSpaceW(TextBuffer *buffer, HookParam *)
+    {
+        CharReplacer(buffer, L'\n', L' ');
+    }
     void NewLineCharFilterW(TextBuffer *buffer, HookParam *)
     {
-        CharFilter(buffer, L'\n');
-    }
-    void F010096E021CF2000(TextBuffer *buffer, HookParam *)
-    {
-        StringFilter(buffer, TEXTANDLEN(L"\n　"));
         CharFilter(buffer, L'\n');
     }
     void NewLineCharFilter(TextBuffer *buffer, HookParam *)
@@ -2618,6 +2638,13 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // Side Kicks! beyond
+    {0x81A16000, {CODEC_UTF16, 0, 0X14, 0, NewLineCharFilterW, 0x010087201EEA6000ull, nullptr}}, // 1.0.0 & 1.0.2
+    // Romance MD: Always On Call
+    {0x817BC894, {CODEC_UTF16, 0, 0X14, 0, 0, 0x0100C9C01E960000ull, "1.0.0"}},
+    // ToHeart
+    {0x8013AF1C, {CODEC_UTF8, 1, 0, 0, 0, 0x01003D9020854000ull, "1.0.0"}},
+    {0x8000B92C, {CODEC_UTF8, 1, 0, 0, 0, 0x01003D9020854000ull, "1.0.1"}},
     // VIRTUAL GIRL @ WORLD'S END
     {0x817E1CC8, {CODEC_UTF16, 0, 0X14, 0, NewLineCharFilterW, 0x010096E021CF2000ull, "1.0.0"}},
     // レッドベルの慟哭 (The Red Bells Lament)
@@ -3127,6 +3154,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8199c95c, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, F010061A01C1CE000, 0x010061A01C1CE000ull, "1.0.0"}}, // text1
     {0x81d5c900, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, F010061A01C1CE000, 0x010061A01C1CE000ull, "1.0.0"}}, // text2
     {0x820d6324, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, F010061A01C1CE000, 0x010061A01C1CE000ull, "1.0.0"}}, // choice
+    // Despera Drops
+    {0x81F7607C, {CODEC_UTF16, 1, 0X14, 0, NewLineCharToSpaceW, 0x010008F020CD8000ull, "1.0.0"}},
     // Dragon Ball Z: Kakarot
     {0x812a8e28, {CODEC_UTF16, 0, 0, 0, F01008C0016544000, 0x0100EF00134F4000ull, "1.50"}}, // Main Text
     {0x812a8c90, {CODEC_UTF16, 0, 0, 0, F01008C0016544000, 0x0100EF00134F4000ull, "1.50"}}, // Name
@@ -3351,10 +3380,10 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8002bf6c, {CODEC_UTF8, 0, 0x1c, 0, FF010061300DF48000_2, 0x01004D601B0AA000ull, "1.0.1"}},
     {0x8004e720, {CODEC_UTF8, 1, 0, 0, FF010061300DF48000_2, 0x01004D601B0AA000ull, "1.0.1"}},
     // スペードの国のアリス ～Wonderful White World～
-    {0x8135d018, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, F01008C0016544000, 0x01003FE00E2F8000ull, "1.0.0"}}, // Text + Name
+    {0x8135d018, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, F01008C0016544000, 0x01003FE00E2F8000ull, "1.0"}}, // Text + Name
     // スペードの国のアリス ～Wonderful Black World～
-    {0x819dbdc8, {CODEC_UTF16, 0, 0x14, 0, F0100AB100E2FA000, 0x0100AB100E2FA000ull, "1.0.0"}},
-    {0x81f8e564, {CODEC_UTF16, 1, 0x14, 0, F0100AB100E2FA000, 0x0100AB100E2FA000ull, "1.0.0"}},
+    {0x819dbdc8, {CODEC_UTF16, 0, 0x14, 0, F0100AB100E2FA000, 0x0100AB100E2FA000ull, "1.0"}},
+    {0x81f8e564, {CODEC_UTF16, 1, 0x14, 0, F0100AB100E2FA000, 0x0100AB100E2FA000ull, "1.0"}},
     // 十三支演義 偃月三国伝1・2
     {0x82031f20, {CODEC_UTF16, 2, 0, ReadTextAndLenDW, F0100DA201E0DA000, 0x01003D2017FEA000ull, "1.0.0"}}, // name
     {0x82ef9550, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, F0100DA201E0DA000, 0x01003D2017FEA000ull, "1.0.0"}}, // dialogue
@@ -3506,7 +3535,10 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x80086ba0, {CODEC_UTF8, 0, 0, T010012A017F18000, 0, 0x010012A017F18000ull, "1.0.0"}},
     {0x80086e70, {CODEC_UTF8, 0, 0, T010012A017F18000, 0, 0x010012A017F18000ull, "1.0.2"}},
     // 月姫 -A piece of blue glass moon-
-    {0x800ac290, {CODEC_UTF8, 0, 0, T010012A017F18000, 0, 0x01001DC01486A000ull, 0}}, // 1.0.1,1.0.2
+    {0x800ac290, {CODEC_UTF8, 0, 0, T010012A017F18000, F01001DC01486A000, 0x01001DC01486A000ull, nullptr}}, // 1.0.1,1.0.2
+    {0x80076034, {CODEC_UTF8, 0, 0, T01001DC01486A000, F01001DC01486A000, 0x01001DC01486A000ull, "1.0.0"}},
+    {0x80072564, {CODEC_UTF8, 0, 0, T01001DC01486A000, F01001DC01486A000, 0x01001DC01486A000ull, "1.0.2"}},
+    {0x80072D88, {CODEC_UTF8, 0, 0, T01001DC01486A000, F01001DC01486A000, 0x01001DC01486A000ull, "1.0.3"}},
     // 映画 五等分の花嫁　～君と過ごした五つの思い出～
     {0x80011688, {CODEC_UTF8, 1, 0, 0, F01005E9016BDE000, 0x01005E9016BDE000ull, "1.0.0"}}, // dialogue, menu, choice, name
     // FLOWERS 四季
@@ -3704,6 +3736,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8012441C, {CODEC_UTF16, 8, 0, 0, F0100F0A01F112000, 0x0100F0A01F112000ull, nullptr}}, // 1.0.0 && 1.0.1 // 日文
     // 贄の町
     {0x818B6078, {CODEC_UTF16, 1, 0, 0, F0100C9001E10C000, 0x0100C9001E10C000ull, "1.0.0"}},
+    // The Town of Nie Iromusubi
+    {0x81897CD0, {CODEC_UTF16 | FULL_STRING, 3, 0, 0, F0100C9001E10C000, 0x0100D01021376000ull, "1.0.0"}},
     // Honey Vibes
     {0x81845F80, {CODEC_UTF16 | FULL_STRING, 1, 0, 0, F0100FB301E70A000, 0x0100FB301E70A000ull, "1.0.0"}},
     // ワールドエンド・シンドローム
@@ -4004,6 +4038,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x804CC780, {CODEC_UTF8, 0, 0, 0, F010081E0161B2000, 0x010033401FE40000ull, "1.0.0"}},
     // 結合男子
     {0x81C49080, {CODEC_UTF16, 1, 0x14, 0, F0100D7E01E998000, 0x0100DA2019044000ull, "1.0.0"}},
+    {0x81EB2470, {CODEC_UTF16, 0, 0x14, 0, F0100D7E01E998000, 0x0100DA2019044000ull, "1.0.3"}},
+    {0x81EFB590, {CODEC_UTF16 | FULL_STRING, 0, 0x14, 0, F0100D7E01E998000, 0x0100DA2019044000ull, "1.0.3"}},
     // 古書店街の橋姫 Hashihime of the Old Book Town append
     {0x800670F0, {CODEC_UTF8, 0, 0, 0, F0100EA9015126000, 0x0100EA9015126000ull, "1.0.0"}},
     {0x800B22A4, {CODEC_UTF8, 1, 0, 0, F0100EA9015126000_1, 0x0100EA9015126000ull, "1.0.0"}},

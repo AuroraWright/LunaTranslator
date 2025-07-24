@@ -83,13 +83,26 @@ BOOL DoSetBrowserEmulation(DWORD dwValue)
         return TRUE;
     }
 }
+typedef LPWSTR (*contextmenu_gettext)();
 class MWebBrowserEx : public MWebBrowser
 {
     HWND hwndParent;
 
+    std::optional<std::wstring> getstring(contextmenu_gettext gettext)
+    {
+        if (!gettext)
+            return {};
+        auto text_ = gettext();
+        if (!text_)
+            return {};
+        std::wstring _ = text_;
+        delete text_;
+        return _;
+    };
+
 public:
-    std::vector<std::tuple<LPWSTR (*)(), int>> menuitems;
-    std::vector<std::tuple<LPWSTR (*)(), int>> menuitems_noselect;
+    std::vector<std::tuple<contextmenu_gettext, int>> menuitems;
+    std::vector<std::tuple<contextmenu_gettext, int>> menuitems_noselect;
     std::map<int, void (*)(LPCWSTR)> menucallbacks;
     std::map<int, void (*)()> menucallbacks_noselect;
     UINT CommandBase = 10086;
@@ -176,10 +189,9 @@ STDMETHODIMP MWebBrowserEx::ShowContextMenu(
         int idx = 0;
         for (auto &item : menuitems_noselect)
         {
-            auto gettext = std::get<0>(item);
-            if (gettext && AutoFreeString(gettext()))
+            if (auto text = getstring(std::get<0>(item)))
             {
-                AppendMenu(hMenu, MF_STRING, std::get<1>(item), AutoFreeString(gettext()));
+                AppendMenu(hMenu, MF_STRING, std::get<1>(item), text.value().c_str());
             }
             else if (idx)
                 AppendMenu(hMenu, MF_SEPARATOR, 0, nullptr);
@@ -197,10 +209,9 @@ STDMETHODIMP MWebBrowserEx::ShowContextMenu(
         int idx = 0;
         for (auto &item : menuitems)
         {
-            auto gettext = std::get<0>(item);
-            if (gettext && AutoFreeString(gettext()))
+            if (auto text = getstring(std::get<0>(item)))
             {
-                AppendMenu(hMenu, MF_STRING, std::get<1>(item), AutoFreeString(gettext()));
+                AppendMenu(hMenu, MF_STRING, std::get<1>(item), text.value().c_str());
             }
             else if (idx)
                 AppendMenu(hMenu, MF_SEPARATOR, 0, nullptr);
@@ -272,7 +283,7 @@ DECLARE_API void html_set_html(MWebBrowserEx *ww, wchar_t *html)
         return;
     ww->SetHtml(html);
 }
-DECLARE_API void html_add_menu(MWebBrowserEx *ww, int index, LPWSTR (*getlabel)(), void (*callback)(const wchar_t *))
+DECLARE_API void html_add_menu(MWebBrowserEx *ww, int index, contextmenu_gettext getlabel, void (*callback)(const wchar_t *))
 {
     if (!ww)
         return;
@@ -281,7 +292,7 @@ DECLARE_API void html_add_menu(MWebBrowserEx *ww, int index, LPWSTR (*getlabel)(
     ww->menuitems.insert(ptr, {getlabel, command});
     ww->menucallbacks[command] = callback;
 }
-DECLARE_API void html_add_menu_noselect(MWebBrowserEx *ww, int index, LPWSTR (*getlabel)(), void (*callback)())
+DECLARE_API void html_add_menu_noselect(MWebBrowserEx *ww, int index, contextmenu_gettext getlabel, void (*callback)())
 {
     if (!ww)
         return;
@@ -327,21 +338,21 @@ DECLARE_API void html_eval(MWebBrowserEx *ww, const wchar_t *js)
                                                       LOCALE_SYSTEM_DEFAULT, &dispid) != S_OK);
 
     DISPPARAMS params;
-    VARIANT arg;
-    VARIANT result;
+    AutoVariant arg;
+    AutoVariant result;
     EXCEPINFO excepInfo;
     UINT nArgErr = (UINT)-1;
     params.cArgs = 1;
     params.cNamedArgs = 0;
     params.rgvarg = &arg;
-    arg.vt = VT_BSTR;
+    arg->vt = VT_BSTR;
     static const wchar_t *prologue = L"(function(){";
     static const wchar_t *epilogue = L";})();";
     int n = wcslen(prologue) + wcslen(epilogue) + wcslen(js) + 1;
     auto eval = std::make_unique<wchar_t[]>(n);
     _snwprintf(eval.get(), n, L"%s%s%s", prologue, js, epilogue);
     CComBSTR bstrVal = eval.get();
-    arg.bstrVal = bstrVal;
+    arg->bstrVal = bstrVal;
     scriptDispatch->Invoke(
         dispid, IID_NULL, 0, DISPATCH_METHOD,
         &params, &result, &excepInfo, &nArgErr);

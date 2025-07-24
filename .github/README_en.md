@@ -1,28 +1,30 @@
-# LunaTranslator
+### [简体中文](README.md) | English | [繁體中文](README_cht.md) | [한국어](README_ko.md) | [日本語](README_ja.md) | [Tiếng Việt](README_vi.md) | [Русский язык](README_ru.md)
+
+# LunaTranslator [Download & Launch & Update](https://docs.lunatranslator.org/en/README.html)  
 
 > **A Visual Novel translation tool**
 
-### [简体中文](README.md) | English | [Other Language](otherlang.md) 
+### If you encounter any difficulties while using the software, you can check the [User Guide](https://docs.lunatranslator.org/en), or join our [Discord](https://discord.com/invite/ErtDwVeAbB).
 
 ## Feature Support
 
 #### Text Input
 
-- **HOOK** Supports obtaining text using HOOK methods. For some engines, it also supports [embedded translation](https://docs.lunatranslator.org/embedtranslate.html). And Extracting text from games running on some [Emulators](https://docs.lunatranslator.org/emugames.html) is also supported. For games that are not supported or not well supported, please [submit feedback](https://github.com/HIllya51/LunaTranslator/issues/new?assignees=&labels=enhancement&projects=&template=01_game_request.yaml) 
+- **HOOK** Supports obtaining text using HOOK methods. For some engines, it also supports [embedded translation](https://docs.lunatranslator.org/en/embedtranslate.html). And Extracting text from games running on some [Emulators](https://docs.lunatranslator.org/en/emugames.html) is also supported. For games that are not supported or not well supported, please [submit feedback](https://github.com/HIllya51/LunaTranslator/issues/new?assignees=&labels=enhancement&projects=&template=01_game_request.yaml) 
 
-- **OCR** supports **[offline OCR](https://docs.lunatranslator.org/useapis/ocrapi.html)** and **[online OCR](https://docs.lunatranslator.org/useapis/ocrapi.html)**
+- **OCR** supports **[offline OCR](https://docs.lunatranslator.org/en/useapis/ocrapi.html)** and **[online OCR](https://docs.lunatranslator.org/en/useapis/ocrapi.html)**
 
 - **Clipboard** Supports retrieving text from the clipboard for translation and can also output extracted text to the clipboard.
 
-- **Other** also supports **[speech recognition](https://docs.lunatranslator.org/sr.html)** and **file translation**
+- **Other** also supports **[speech recognition](https://docs.lunatranslator.org/en/sr.html)** and **file translation**
 
 #### Translator
 
 Supports almost all conceivable translation engines, including:
 
-- **Online Translation** Supports many online translation interfaces that can be used without registration, and also supports **[traditional translation](https://docs.lunatranslator.org/useapis/tsapi.html)** and **[large model translation](https://docs.lunatranslator.org/guochandamoxing.html)** using user-registered APIs
+- **Online Translation** Supports many online translation interfaces that can be used without registration, and also supports **[traditional translation](https://docs.lunatranslator.org/en/useapis/tsapi.html)** and **[large model translation](https://docs.lunatranslator.org/en/guochandamoxing.html)** using user-registered APIs
 
-- **Offline translation** Supports common **traditional translation** engines and **[large model translation](https://docs.lunatranslator.org/offlinellm.html)** for offline deployment
+- **Offline translation** Supports common **traditional translation** engines and **[large model translation](https://docs.lunatranslator.org/en/offlinellm.html)** for offline deployment
 
 - **Pre-translation** Supports reading pre-translated files, supports translation caching
 
@@ -30,19 +32,21 @@ Supports almost all conceivable translation engines, including:
 
 #### Other Functions
 
-- **Text-to-Speech** supports **Offline TTS** and **Online TTS**
+- **[Text-to-Speech](https://docs.lunatranslator.org/en/ttsengines.html)** supports **Offline TTS** and **Online TTS**
 
-- **Japanese Word Segmentation and Kana Display** Supports word segmentation and kana display using Mecab, etc.
+- **[Japanese Word Segmentation and Kana Pronunciation](https://docs.lunatranslator.org/en/qa1.html)** Supports word segmentation and kana display using Mecab, etc.
 
-- **Vocabulary Lookup** Supports **offline dictionaries** (MDICT) and **online dictionaries** for word lookup
+- **[Vocabulary Lookup](https://docs.lunatranslator.org/en/internaldict.html)** Supports **offline dictionaries** (MDICT) and **online dictionaries** for word lookup
 
-- **Anki** Supports one-click addition of words to Anki
+- **[Anki](https://docs.lunatranslator.org/en/qa2.html)** Supports one-click addition of words to Anki
 
-- **Load Browser Extensions** Browser extensions like Yomitan can be loaded within the software to assist in implementing additional features.
+- **[Load Browser Extensions](https://docs.lunatranslator.org/en/yomitan.html)** Browser extensions like Yomitan can be loaded within the software to assist in implementing additional features.
 
 ## Sponsorship
 
-Software maintenance is not easy. If you find this software helpful, please consider becoming my [sponsor](https://patreon.com/HIllya51). Your support will be a driving force for the long-term maintenance of the software. Thank you~  
+Software maintenance is not easy. If you find this software helpful, feel free to support me via [Patreon](https://patreon.com/HIllya51). Your support will contribute to the long-term maintenance of the software. Thank you~
+
+<a href="https://patreon.com/HIllya51" target='_blank'><img width="200" src="../docs/become_a_patron_4x1_black_logo_white_text_on_coral.svg"></a>
 
 ## Open Source License
 

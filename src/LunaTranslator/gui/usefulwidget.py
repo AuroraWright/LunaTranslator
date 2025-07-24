@@ -2,10 +2,10 @@ from qtsymbols import *
 import os, functools, hashlib, json, math, csv, io, pickle
 from traceback import print_exc
 import windows, qtawesome, NativeUtils, gobject
-from gobject import runtime_for_xp
-from myutils.config import _TR, _TRL, globalconfig, mayberelpath
+import re
+from myutils.config import _TR, globalconfig, mayberelpath
 from myutils.wrapper import Singleton, threader, tryprint
-from myutils.utils import nowisdark, checkisusingwine
+from myutils.utils import nowisdark, checkisusingwine, dynamiclink
 from myutils.hwnd import getcurrexe
 from ocrengines.baseocrclass import OCRResult
 from gui.dynalang import (
@@ -215,7 +215,21 @@ class DelayLoadTableView(QTableView, DelayLoadScrollArea):
 
         if not w:
             return
-        __w = QWidget()
+        if index.row() == 0:
+            # 浏览器插件设置的第一行的switch谜之显示错位
+            class __(QWidget):
+                def __init__(self1):
+                    super().__init__()
+                    self1.once = True
+
+                def showEvent(self1, _):
+                    if self1.once:
+                        self1.once = False
+                        self1.layout().invalidate()
+
+        else:
+            __ = QWidget
+        __w = __()
         __l = QHBoxLayout(__w)
         __l.setContentsMargins(0, 0, 0, 0)
         __l.addWidget(w)
@@ -1085,6 +1099,14 @@ def getIconButton(
     return b
 
 
+def D_getdoclink(link):
+    return D_getIconButton(
+        callback=lambda: os.startfile(dynamiclink(link, docs=True)),
+        tips="使用说明",
+        icon="fa.question",
+    )
+
+
 def D_getIconButton(
     callback=None,
     icon="fa.gear",
@@ -1201,7 +1223,6 @@ def getsimpleswitch(
 def __getsmalllabel(text):
     __ = LLabel(text)
     __.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    __.setOpenExternalLinks(True)
     return __
 
 
@@ -1306,6 +1327,8 @@ def __getboxlayout(widgets, lc=QHBoxLayout, makewidget=False, delay=False):
 
     def __do(cp_layout: QBoxLayout, widgets):
         for w in widgets:
+            if isinstance(w, int):
+                cp_layout.addStretch(w)
             if callable(w):
                 w = w()
             elif isinstance(w, str):
@@ -1537,6 +1560,7 @@ def ExtensionSetting(name, settingurl, icon):
 
 @Singleton
 class Exteditor(LDialog):
+    # 记一下谜之bug：打开后关闭，然后切换UI语言，然后会崩溃。和TableViewW的delayload有关
     def __init__(self, parent) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
         self.setWindowTitle("浏览器插件")
@@ -1603,9 +1627,18 @@ class Exteditor(LDialog):
         )
         if not res:
             return
-
+        res = self.checkplgdirvalid(res)
         WebviewWidget.Extensions_Add(res)
         self.listexts()
+
+    def checkplgdirvalid(self, res):
+        check = lambda d: os.path.isfile(os.path.join(d, "manifest.json"))
+        if check(res):
+            return res
+        for _dir, _, __fs in os.walk(res):
+            if check(_dir):
+                return _dir
+        return res
 
     def __menu(self, _):
         curr = self.table.currentIndex()
@@ -1793,7 +1826,7 @@ class WebviewWidget(abstractwebview):
     @staticmethod
     def showError(e: Exception):
         QMessageBox.critical(
-            gobject.base.settin_ui,
+            gobject.base.focusWindow,
             _TR("错误"),
             str(e)
             + "\n\n"
@@ -2021,16 +2054,16 @@ class WebviewWidget(abstractwebview):
         return self._parsehtml_codec(self._parsehtml_dark_auto(html))
 
 
-_request_delete_ok_cache = set()
+_request_delete_ok_cache = {}
 
 
-def request_delete_ok(parent: QWidget = None, cache=None):
+def request_delete_ok(parent: QWidget = None, cache=None, title="确认删除"):
     if cache and cache in _request_delete_ok_cache:
         return True
     msg_box = QMessageBox(parent)
     msg_box.setIcon(QMessageBox.Icon.Warning)
-    msg_box.setWindowTitle(_TR("确认删除"))
-    msg_box.setText(_TR("确认删除"))
+    msg_box.setWindowTitle(_TR(title))
+    msg_box.setText(_TR(title))
     msg_box.setStandardButtons(
         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
     )
@@ -2042,9 +2075,32 @@ def request_delete_ok(parent: QWidget = None, cache=None):
     reply = msg_box.exec_()
     if reply == QMessageBox.StandardButton.Yes:
         if cache and dont_ask_checkbox.isChecked():
-            _request_delete_ok_cache.add(cache)
+            _request_delete_ok_cache[cache] = 1
         return True
     return False
+
+
+def request_for_something(parent: QWidget = None, cache=None, title="确认删除"):
+    if cache and cache in _request_delete_ok_cache:
+        return _request_delete_ok_cache.get(cache)
+    msg_box = QMessageBox(parent)
+    msg_box.setIcon(QMessageBox.Icon.Warning)
+    msg_box.setWindowTitle(_TR(title))
+    msg_box.setText(_TR(title))
+    msg_box.setStandardButtons(
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+    )
+    msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+
+    if cache:
+        dont_ask_checkbox = QCheckBox(_TR("本次运行期间不再询问"), msg_box)
+        dont_ask_checkbox.setChecked(True)
+        msg_box.setCheckBox(dont_ask_checkbox)
+
+    reply = msg_box.exec_()
+    if dont_ask_checkbox.isChecked():
+        _request_delete_ok_cache[cache] = reply == QMessageBox.StandardButton.Yes
+    return reply == QMessageBox.StandardButton.Yes
 
 
 class WebviewWidget_for_auto(WebviewWidget):
@@ -2402,9 +2458,10 @@ def tabadd_lazy(tab, title, getrealwidgetfunction):
 
 def makelabel(s: str):
     islink = ("<a" in s) and ("</a>" in s)
-    wid = LLabel(s)
     if islink:
-        wid.setOpenExternalLinks(True)
+        wid = LinkLabel(s)
+    else:
+        wid = LLabel(s)
     return wid
 
 
@@ -3442,6 +3499,7 @@ class CollapsibleBoxWithButton(QWidget):
     def __init__(self, delayloadfunction=None, title="", parent=None, toggled=False):
         super(CollapsibleBoxWithButton, self).__init__(parent)
         self.toggle_button = LToolButton(text=title, checkable=True, checked=False)
+        self.toggle_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.toggle_button.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon
         )
@@ -3525,6 +3583,9 @@ class SClickableLabel(QLabel):
             else """QLabel{
                 background:transparent
             }"""
+        )
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor if b else Qt.CursorShape.ArrowCursor
         )
 
     def enterEvent(self, event):
@@ -3626,29 +3687,46 @@ class PopupWidget(QWidget):
         return super().closeEvent(a0)
 
 
-class MDLabel(QLabel):
-    def __init__(self, md: str, static=False):
-        super().__init__()
-        self._md = md
-        self.static = static
-        self.once = True
-        self.setOpenExternalLinks(True)
-        self.setWordWrap(True)
-        self.updatelangtext()
-
-    def updatelangtext(self):
-        if self.once:
-            self.once = False
-        elif self.static:
-            return
-        self.setText(
-            NativeUtils.Markdown2Html(
-                self._md if self.static else "\n".join(_TRL(self._md.split("\n")))
-            )
-        )
-
-
 class HBoxCenter(QHBoxLayout):
     def __init__(self, *a):
         super().__init__(*a)
         self.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+
+
+class LinkLabel(QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.color2 = "#E91E63"
+        self.color1 = "blue"
+        self.setOpenExternalLinks(True)
+        self.linkHovered.connect(self.change_link_color)
+
+    def setOpenExternalLinks(self, _):
+        super().setOpenExternalLinks(_)
+        if not _:
+            self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+
+    def leaveEvent(self, a0):
+        self.setText(self.text())
+        return super().leaveEvent(a0)
+
+    def setText(self, t):
+        t = re.sub("<a(.*?)>", '<a\\1 style="color: {};">'.format(self.color1), t)
+        super().setText(t)
+
+    def change_link_color(self, link):
+        if link:
+            super().setText(
+                re.sub(
+                    """<a href="({})".*?>""".format(link),
+                    '<a href="\\1" style="color: {};">'.format(self.color2),
+                    self.text(),
+                )
+            )
+        else:
+            self.setText(self.text())
+
+        if link:
+            self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        else:
+            self.unsetCursor()

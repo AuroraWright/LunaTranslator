@@ -1,10 +1,10 @@
-# 下载和启动
+# 下载 & 启动 & 更新
 
 ## 下载
 
 | 操作系统 | 32位 | 64位 | 说明 |
 | - | - | - | - |
-| Windows 10 & 11 新版本 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | 该版本只支持较新的Windows 10版本，以获取更高性能，更新的系统特性，及更低的病毒误报率。
+| Windows 10 & 11 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | 该版本只支持较新的操作系统版本，以获取更高性能，更新的系统特性，及更低的病毒误报率。
 | Windows 7 及以上 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> |
 | Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | 该版本仅用于支持提取仅能在XP虚拟机内运行的很老游戏的文本，功能残缺、不稳定、运行缓慢，一般不要使用。
 
@@ -22,6 +22,14 @@
 **LunaTranslator_admin.exe** 会以管理员权限启动，部分游戏需要管理员权限才能HOOK，仅这时需要使用这个，其他时候普通模式启动即可。
 
 **LunaTranslator_debug.bat** 会显示命令行窗口
+
+## 更新
+
+默认会自动进行更新。如果自动更新失败，可以手动更新。
+
+如果想要手动更新，只需下载新版本后解压覆盖到之前的目录即可。
+
+如果想要删除重下，注意不要删除userconfig文件夹，否则会失去之前的设置！！！
 
 ## 常见错误
 

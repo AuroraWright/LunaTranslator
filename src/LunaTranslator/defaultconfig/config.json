@@ -1,5 +1,6 @@
 {
     "history": {
+        "autosave": false,
         "showorigin": true,
         "showtrans": true,
         "showtransname": true,
@@ -330,25 +331,25 @@
     "geo_extrahtml": [
         100,
         100,
-        1000,
+        600,
         300
     ],
     "hist_geo": [
         100,
         100,
-        1000,
+        600,
         300
     ],
     "edit_geo": [
         100,
         100,
-        1000,
+        600,
         300
     ],
     "showocrgeo": [
         100,
         100,
-        1000,
+        600,
         300
     ],
     "attachprocessgeo": [
@@ -360,19 +361,19 @@
     "selecthookgeo": [
         100,
         100,
-        1200,
+        800,
         600
     ],
     "memorydialoggeo": [
         100,
         100,
-        1200,
+        800,
         600
     ],
     "savegamedialoggeo": [
         100,
         100,
-        1200,
+        800,
         600
     ],
     "sw_geo": [
@@ -390,8 +391,8 @@
     "ocr_diff_sim_v2": 0.95,
     "ocr_text_diff": 3,
     "autorun": true,
-    "fontsize": 17.0,
-    "fontsizeori": 17.0,
+    "fontsize": 16.0,
+    "fontsizeori": 16.0,
     "localeswitchmethod": 0,
     "hide_not_exists": false,
     "startgamenototop": true,
@@ -1460,7 +1461,11 @@
             "path": "",
             "source": "loopback",
             "use": false,
-            "refreshinterval": 1.5
+            "refreshinterval": 1.5,
+            "refreshinterval2": 1.5,
+            "mode": "direct",
+            "hidewindow": false,
+            "autokill": false
         },
         "texthook": {
             "use": true

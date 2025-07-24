@@ -7,7 +7,7 @@ export const en = defineConfig({
             copyright: `Released under the <a href="https://github.com/HIllya51/LunaTranslator/blob/main/LICENSE">GPLv3</a> license`
         },
         nav: [
-            { text: "HomePage", link: "https://lunatranslator.org/" },
+            // { text: "HomePage", link: "https://lunatranslator.org/" },
             { text: "Discord", link: "https://discord.com/invite/ErtDwVeAbB" },
             { text: "Sponsorship", link: "/en/support" },
         ],
@@ -19,9 +19,8 @@ export const en = defineConfig({
             {
                 text: 'Basic',
                 items: [
-                    { text: 'Download and Launch', link: '/en/README' },
+                    { text: 'Download & Launch & Update', link: '/en/README' },
                     { text: 'Basic Usage', link: '/en/basicuse' },
-                    { text: 'Software Update', link: '/en/update' },
                     { text: 'Sponsorship', link: '/en/support' }
                 ]
             },
@@ -63,18 +62,20 @@ export const en = defineConfig({
                         ]
                     },
                     {
-                        text: 'Tổng hợp giọng nói', link: '/en/ttsengines',
+                        text: 'Speech Synthesis', link: '/en/ttsengines',
                         collapsed: true,
                         items: [
-                            { text: 'Công cụ Tổng hợp Giọng nói', link: '/en/ttsengines' },
+                            { text: 'Speech Synthesis Engine', link: '/en/ttsengines' },
                             { text: 'Using Different Voices for Different Characters', link: '/en/ttsofname' }
                         ]
                     },
                     {
-                        text: 'Tokenization & Dictionary & Anki', link: '/en/qa1',
+                        text: 'Language Learning', link: '/en/qa1',
                         collapsed: true,
                         items: [
-                            { text: 'Using Mecab for Tokenization & Part-of-Speech Color Annotation', link: '/en/qa1' },
+                            { text: 'Japanese Word Segmentation and Kana Pronunciation', link: '/en/qa1' },
+                            { text: 'Using the Built-in Dictionary Tool', link: '/en/internaldict' },
+                            { text: 'Install the Yomitan Browser Extension', link: '/en/yomitan' },
                             { text: 'Anki Integration', link: '/en/qa2' }
                         ]
                     },

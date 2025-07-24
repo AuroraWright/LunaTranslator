@@ -1,10 +1,10 @@
-# Download and Launch
+# Download & Launch & Update
 
 ## Download
 
 | OS | 32-bit | 64-bit | Description |
 | - | - | - | - |
-| Windows 10 & 11 (newer versions) |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | This version only supports newer Windows 10 versions to achieve higher performance, updated system features, and a lower virus false positive rate.
+| Windows 10 & 11 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | This version only supports newer operating system versions to achieve higher performance, updated system features, and lower virus false positives.
 | Windows 7 or later | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> | |
 | Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | This version only supports text extraction from very old games that can only run in XP VMs. It has limited functionality, is unstable, and runs slowly. Not recommended for regular use.
 
@@ -22,6 +22,16 @@ But please do not put the software in special paths such as **C:\Program Files**
 - **LunaTranslator_admin.exe** will start with administrator privileges, which is required for hooking some games; use this only when necessary, otherwise start in normal mode.
 
 - **LunaTranslator_debug.bat** will display a command-line window.
+
+## Update
+
+Updates are performed automatically by default. If automatic update fails, you can update manually.
+
+To update manually, simply download the new version and extract it to overwrite the previous directory.
+
+If you want to delete and re-download, be careful not to delete the userconfig folder, otherwise you will lose your previous settings!!!
+
+
 
 
 ## Common Errors

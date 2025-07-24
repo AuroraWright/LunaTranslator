@@ -2,8 +2,7 @@ from textio.textsource.textsourcebase import basetext
 from myutils.wrapper import threader
 import NativeUtils, windows, uuid, os, gobject, time
 from ctypes import c_int
-from myutils.config import globalconfig, _TR
-from myutils.mecab import punctuations
+from myutils.config import globalconfig, _TR, isascii
 
 
 def getlocaleandlv(path):
@@ -25,12 +24,9 @@ def getlocaleandlv(path):
 def findallmodel(checkX=False, check=None):
     __vis = []
     paths = []
-    extra = globalconfig.get("MicrosoftWindows.Speech.License", "")
     for _, p in [(None, check)] + NativeUtils.FindPackages("MicrosoftWindows.Speech."):
         try:
             lc, lv = getlocaleandlv(p)
-            if lv != "0" and not extra:
-                continue
             __vis.append(lc)
         except:
             continue
@@ -41,8 +37,6 @@ def findallmodel(checkX=False, check=None):
         if os.path.basename(_dir).startswith("MicrosoftWindows.Speech."):
             try:
                 lc, lv = getlocaleandlv(_dir)
-                if lv != "0" and not extra:
-                    continue
                 __vis.append(lc)
             except:
                 continue
@@ -54,6 +48,20 @@ def findallmodel(checkX=False, check=None):
     return __vis, paths
 
 
+class atendrestorwindow(NativeUtils.AutoKillProcess):
+    def __del__(self):
+        if not self.b:
+            NativeUtils.ShowLiveCaptionsWindow(self.pid, True)
+
+    def __init__(self, pidorexe, kill: bool):
+        super().__init__(pidorexe, kill=kill, hide=False)
+        self.b = True
+
+    def show(self, b):
+        self.b = b
+        NativeUtils.ShowLiveCaptionsWindow(self.pid, b)
+
+
 class mssr(basetext):
     def end(self):
         # listen里循环引用
@@ -62,9 +70,10 @@ class mssr(basetext):
     def runornot(self, _):
         windows.SetEvent(self.notify)
 
+    cogdll = "Microsoft.CognitiveServices.Speech.extension.embedded.sr.dll"
+
     def finddlldirectory(self):
-        dll = "Microsoft.CognitiveServices.Speech.extension.embedded.sr.dll"
-        checkdir = lambda d: d and os.path.isfile(os.path.join(d, dll))
+        checkdir = lambda d: d and os.path.isfile(os.path.join(d, self.cogdll))
         dllp = r"C:\Windows\SystemApps\MicrosoftWindows.Client.Core_cw5n1h2txyewy\LiveCaptions"
         if checkdir(dllp):
             return dllp
@@ -103,21 +112,95 @@ class mssr(basetext):
     def extralicense(self):
         return globalconfig.get("MicrosoftWindows.Speech.License", "")
 
-    def init(self):
+    lcexe = r"C:\Windows\{}\LiveCaptions.exe".format(
+        ("Sysnative", "System32")[gobject.runtime_bit_64]
+    )
 
-        self.startsql(gobject.gettranslationrecorddir("0_mssr.sqlite"))
+    def findlcpid(self):
+        for pid, exebase in NativeUtils.ListProcesses():
+            if exebase.lower() != "livecaptions.exe":
+                continue
+            name_ = windows.GetProcessFileName(pid)
+            if name_.lower() == self.lcexe.lower():
+                return pid
+        return None
+
+    def init_indirect(self):
+        pid = self.findlcpid()
+        pidorexe = pid if pid else self.lcexe
+        self.engine = atendrestorwindow(
+            pidorexe, kill=globalconfig["sourcestatus2"]["mssr"]["autokill"]
+        )
+
+        print(self.engine.pid)
+        self.__dointernal(self.engine.pid)
+
+    @threader
+    def __dointernal(self, pid):
+        last = ""
+        lasttt = ""
+        lastt = 0
+        first = True
+        uid = self.uuid
+        while (uid == self.uuid) and (not self.ending):
+            if not self.isautorunning:
+                time.sleep(0.1)
+                continue
+            interval = globalconfig["sourcestatus2"]["mssr"]["refreshinterval2"]
+            this = NativeUtils.GetLiveCaptionsText(pid)
+            if first and this is not None:
+                first = False
+                self.engine.show(
+                    not globalconfig["sourcestatus2"]["mssr"]["hidewindow"]
+                )
+            if not this:
+                time.sleep(0.1)
+                continue
+            lines = this.splitlines()
+
+            this = lines[-1]
+            if this != last:
+                self.updaterawtext(this)
+            thist = time.time()
+            if thist - lastt > interval:
+                if lasttt != this:
+                    self.dispatchtext(this, updateTranslate=True)
+                lastt = thist
+                lasttt = this
+            last = this
+
+            time.sleep(0.1)
+
+    def init(self):
+        self.end()
+        self.uuid = uuid.uuid4()
         self.curr = ""
+        if (
+            os.path.exists(self.lcexe)
+            and globalconfig["sourcestatus2"]["mssr"]["mode"] == "indirect"
+        ):
+            self.init_indirect()
+        else:
+            self.init_direct()
+
+    def init_direct(self):
+
         path = globalconfig["sourcestatus2"]["mssr"]["path"]
         path = findallmodel(checkX=True, check=path)
         if not path:
             gobject.base.displayinfomessage(_TR("无可用语言"), "<msg_error_Origin>")
+            return
+        if path and not isascii(path):
+            gobject.base.displayinfomessage(
+                _TR("请勿使用非英文路径"), "<msg_error_Origin>"
+            )
             return
 
         dll = self.finddlldirectory()
         if not dll:
             gobject.base.displayinfomessage(_TR("找不到运行时"), "<msg_error_Origin>")
             return
-        print(path, dll)
+        print(path, dll, NativeUtils.QueryVersion(os.path.join(dll, self.cogdll)))
         pipename = "\\\\.\\Pipe\\" + str(uuid.uuid4())
         waitsignal = str(uuid.uuid4())
         notify = str(uuid.uuid4())
@@ -142,15 +225,20 @@ class mssr(basetext):
 
     @threader
     def listen(self):
-        punctuationswithoutspace = punctuations.copy()
-        punctuationswithoutspace.remove(" ")
         last = ""
         lastt = 0
-        while not self.ending:
+        uid = self.uuid
+        while (uid == self.uuid) and (not self.ending):
             iserr = c_int.from_buffer_copy(windows.ReadFile(self.hPipe, 4)).value
             if iserr:
                 sz = c_int.from_buffer_copy(windows.ReadFile(self.hPipe, 4)).value
                 text = windows.ReadFile(self.hPipe, sz).decode()
+                if text.startswith("??"):
+                    err = text[2:]
+                    text = _TR("系统不支持环回录制")
+                    if err:
+                        hr = int(err)
+                        text += ": {} {}".format(hex(hr)[2:], windows.FormatMessage(hr))
                 gobject.base.displayinfomessage(text, "<msg_error_Origin>")
                 raise Exception(text)
             else:
@@ -172,13 +260,9 @@ class mssr(basetext):
                     last = text
                     thist = time.time()
                     self.updaterawtext(text)
-                    if (
-                        ok
-                        or (
-                            thist - lastt
-                            > globalconfig["sourcestatus2"]["mssr"]["refreshinterval"]
-                        )
-                        or any(_ in punctuationswithoutspace for _ in increased)
+                    if ok or (
+                        thist - lastt
+                        > globalconfig["sourcestatus2"]["mssr"]["refreshinterval"]
                     ):
                         self.dispatchtext(text, updateTranslate=True)
                         lastt = thist

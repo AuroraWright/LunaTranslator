@@ -1,10 +1,9 @@
 from qtsymbols import *
-import functools, os, gobject
+import functools, gobject
 from myutils.post import POSTSOLVE
 from myutils.utils import (
     selectdebugfile,
     checkpostlangmatch,
-    dynamiclink,
     loadpostsettingwindowmethod,
 )
 from myutils.post import processfunctions
@@ -15,6 +14,7 @@ from gui.usefulwidget import (
     getIconButton,
     D_getsimpleswitch,
     getcenterX,
+    D_getdoclink,
     getboxlayout,
     makescrollgrid,
     makesubtab_lazy,
@@ -34,7 +34,7 @@ def getcomparelayout(self):
     fromtext = QPlainTextEdit()
     totext = QPlainTextEdit()
     solvebutton = getIconButton(
-        callback=lambda: totext.setPlainText(POSTSOLVE(fromtext.toPlainText())),
+        callback=lambda: totext.setPlainText(POSTSOLVE(fromtext.toPlainText(), useAll=True)),
         icon="fa.chevron-right",
     )
 
@@ -52,12 +52,7 @@ def getcomparelayout(self):
 def setTab7_lazy(self, basel: QLayout):
     grids = [
         [
-            D_getIconButton(
-                lambda: os.startfile(dynamiclink("/textprocess.html", docs=True)),
-                "fa.question",
-                tips="使用说明",
-            ),
-            ("预处理方法", 5),
+            ("预处理方法", 6),
             "",
             "",
             "",
@@ -168,38 +163,28 @@ def setTab7_lazy(self, basel: QLayout):
         )
 
         l = [
-            ((postprocessconfig[post]["name"]), 6),
+            D_getdoclink("/textprocess.html#anchor-" + post),
+            ((postprocessconfig[post]["name"]), 5),
             D_getsimpleswitch(postprocessconfig[post], "use"),
             config,
             "",
             getcenterX(
-                getboxlayout(
-                    [
-                        "",
-                        button_up,
-                        button_down,
-                        "",
-                    ]
-                ),
+                getboxlayout([0, button_up, button_down, 0]),
                 widget=True,
             ),
         ]
         grids.append(l)
-    grids2 = [
-        [
-            D_getIconButton(
-                lambda: os.startfile(dynamiclink("/transoptimi.html", docs=True)),
-                "fa.question",
-                tips="使用说明",
-            )
-        ]
-    ]
+    grids2 = []
     for item in static_data["transoptimi"]:
         name = item["name"]
         visname = item["visname"]
         if checkpostlangmatch(name):
             grids2.append(
-                [((visname), 6), D_getsimpleswitch(globalconfig["transoptimi"], name)]
+                [
+                    D_getdoclink("/transoptimi.html#anchor-" + name),
+                    ((visname), 5),
+                    D_getsimpleswitch(globalconfig["transoptimi"], name),
+                ]
             )
             setting = loadpostsettingwindowmethod(name)
 

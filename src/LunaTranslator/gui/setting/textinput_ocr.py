@@ -1,7 +1,7 @@
 from qtsymbols import *
 import functools, os
 from myutils.config import globalconfig, ocrsetting, ocrerrorfix
-from myutils.utils import splitocrtypes, dynamiclink, getimagefilefilter
+from myutils.utils import splitocrtypes, getimagefilefilter
 from gui.inputdialog import postconfigdialog, autoinitdialog_items, autoinitdialog
 from gui.usefulwidget import (
     D_getsimplecombobox,
@@ -12,6 +12,7 @@ from gui.usefulwidget import (
     D_getcolorbutton,
     D_getsimpleswitch,
     clearlayout,
+    D_getdoclink,
     ClickableLabel,
     getboxlayout,
     TableViewW,
@@ -38,17 +39,13 @@ from ocrengines.baseocrclass import OCRResultParsed
 
 def __label1(self):
     threshold1label = QLabel()
-    gobject.base.connectsignal(
-        gobject.base.thresholdsett1, threshold1label.setText
-    )
+    gobject.base.connectsignal(gobject.base.thresholdsett1, threshold1label.setText)
     return threshold1label
 
 
 def __label2(self):
     threshold2label = QLabel()
-    gobject.base.connectsignal(
-        gobject.base.thresholdsett2, threshold2label.setText
-    )
+    gobject.base.connectsignal(gobject.base.thresholdsett2, threshold2label.setText)
     return threshold2label
 
 
@@ -332,6 +329,7 @@ def _ocrparam(self):
     _ocrparam_create(self, globalconfig["ocr_auto_method_v2"])
     return self._ocrparam
 
+
 @Singleton
 class showocrimage(saveposwindow):
     def closeEvent(self, e):
@@ -397,6 +395,7 @@ class showocrimage(saveposwindow):
         self.layout1.addWidget(self.originlabel)
         gobject.base.connectsignal(gobject.base.setimage, self.setimagefunction)
         gobject.base.connectsignal(gobject.base.setresult, self.setocr)
+        self.show()
 
     def onValueChanged(self, value):
         if not self.originimage:
@@ -434,34 +433,33 @@ def internal(self):
     ]
     engines = [
         [
+            dict(
+                title="离线",
+                type="grid",
+                grid=offgrids,
+                button=D_getdoclink("/useapis/ocrapi.html#anchor-offline"),
+            )
+        ],
+        [
+            dict(
+                title="在线",
+                type="grid",
+                grid=initgridsources(self, online),
+                button=D_getdoclink("/useapis/ocrapi.html#anchor-online"),
+            )
+        ],
+        [
             D_getIconButton(
-                callback=lambda: showocrimage(self).show(),
-                icon="fa.picture-o",
-                tips="查看",
-            ),
-            D_getIconButton(
-                callback=lambda: os.startfile(
-                    dynamiclink("/useapis/ocrapi.html", docs=True)
-                ),
-                icon="fa.question",
-                tips="使用说明",
+                callback=lambda: showocrimage(self), icon="fa.picture-o", tips="查看"
             ),
             "",
         ],
-        [dict(title="离线", type="grid", grid=offgrids)],
-        [dict(title="在线", type="grid", grid=initgridsources(self, online))],
     ]
     autorun = [
         [
             "自动化执行方法",
             getboxlayout(
                 [
-                    D_getIconButton(
-                        callback=lambda: os.startfile(
-                            dynamiclink("/ocrparam.html", docs=True)
-                        ),
-                        icon="fa.question",
-                    ),
                     D_getsimplecombobox(
                         [
                             "分析图像更新",
@@ -557,7 +555,7 @@ def internal(self):
     ]
     allothers = [
         [dict(title="识别设置", type="grid", grid=reco)],
-        [dict(title="自动化执行", grid=autorun)],
+        [dict(title="自动化执行", grid=autorun, button=D_getdoclink("/ocrparam.html"))],
         [dict(title="其他设置", type="grid", grid=others)],
     ]
 

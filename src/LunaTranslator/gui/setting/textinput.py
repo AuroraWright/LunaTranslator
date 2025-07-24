@@ -2,21 +2,24 @@ from qtsymbols import *
 import functools, NativeUtils
 import gobject, os
 from myutils.config import globalconfig, static_data
-from myutils.utils import dynamiclink
 from traceback import print_exc
 from language import TransLanguages
 from gui.setting.textinput_ocr import getocrgrid_table
 from gui.gamemanager.dialog import dialog_savedgame_integrated
 from gui.dynalang import LLabel
-from textio.textsource.mssr import getlocaleandlv, findallmodel
+from textio.textsource.mssr import findallmodel, mssr
 from gui.usefulwidget import (
     D_getsimplecombobox,
     D_getspinbox,
     D_getIconButton,
+    D_getdoclink,
     SuperCombo,
+    VisLFormLayout,
     getIconButton,
+    LinkLabel,
     makegrid,
     listediter,
+    getsimplecombobox,
     yuitsu_switch,
     D_getsimpleswitch,
     getboxwidget,
@@ -50,6 +53,7 @@ def __create2(self):
 
 def gethookgrid_em(self):
     grids = [
+        [D_getdoclink("/embedtranslate.html")],
         [
             "清除游戏内显示的文字",
             D_getsimpleswitch(
@@ -125,6 +129,7 @@ def gethookgrid_em(self):
 
 def gethookgrid(self):
     grids = [
+        [D_getdoclink("/hooksettings.html")],
         [
             "代码页",
             (
@@ -301,7 +306,7 @@ def createdownloadprogress(self):
     return downloadprogress
 
 
-def loadmssrsource(self):
+def loadmssrsource(mssrsource: SuperCombo):
     curr = globalconfig["sourcestatus2"]["mssr"]["source"]
     sources = ["loopback"]
     vis = ["环回录制"]
@@ -319,7 +324,6 @@ def loadmssrsource(self):
         for _, _id in NativeUtils.ListEndpoints(False):
             sources.append(_id)
             vis.append("[[" + _ + "]]")
-    mssrsource: SuperCombo = self.mssrsource
     mssrsource.blockSignals(True)
     mssrsource.clear()
     mssrsource.addItems(vis, internals=sources)
@@ -327,20 +331,17 @@ def loadmssrsource(self):
     mssrsource.blockSignals(False)
 
 
-def __srcofig(grids: list, self):
-    __vis, paths = findallmodel()
-    if not paths:
-        return
+def hhfordirect(__vis, paths):
 
-    self.mssrsource = D_getsimplecombobox(
+    mssrsource = D_getsimplecombobox(
         [""],
         globalconfig["sourcestatus2"]["mssr"],
         "source",
         internal=[0],
         callback=lambda _: gobject.base.textsource.init(),
     )()
-    loadmssrsource(self)
-    __w = getboxwidget(
+    loadmssrsource(mssrsource)
+    return getboxwidget(
         [
             getsmalllabel("语言"),
             D_getsimplecombobox(
@@ -362,14 +363,85 @@ def __srcofig(grids: list, self):
             ),
             "",
             getsmalllabel("音源"),
-            self.mssrsource,
+            mssrsource,
         ]
     )
+
+
+def hhforindirect():
+
+    return getboxwidget(
+        [
+            getsmalllabel("刷新间隔"),
+            D_getspinbox(
+                0.1,
+                10,
+                globalconfig["sourcestatus2"]["mssr"],
+                "refreshinterval2",
+                True,
+                0.1,
+            ),
+            "",
+            getsmalllabel("隐藏窗口"),
+            D_getsimpleswitch(
+                globalconfig["sourcestatus2"]["mssr"],
+                "hidewindow",
+                callback=functools.partial(
+                    lambda _: (gobject.base.textsource.engine.show(not _)),
+                ),
+            ),
+            "",
+            getsmalllabel("自动结束进程"),
+            D_getsimpleswitch(
+                globalconfig["sourcestatus2"]["mssr"],
+                "autokill",
+                callback=functools.partial(
+                    lambda _: (gobject.base.textsource.engine.setkill(_)),
+                ),
+            ),
+        ]
+    )
+
+
+def modesW(__vis, paths):
+    w = QWidget()
+    layout = VisLFormLayout(w)
+    layout.setContentsMargins(0, 0, 0, 0)
+    setvisrow = lambda _: (
+        layout.setRowVisible(1, _ == "direct"),
+        layout.setRowVisible(2, _ == "indirect"),
+    )
+    layout.addRow(
+        "模式",
+        getsimplecombobox(
+            ["直接调用", "间接读取"],
+            globalconfig["sourcestatus2"]["mssr"],
+            "mode",
+            internal=["direct", "indirect"],
+            callback=lambda _: (gobject.base.textsource.init(), setvisrow(_)),
+        ),
+    )
+    layout.addRow(hhfordirect(__vis, paths))
+    layout.addRow(hhforindirect())
+    setvisrow(globalconfig["sourcestatus2"]["mssr"]["mode"])
+    return w
+
+
+def __srcofig(grids: list, self):
+    __vis, paths = findallmodel()
+    if not paths and not gobject.sys_ge_win_10:
+        return
+
+    if os.path.exists(mssr.lcexe):
+        __w = modesW(__vis, paths)
+    else:
+        __w = hhfordirect(__vis, paths)
     __w.setEnabled(globalconfig["sourcestatus2"]["mssr"]["use"])
 
     __ = dict(
         type="grid",
-        title="Windows_语音识别",
+        title="语音识别",
+        button=D_getdoclink("/sr.html"),
         grid=[
             [
                 getsmalllabel("使用"),
@@ -385,7 +457,6 @@ def __srcofig(grids: list, self):
                         "sourceswitchs",
                         "mssr",
                         lambda _, _2: (
-                            loadmssrsource(self),
                             gobject.base.starttextsource(_, _2),
                             __w.setEnabled(_2),
                         ),
@@ -399,7 +470,7 @@ def __srcofig(grids: list, self):
     grids.insert(0, [__])
 
 
-class MDLabel2(QLabel):
+class MDLabel2(LinkLabel):
     def __init__(self, md):
         super().__init__()
         self.setText(md)
@@ -436,6 +507,7 @@ def filetranslate(self):
         [
             dict(
                 title="网络服务",
+                button=D_getdoclink("/apiservice.html"),
                 grid=[
                     [
                         "开启",
@@ -446,14 +518,7 @@ def filetranslate(self):
                                     "networktcpenable",
                                     callback=lambda _: gobject.base.serviceinit(),
                                 ),
-                                D_getIconButton(
-                                    lambda: os.startfile(
-                                        dynamiclink("/apiservice.html", docs=True)
-                                    ),
-                                    "fa.question",
-                                    tips="使用说明",
-                                ),
-                                "",
+                                0,
                             ]
                         ),
                     ],

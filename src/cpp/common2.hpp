@@ -110,18 +110,30 @@ struct CoAsyncTaskWaiter
     }
 };
 
-struct AutoFreeString
+template <typename T, auto initor, auto clearer>
+struct AutoVariantBase
 {
-    LPWSTR ptr;
-    AutoFreeString(LPWSTR ptr) : ptr(ptr)
+    T var;
+    operator T()
     {
+        return var;
     }
-    ~AutoFreeString()
+    T *operator&()
     {
-        delete[] ptr;
+        return &var;
     }
-    operator LPWSTR()
+    T *operator->()
     {
-        return ptr;
+        return &var;
+    }
+    AutoVariantBase()
+    {
+        initor(&var);
+    }
+    ~AutoVariantBase()
+    {
+        clearer(&var);
     }
 };
+using AutoVariant = AutoVariantBase<VARIANT, VariantInit, VariantClear>;
+using AutoPropVariant = AutoVariantBase<PROPVARIANT, PropVariantInit, PropVariantClear>;

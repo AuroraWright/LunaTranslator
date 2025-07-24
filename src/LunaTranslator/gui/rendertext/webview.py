@@ -161,6 +161,9 @@ class somecommon(dataget):
         args = quote(json.dumps(dict(klass=klass, texttype=texttype)))
         self.debugeval('create_div_line_id("{}","{}")'.format(_id, args))
 
+    def scrolltoend(self):
+        self.debugeval("scrollend()")
+
     def clear_all(self):
         self.debugeval("clear_all()")
 
@@ -293,7 +296,10 @@ class somecommon(dataget):
     def setfontextra(self, klass: str):
         if not klass:
             return
-        curr = copy.deepcopy(globalconfig["fanyi"][klass].get("privatefont", {}))
+        setting: dict = globalconfig["fanyi"].get(klass)
+        if not setting:
+            return
+        curr = copy.deepcopy(setting.get("privatefont", {}))
         if curr == self.ts_klass.get(klass, None):
             return
         self.ts_klass[klass] = curr

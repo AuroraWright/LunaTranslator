@@ -70,6 +70,15 @@
     .tooltip.show {
         opacity: 1;
     }
+
+    .lunatranslator_clickword_force {
+        z-index: 2000;
+        position: relative;
+    }
+
+    .lunatranslator_clickword_force:hover {
+        background-color: var(--clickwordhover);
+    }
 </style>
 <script>
     function settooltipsstyle(c1, c2, pd, r) {
@@ -494,6 +503,7 @@
         ele.innerHTML = ''
         ele.appendChild(innerele)
         safe_calllunaheightchange()
+        // scrollend()
     }
     function _splittags(tag) {
         let result = [];
@@ -680,6 +690,8 @@
             }
 
             createwordhoverlistener(eleori, word)
+            if (word.specialinfo)
+                eleori.classList.add('lunatranslator_clickword_force')
             eleori.classList.add('lunatranslator_clickword')
             eleori.appendChild(style1)
 
@@ -696,8 +708,17 @@
             }
             ele.appendChild(eleori)
         })
+        if (tags[tags.length - 1].word == '\n') {
+            ele.appendChild(document.createElement('br'))
+        }
         safe_calllunaheightchange()
-
+        //scrollend()
+    }
+    function scrollend() {
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'instant'
+        });
     }
     function clear_all() {
         document.getElementById('luna_root_div_origin').innerHTML = "";

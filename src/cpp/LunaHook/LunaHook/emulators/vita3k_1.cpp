@@ -109,13 +109,25 @@ namespace
         s = re::sub(s, "#Ruby\\[[-\\d]+,(.*?)\\]");
         buffer->from(s);
     }
-    void FPCSG01008(TextBuffer *buffer, HookParam *hp)
+    void PCSG00766(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, "#Ruby\\[([^,]+)\\.([^\\]]+)\\].", "$1");
-        s = re::sub(s, "(#n)+", " ");
-        s = re::sub(s, "#[A-Za-z]+\\[(\\d*[.])?\\d+\\]");
+        s = re::sub(s, R"(#Ruby\[(.*?),(.*?)\])", "$1");
+        s = re::sub(s, R"((\x81\x40)*(#n)*(\x81\x40)*)");
+        s = re::sub(s, R"(#[A-Za-z]+\[[\d\-,\.]*\])");
         buffer->from(s);
+    }
+    void PCSG00935(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        auto _ = re::search(s, R"(#n#Pos[[\d\-,\.]*\](.*))");
+        if (_)
+        {
+            s = strReplace(s, _.value()[0].str());
+            s = u8"【" + _.value()[1].str() + u8"】" + s;
+        }
+        buffer->from(s);
+        PCSG00766(buffer, hp);
     }
     void TPCSG00903(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
@@ -125,6 +137,10 @@ namespace
     void PCSG00615(TextBuffer *buffer, HookParam *hp)
     {
         StringFilter(buffer, TEXTANDLEN(L"＿"));
+    }
+    void PCSG01001(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("@@"));
     }
     void PCSG01247(TextBuffer *buffer, HookParam *hp)
     {
@@ -643,6 +659,13 @@ namespace
         strReplace(s, "#n");
         buffer->from(s);
     }
+    void PCSG00402(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"((\x81\x40)*(#n)*(\x81\x40)*)");
+        s = re::sub(s, R"(#\w+(\[.+?\])?)");
+        buffer->from(s);
+    }
     void FPCSG00815(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
@@ -810,6 +833,11 @@ namespace
         StringFilter(buffer, TEXTANDLEN("\x81\x84"));
         CharFilter(buffer, '\n');
     }
+    void PCSG01063(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN(u8"\n　"));
+        CharFilter(buffer, '\n');
+    }
     void PCSG01289(TextBuffer *buffer, HookParam *hp)
     {
         auto ws = buffer->strAW();
@@ -943,6 +971,12 @@ namespace
         s = re::sub(s, LR"(<CLT \d+>(.*?)<CLT>)", L"$1");
         buffer->from(s);
     }
+    void PCSG00020(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(<\w+?>)");
+        buffer->from(s);
+    }
 }
 
 struct emfuncinfoX
@@ -951,6 +985,24 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 極限脱出ＡＤＶ 善人シボウデス
+    {0x810DE344, {CODEC_UTF8, 6, 0, 0, PCSG00020, "PCSG00020"}},
+    // イケメン戦国◆時をかける恋　新たなる出逢い
+    {0x8009B496, {CODEC_UTF8, 8, 0, 0, PCSG01063, "PCSG01063"}},
+    // ニル・アドミラリの天秤 帝都幻惑綺譚
+    {0x80073862, {0, 0, 0, 0, PCSG00766, "PCSG00766"}},
+    // ニル・アドミラリの天秤 クロユリ炎陽譚
+    {0x80030CC8, {0, 5, 0, 0, PCSG00766, "PCSG01014"}},
+    {0x80074F2A, {0, 0, 0, 0, PCSG00766, "PCSG01014"}},
+    // BROTHERS CONFLICT　Precious Baby
+    {0x800B2C66, {0, 5, 0, 0, PCSG00402, "PCSG00755"}},
+    {0x800B4548, {0, 1, 0, 0, PCSG00402, "PCSG00755"}},
+    // CLOCK ZERO ～終焉の一秒～ ExTime
+    {0x8002BA9C, {CODEC_UTF8, 0, 0, 0, FPCSG00815, "PCSG00469"}},
+    // Collar×Malice
+    {0x80030250, {CODEC_UTF8, 0, 0, 0, 0, "PCSG00866"}},
+    // Side Kicks!
+    {0x80020C78, {CODEC_UTF8, 0, 8, 0, PCSG01001, "PCSG01001"}},
     // 俺たちに翼はない
     {0x8003EC88, {0, 7, 0, 0, 0, "PCSG00299"}},
     // シルヴァリオ トリニティ -Beyond the Horizon-
@@ -969,11 +1021,12 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 参千世界遊戯 ~MultiUniverse Myself~
     {0x8005ae24, {0, 0, 0, 0, 0, "PCSG01194"}}, // dialouge+name,sjis,need remap jis char,to complex
     // Marginal #4 Road to Galaxy
-    {0x8002ff90, {CODEC_UTF8, 0, 0, 0, FPCSG01008, "PCSG01008"}}, // text
+    {0x8002ff90, {CODEC_UTF8, 0, 0, 0, PCSG00766, "PCSG01008"}}, // text
     // MARGINAL#4 IDOL OF SUPERNOVA
     {0x800718f8, {0, 0, 0, 0, FPCSG00448, "PCSG00448"}}, // dialogue,sjis
     // BLACK WOLVES SAGA  -Weiβ und Schwarz-
-    {0x800581a2, {CODEC_UTF8, 0, 0, 0, FPCSG01008, "PCSG00935"}}, // text
+    {0x800581a2, {CODEC_UTF8, 0, 0, 0, PCSG00766, "PCSG00935"}}, // text
+    {0x800644F6, {CODEC_UTF8, 8, 0, 0, PCSG00935, "PCSG00935"}},
     // New Game! The Challenge Stage!
     {0x8012674c, {CODEC_UTF8, 0, 0, TPCSG00903, FPCSG00903, "PCSG00903"}},
     // 喧嘩番長 乙女
@@ -1059,6 +1112,12 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // サイキックエモーション ムー
     {0x80035948, {CODEC_UTF8, 9, 0, 0, FPCSG00815, "PCSG00815"}},
     {0x80034580, {CODEC_UTF8, 6, 0, 0, FPCSG00815, "PCSG00815"}},
+    // Code：Realize ～創世の姫君～
+    {0x800879DE, {0, 0, 0, 0, PCSG00402, "PCSG00402"}},
+    {0x8001A39A, {0, 0, 0x1c, 0, PCSG00402, "PCSG00402"}},
+    // Code：Realize ～祝福の未来～
+    {0x8008E566, {CODEC_UTF8, 1, 0, 0, FPCSG00815, "PCSG00805"}},
+    {0x80024DE0, {CODEC_UTF8, 0xb, 0x1c, 0, FPCSG00815, "PCSG00805"}},
     // Code:Realize ～白銀の奇跡～
     {0x80015bcc, {CODEC_UTF8, 0, 0x1c, 0, F010088B01A8FC000, "PCSG01110"}},
     {0x80038e76, {CODEC_UTF8, 8, 0, 0, F010088B01A8FC000, "PCSG01110"}},
@@ -1086,6 +1145,9 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // DIABOLIK LOVERS LIMITED V EDITION
     {0x8105A176, {0, 5, 0, 0, PCSG00472, "PCSG00272"}}, // prologue+text
     {0x8103416C, {0, 0, 0, 0, PCSG00272, "PCSG00272"}}, // name+text
+    // DIABOLIK LOVERS MORE,BLOOD LIMITED V EDITION
+    {0x800285BE, {0, 8, 0, 0, PCSG00472, "PCSG00476"}},
+    {0x80033F0E, {0, 0, 0, 0, PCSG00272, "PCSG00476"}},
     // Norn9 ~Norn + Nonette~ Act Tune
     {0x8001E288, {CODEC_UTF8, 0, 0, 0, PCSG00833, "PCSG00833"}},
     // NORN9 VAR COMMONS
@@ -1251,7 +1313,9 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x800BE808, {CODEC_UTF8, 3, 0, 0, PCSG00787, "PCSG00841"}},
     // DYNAMIC CHORD feat.apple-polisher V edition
     {0x80033F6C, {0, 0, 0, 0, FPCSG00912, "PCSG00915"}},
-    {0x8003C61E, {0, 0, 0, 0, FPCSG00912, "PCSG00915"}},
+    {0x8003C61E, {0, 0, 0, 0, FPCSG00912, "PCSG00915"}}, // prolog1
+    {0x80035924, {0, 6, 0, 0, FPCSG00912, "PCSG00915"}}, // prolog2+name2
+    {0x8003548C, {0, 3, 0, 0, FPCSG00912, "PCSG00915"}}, // prolog2
     // フローラル・フローラブ
     {0x80022C9C, {0, 7, 0, 0, PCSG01202, "PCSG01202"}},
     // EVE rebirth terror

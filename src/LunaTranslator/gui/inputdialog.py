@@ -69,7 +69,7 @@ class noundictconfigdialog1(LDialog):
                 extraX, "ttsprocess_use", callback=last.setEnabled, default=False
             )
             formLayout.addLayout(
-                getboxlayout([getsmalllabel("自定义python处理"), switch, last, ""])
+                getboxlayout([getsmalllabel("自定义python处理"), switch, last, 0])
             )
         self.model = LStandardItemModel()
         self.model.setHorizontalHeaderLabels(label)
@@ -537,12 +537,7 @@ class autoinitdialog(LDialog):
         if "k" in line:
             key = line["k"]
         if line["type"] == "label":
-
-            if "islink" in line and line["islink"]:
-                lineW = QLabel(makehtml(dd[key]))
-                lineW.setOpenExternalLinks(True)
-            else:
-                lineW = LLabel(dd[key])
+            lineW = LLabel(dd[key])
         elif line["type"] == "textlist":
             directedit = isinstance(dd[key], str)
             if directedit:

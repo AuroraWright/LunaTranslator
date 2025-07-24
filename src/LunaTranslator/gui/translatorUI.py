@@ -12,13 +12,14 @@ from myutils.config import (
     savehook_new_list,
     translatorsetting,
 )
+from gui.setting.about import get_about_info
 from myutils.magpie_builtin import MagpieBuiltin, AdapterService
 from gui.gamemanager.dialog import dialog_setting_game
 from myutils.ocrutil import ocr_run, imageCut
+from myutils.mecab import WordSegResult
 from myutils.utils import (
     stringfyerror,
     loadpostsettingwindowmethod,
-    makehtml,
     getlangsrc,
     loadpostsettingwindowmethod_maybe,
     find_or_create_uid,
@@ -33,7 +34,7 @@ from gui.usefulwidget import resizableframeless
 from gui.edittext import edittrans
 from gui.gamemanager.dialog import dialog_savedgame_integrated
 from gui.gamemanager.common import startgame
-from gui.dynalang import LDialog, LLabel, LAction
+from gui.dynalang import LLabel, LAction
 
 
 class IconLabelX(LLabel):
@@ -328,7 +329,6 @@ class ButtonBar(QFrame):
 
 class TranslatorWindow(resizableframeless):
     displayglobaltooltip = pyqtSignal(str)
-    displaylink = pyqtSignal(str)
     displaymessagebox = pyqtSignal(str, str)
     displayres = pyqtSignal(dict)
     displayraw1 = pyqtSignal(str, bool)
@@ -527,12 +527,14 @@ class TranslatorWindow(resizableframeless):
         iter_context = kwargs.get("iter_context", None)
         hira = kwargs.get("hira", [])
         klass = kwargs.get("klass", None)
+        raw = kwargs.get("raw", False)
         updateTranslate = kwargs.get("updateTranslate", False)
         if text is None:
             if clear:
                 self.translate_text.clear()
             return
-        text = self.cleartext(text)
+        if not raw:
+            text = self.cleartext(text)
         if iter_context:
             iter_res_status, iter_context_class = iter_context
         else:
@@ -1017,22 +1019,8 @@ class TranslatorWindow(resizableframeless):
     def displaymessagebox_f(self, string1, string2):
         QMessageBox.information(self, _TR(string1), _TR(string2))
 
-    def displaylink_f(self, link):
-        class linkviewer(LDialog):
-            def __init__(_self, _link) -> None:
-                super().__init__(self)
-                _self.setWindowTitle("打开链接")
-                l = QLabel(makehtml(_link, show=_link))
-                l.setOpenExternalLinks(True)
-                la = QHBoxLayout(_self)
-                la.addWidget(l)
-                _self.exec()
-
-        linkviewer(link)
-
     def initsignals(self):
         self.hotkeyuse_selectprocsignal.connect(gobject.base.createattachprocess)
-        self.displaylink.connect(self.displaylink_f)
         self.displayglobaltooltip.connect(self.displayglobaltooltip_f)
         self.displaymessagebox.connect(self.displaymessagebox_f)
         self.ocr_once_signal.connect(self.ocr_once_function)
@@ -1246,19 +1234,68 @@ class TranslatorWindow(resizableframeless):
         except:
             pass
 
+    def showabout(self):
+
+        def makeMDlinkclick(text: str) -> "list[WordSegResult]":
+            if "\n" in text:
+                __ = []
+                for i, _ in enumerate(makeMDlinkclick(_) for _ in text.split("\n")):
+                    if i:
+                        __.append(WordSegResult("\n"))
+                    __ += _
+                return __
+            result = []
+            while text:
+                if text[0] == "[":
+                    _right = text.find("]")
+                    _r2 = text.find(")")
+                    result.append(
+                        WordSegResult(
+                            text[1:_right], specialinfo=text[_right + 2 : _r2]
+                        )
+                    )
+                    text = text[_r2 + 1 :]
+                else:
+                    if "[" in text:
+                        left = text.find("[")
+                        result.append(WordSegResult(text[:left], isshit=True))
+                        text = text[left:]
+                    else:
+                        result.append(WordSegResult(text, isshit=True))
+                        text = None
+            return result
+
+        _t = get_about_info()
+        if not globalconfig["adaptive_height"]:
+            _t = _t.replace("\n\n", "\n")
+        segs = makeMDlinkclick(_t)
+        text = "".join(_.word for _ in segs)
+        self.showline(
+            text=text,
+            texttype=TextType.Info,
+            hira=segs,
+            raw=True,
+            color=SpecialColor.RawTextColor,
+        )
+        globalconfig["lasttime2"] = time.time()
+
     def showEvent(self, e):
+        super().showEvent(e)
         if not self.firstshow:
-            self.enterfunction()
-            return super().showEvent(e)
-        self.cleanupdater()
+            return self.enterfunction()
         self.firstshow = False
+        self.cleanupdater()
+
         self.mousetransparent_check()
         self.adjustbuttons()
         # 有个莫名其妙的加载时间
         self.enterfunction(2 + globalconfig["disappear_delay_tool"])
         self.autohidedelaythread()
         self.tracewindowposthread()
-        return super().showEvent(e)
+
+        if time.time() - globalconfig.get("lasttime2", 0) > 3600 * 24 * 3:
+            self.showabout()
+            globalconfig["lasttime2"] = time.time()
 
     def setselectableEx(self):
         globalconfig["selectableEx"] = True
@@ -1523,6 +1560,7 @@ class TranslatorWindow(resizableframeless):
         if self.translate_text.cleared:
             return
         if not globalconfig["adaptive_height"]:
+            self.translate_text.scrolltoend()
             return
         if globalconfig["verticalhorizontal"]:
             return

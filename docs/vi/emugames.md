@@ -2,16 +2,12 @@
 
 LunaTranslator hỗ trợ nhiều trò chơi trên NS/PSP/PSV/PS2 thông qua trình giả lập HOOK.
 
-::: cảnh báo
-Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò chơi trên trình giả lập, nếu không trò chơi sẽ không được nhận diện.
-:::
-
 Đối với các trò chơi không được hỗ trợ, vui lòng gửi một [vấn đề](https://lunatranslator.org/Resource/game_support)
 
 ::: chi tiết Các trình giả lập được hỗ trợ
 | Nền tảng | Trình giả lập |
 | - | - |
-| NS | yuzu(&ge;1616), [sudachi](https://github.com/emuplace/sudachi.emuplace.app), [Citron](https://git.citron-emu.org/Citron/Citron), [Eden](https://git.eden-emu.dev/eden-emu/eden) |
+| NS | yuzu(&ge;1616), [sudachi](https://github.com/emuplace/sudachi.emuplace.app), [Citron](https://git.citron-emu.org/citron/emu), [Eden](https://git.eden-emu.dev/eden-emu/eden) |
 | PSP | [PPSSPP](https://github.com/hrydgard/ppsspp) &ge;v1.15.0 |
 | PSV | [Vita3K](https://github.com/Vita3K/Vita3K) &ge;v0.1.9.3339 |
 | PS2 | [PCSX2](https://github.com/PCSX2/pcsx2) &ge;v1.7.4473 |
@@ -25,6 +21,9 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | 010087201EEA6000 | Side Kicks! beyond |
+|  | 0100C9C01E960000 | Romance MD: Always On Call |
+|  | 01003D9020854000 | ToHeart |
 |  | 010096E021CF2000 | VIRTUAL GIRL @ WORLD'S END |
 |  | 01006660233C6000 | レッドベルの慟哭 (The Red Bells Lament) |
 |  | 010056401B548000 | シロガネｘスピリッツ！ |
@@ -163,6 +162,7 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | 010086C00AF7C000 | Yo-kai Watch 4++ |
 |  | 010079C017B98000 | キューピット・パラサイト -Sweet & Spicy Darling.- |
 |  | 010061A01C1CE000 | DesperaDrops |
+|  | 010008F020CD8000 | Despera Drops |
 |  | 0100EF00134F4000 | Dragon Ball Z: Kakarot |
 |  | 0100EDD018032000 | Harvestella |
 |  | 0100F8A017BAA000 | 千の刃濤、桃花染の皇姫 |
@@ -271,6 +271,7 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | 010031C01F410000 | planetarian～雪圏球～ |
 |  | 0100F0A01F112000 | planetarian～ちいさなほしのゆめ＆雪圏球～ パッケージ版 英文版 |
 |  | 0100C9001E10C000 | 贄の町 |
+|  | 0100D01021376000 | The Town of Nie Iromusubi |
 |  | 0100FB301E70A000 | Honey Vibes |
 |  | 01008A30083E2000 | ワールドエンド・シンドローム |
 |  | 0100A9B01D4AE000 | 果つることなき未来ヨリ |
@@ -382,6 +383,10 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
 |  | ULJM05962 | 花と乙女に祝福を　～春風の贈り物～　portable |
+|  | ULJM05683 | Starry☆Sky ～in Spring～ Portable |
+|  | ULJM05740 | Starry☆Sky～in Summer～Portable |
+|  | ULJM05809 | Starry☆Sky～in Autumn～Portable |
+|  | ULJM05861 | Starry☆Sky～in Winter～Portable |
 |  | ULJM06207 | Starry☆Sky～After Spring～Portable |
 |  | ULJM06208 | Starry☆Sky～After Summer～Portable |
 |  | ULJM06209 | Starry☆Sky～After Autumn～Portable |
@@ -664,7 +669,6 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | ULJM05969 | うみねこのなく頃に Portable 2 |
 |  | ULJM06259 | 死神稼業～怪談ロマンス～ |
 |  | ULJM06224 | Stellar☆Theater Portable |
-|  | ULJM05683 | Starry☆Sky ～in Spring～ Portable |
 |  | ULJS00563 | 英国探偵ミステリア |
 |  | ULJM06305 | 変態王子と笑わない猫。 |
 |  | ULJM05848 | Are you Alice? |
@@ -706,6 +710,14 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | PCSG00020 | 極限脱出ＡＤＶ 善人シボウデス |
+|  | PCSG01063 | イケメン戦国◆時をかける恋　新たなる出逢い |
+|  | PCSG00766 | ニル・アドミラリの天秤 帝都幻惑綺譚 |
+|  | PCSG01014 | ニル・アドミラリの天秤 クロユリ炎陽譚 |
+|  | PCSG00755 | BROTHERS CONFLICT　Precious Baby |
+|  | PCSG00469 | CLOCK ZERO ～終焉の一秒～ ExTime |
+|  | PCSG00866 | Collar×Malice |
+|  | PCSG01001 | Side Kicks! |
 |  | PCSG00299 | 俺たちに翼はない |
 |  | PCSG01259 | シルヴァリオ トリニティ -Beyond the Horizon- |
 |  | PCSG01023 | 追放選挙 |
@@ -740,6 +752,8 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | PCSG00477 | 百華夜光 |
 |  | PCSG00855 | 花朧 ～戦国伝乱奇～ |
 |  | PCSG00815 | サイキックエモーション ムー |
+|  | PCSG00402 | Code：Realize ～創世の姫君～ |
+|  | PCSG00805 | Code：Realize ～祝福の未来～ |
 |  | PCSG01110 | Code:Realize ～白銀の奇跡～ |
 |  | PCSG00789 | オメルタ CODE:TYCOON 戒 |
 |  | PCSG01221 | 紅色天井艶妖綺譚 二藍 |
@@ -751,6 +765,7 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | PCSG00910 | DIABOLIK LOVERS LOST EDEN |
 |  | PCSG00826 | DIABOLIK LOVERS LUNATIC PARADE |
 |  | PCSG00272 | DIABOLIK LOVERS LIMITED V EDITION |
+|  | PCSG00476 | DIABOLIK LOVERS MORE,BLOOD LIMITED V EDITION |
 |  | PCSG00833 | Norn9 ~Norn + Nonette~ Act Tune |
 |  | PCSG00431 | NORN9 VAR COMMONS |
 |  | PCSG01011 | 空蝉の廻 |
@@ -865,6 +880,28 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | SLPM-67009 | サクラ大戦Ⅴ ～さらば愛しき人よ～ |
+|  | SLPM-65717 | 月は東に日は西に -Operation Sanctuary- |
+|  | SLPM-65641 | うたう♪タンブリング・ダイス ～私たち3人、あ・げ・る～ |
+|  | SLPM-65546 | CROSS+CHANNEL ～To all people～ [限定版] |
+|  | SLPM-62375 | THE 娘育成シミュレーション |
+|  | SLPM-65555 | ドラゴンクエストⅤ 天空の花嫁 |
+|  | SLPM-66973 | プリンセスナイトメア |
+|  | SLPS-25727 | Routes PE |
+|  | SLPS-25870 | Drastic Killer (Excellent Box) |
+|  | SLPM-65589 | カラフルBOX ～to LOVE～ [通常版] |
+|  | SLPM-65611 | PIZZICATO POLKA ～縁鎖現夜～ |
+|  | SLPM-65785 | なついろ ～星屑のメモリー～ [初回限定版] |
+|  | SLPS-25348 | こころの扉 初回限定版 [コレクターズエディション] |
+|  | SLPS-25395 | センチメンタルプレリュード |
+|  | SLPM-65736 | 蒼のままで・・・・・・ |
+|  | SLPM-65762 | 片神名 ～喪われた因果律～ |
+|  | SLPS-25409 | 双恋—フタコイ— [初回限定版] |
+|  | SLPM-55149 | ラブルートゼロ KissKiss☆ラビリンス [通常版] |
+|  | SLPM-66998 & SLPM-66999 | ふしぎ遊戯 朱雀異聞 |
+|  | SLPM-66023 & SLPM-66024 | ふしぎ遊戯 玄武開伝 外伝 鏡の巫女 |
+|  | SLPM-65381 | きまぐれストロベリーカフェ |
+|  | SLPM-66543 | Yo-Jin-Bo ～運命のフロイデ～ |
 |  | SLPS-25468 | 永遠のアセリア −この大地の果てで− |
 |  | SLPM-65832 | IZUMO コンプリート |
 |  | SLPM-65867 | 新世紀エヴァンゲリオン 鋼鉄のガールフレンド2nd |
@@ -1018,7 +1055,7 @@ Vui lòng để trình dịch HOOK trình giả lập trước khi tải trò ch
 |  | SLPS-25941 | SDガンダム - G GENERATION WARS |
 |  | SLPM-66458 | 風雨来記 |
 |  | SLPM-66163 | 風雨来記2 |
-|  | SLPM-62207 | SIMPLE2000シリーズ Vol.9 THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～ |
+|  | SLPM-62207 | THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～ |
 |  | SLPM-55006 | あかね色に染まる坂 ぱられる |
 |  | SLPS-25581 | SIMPLE 2000シリーズ Vol.92 THE 呪いのゲーム |
 |  | SLPS-20196 | 赤川次郎ミステリー月の光　 ～沈める鐘の殺人～ |

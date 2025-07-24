@@ -2,16 +2,17 @@ import platform, os, sys
 from ctypes import windll, Structure, POINTER, pointer
 from ctypes.wintypes import DWORD, WCHAR
 
+runtime_bit_64 = platform.architecture()[0] == "64bit"
+
 
 def GetDllpath(_, base=None):
-    isbit64 = platform.architecture()[0] == "64bit"
 
     if base is None:
-        base = os.path.abspath("files/DLL" + ("32", "64")[isbit64])
+        base = os.path.abspath("files/DLL" + ("32", "64")[runtime_bit_64])
     if isinstance(_, str):
         return os.path.join(base, _)
     elif isinstance(_, (list, tuple)):
-        return os.path.join(base, _[isbit64])
+        return os.path.join(base, _[runtime_bit_64])
 
 
 def __getdir(name="", basedir="cache"):
@@ -56,6 +57,7 @@ if TYPE_CHECKING:
     from LunaTranslator import BASEOBJECT
 base: "BASEOBJECT" = None
 serverindex = 0
+serverindex2 = 0
 istest = False
 
 
@@ -68,7 +70,6 @@ class Consts:
     IconSizeHW = 1.1
 
 
-runtime_bit_64 = platform.architecture()[0] == "64bit"
 runtime_for_xp = tuple(sys.version_info)[:2] == (3, 4)
 runtime_for_win10 = tuple(sys.version_info)[:2] >= (3, 9)
 
@@ -100,6 +101,7 @@ RtlGetVersion.argtypes = (POINTER(RTL_OSVERSIONINFOW),)
 __version = RTL_OSVERSIONINFOW()
 RtlGetVersion(pointer(__version))
 sys_ge_win_11 = __version.dwBuildNumber >= 22000  # 21h2
+sys_ge_win_10 = int(platform.version().split(".")[0]) >= 10
 sys_ge_win8 = tuple(int(_) for _ in platform.version().split(".")[:2]) >= (6, 2)
 sys_le_win7 = tuple(int(_) for _ in platform.version().split(".")[:2]) <= (6, 1)
 sys_le_win81 = int(platform.version().split(".")[0]) <= 6

@@ -290,6 +290,22 @@ def getrenameablellabel(uid, self, countnum):
 
 def loadbutton(self, fanyi):
     which = translate_exits(fanyi, which=True)
+    copyfrom = getcopyfrom(fanyi)
+    if (copyfrom != fanyi) and (copyfrom in translatorsetting):
+        if "args" in translatorsetting[copyfrom]:
+            for k in translatorsetting[copyfrom]["args"]:
+                if k not in translatorsetting[fanyi]["args"]:
+                    translatorsetting[fanyi]["args"][k] = translatorsetting[copyfrom][
+                        "args"
+                    ][k]
+
+            for k in list(translatorsetting[fanyi]["args"].keys()):
+                if k not in translatorsetting[copyfrom]["args"]:
+                    translatorsetting[fanyi]["args"].pop(k)
+        if "argstype" in translatorsetting[copyfrom]:
+            translatorsetting[fanyi]["argstype"] = translatorsetting[copyfrom][
+                "argstype"
+            ]
     items = autoinitdialog_items(translatorsetting[fanyi])
     if which == 0:
         aclass = "translator." + fanyi
@@ -308,7 +324,16 @@ def loadbutton(self, fanyi):
     )
 
 
-def selectllmcallback(self, countnum: list, fanyi, *_):
+def getcopyfrom(uid):
+    xx = uid
+    while True:
+        cp = globalconfig["fanyi"][xx].get("copyfrom")
+        if not cp:
+            return xx
+        xx = cp
+
+
+def selectllmcallback(self, countnum: list, fanyi, newname=None):
     uid = str(uuid.uuid4())
     _f11 = "Lunatranslator/translator/{}.py".format(fanyi)
     _f12 = "userconfig/copyed/{}.py".format(fanyi)
@@ -318,10 +343,13 @@ def selectllmcallback(self, countnum: list, fanyi, *_):
         shutil.copy(_f11, _f2)
     except:
         shutil.copy(_f12, _f2)
-
+    copyfrom = getcopyfrom(fanyi)
     globalconfig["fanyi"][uid] = copy.deepcopy(globalconfig["fanyi"][fanyi])
+    globalconfig["fanyi"][uid]["copyfrom"] = copyfrom
     globalconfig["fanyi"][uid]["use"] = False
-    globalconfig["fanyi"][uid]["name"] = dynamicapiname(fanyi) + "_copy"
+    globalconfig["fanyi"][uid]["name"] = (
+        newname if newname else (dynamicapiname(fanyi) + "_copy")
+    )
     if "name_self_set" in globalconfig["fanyi"][uid]:
         globalconfig["fanyi"][uid].pop("name_self_set")
     globalconfig["fanyi"][uid]["type"] = globalconfig["fanyi"][fanyi]["type"]
@@ -406,42 +434,6 @@ def btndeccallback(self, countnum):
         True,
         functools.partial(selectllmcallback_2, self, countnum),
     )
-
-
-def createmanybtn(self, countnum, btnplus):
-    w = NQGroupBox()
-    hbox = QHBoxLayout(w)
-    hbox.setContentsMargins(0, 0, 0, 0)
-    if btnplus == "api1":
-        btn = IconButton("fa.question", fix=False, tips="使用说明")
-        hbox.addWidget(btn)
-        btn.clicked.connect(
-            lambda: os.startfile(dynamiclink("/useapis/tsapi.html", docs=True))
-        )
-        return w
-
-    btn = IconButton("fa.plus", fix=False, tips="复制")
-    btn.clicked.connect(functools.partial(btnpluscallback, self, countnum))
-
-    hbox.addWidget(btn)
-
-    btn = IconButton("fa.minus", fix=False, tips="删除")
-    btn.clicked.connect(functools.partial(btndeccallback, self, countnum))
-
-    hbox.addWidget(btn)
-
-    btn = IconButton(
-        "fa.question",
-        fix=False,
-        tips="使用说明",
-    )
-    if btnplus == "api":
-        btn.clicked.connect(
-            lambda: os.startfile(dynamiclink("/guochandamoxing.html", docs=True))
-        )
-    hbox.addWidget(btn)
-    setattr(self, "btnmanyXXXX", w)
-    return w
 
 
 def initsome11(self, l, save=False):
@@ -529,10 +521,10 @@ def leftwidget(self):
         tips="使用说明",
     )
     btn3.clicked.connect(
-        lambda: os.startfile(dynamiclink("/guochandamoxing.html", docs=True))
+        lambda: os.startfile(dynamiclink("guochandamoxing.html", docs=True))
     )
 
-    return [btn, btn2, btn3]
+    return [btn3, btn, btn2]
 
 
 def initsome2(self, mianfei, api):
@@ -573,7 +565,7 @@ def initsome2(self, mianfei, api):
                     fix=False,
                     icon="fa.question",
                     callback=lambda: os.startfile(
-                        dynamiclink("/useapis/tsapi.html", docs=True)
+                        dynamiclink("useapis/tsapi.html", docs=True)
                     ),
                     tips="使用说明",
                 ),

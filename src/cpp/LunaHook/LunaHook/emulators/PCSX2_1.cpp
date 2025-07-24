@@ -46,10 +46,15 @@ namespace
     }
     void SLPM66958(TextBuffer *buffer, HookParam *hp)
     {
-        auto s = buffer->strA();
-        strReplace(s, "#cr0");
-        s = re::sub(s, R"(#c\d{2})");
-        buffer->from(s);
+        auto s = buffer->strAW();
+        s = re::sub(s, L"#[a-zA-Z0-9]+");
+        buffer->fromWA(s);
+    }
+    void SLPM65589(TextBuffer *buffer, HookParam *hp)
+    {
+        if (buffer->size <= 1)
+            return buffer->clear();
+        SLPM66958(buffer, hp);
     }
     void SLPM66408(TextBuffer *buffer, HookParam *hp)
     {
@@ -192,6 +197,11 @@ namespace
     {
         CharFilter(buffer, '\n');
     }
+    void SLPM66543(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("fc"));
+        StringFilter(buffer, TEXTANDLEN("\\c(say)"));
+    }
     void SLPS25483(TextBuffer *buffer, HookParam *hp)
     {
         StringFilter(buffer, TEXTANDLEN("@y"));
@@ -221,10 +231,8 @@ namespace
         auto s = buffer->strAW();
         s = re::sub(s, LR"(\{(.*?)\}\[(.*?)\])", L"$1");
         s = re::sub(s, L"%CG(.*?)%CE");
+        s = re::sub(s, L"%[A-Z]+");
         buffer->fromWA(s);
-        StringFilter(buffer, TEXTANDLEN("%P"));
-        StringFilter(buffer, TEXTANDLEN("%K"));
-        StringFilter(buffer, TEXTANDLEN("%V"));
         StringFilter(buffer, TEXTANDLEN("\x81\xe8"));
         StringReplacer(buffer, TEXTANDLEN("\x84\xa5\x84\xa7"), TEXTANDLEN("\x81\x5c\x81\x5c"));
         StringReplacer(buffer, TEXTANDLEN("\x81\xe1\x81\x5c\x81\x5c\x81\xe2"), TEXTANDLEN("\x81\x5c\x81\x5c\x81\x5c\x81\x5c"));
@@ -258,6 +266,11 @@ namespace
         if (last == s)
             return buffer->clear();
         last = s;
+    }
+    void SLPS25870(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("\n\x81\x40"));
+        CharFilter(buffer, '\n');
     }
     void SLPM66935(TextBuffer *buffer, HookParam *hp)
     {
@@ -446,7 +459,7 @@ namespace
     }
     void SLPM55240(TextBuffer *buffer, HookParam *hp)
     {
-        StringReplacer(buffer, TEXTANDLEN("%x02―%x01"), TEXTANDLEN("――"));
+        StringReplacer(buffer, TEXTANDLEN("%x02―%x01"), TEXTANDLEN("\x81\x5c\x81\x5c")); //"――"
     }
     void FSLPM55195(TextBuffer *buffer, HookParam *hp)
     {
@@ -540,7 +553,7 @@ namespace
     void FSLPM65997(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, R"(#\w+?\[\d\])");
+        s = re::sub(s, R"(#\w+?\[[\.\d]*\])");
         strReplace(s, "#n");
         buffer->from(s);
     }
@@ -1634,6 +1647,89 @@ namespace
         strReplace(sw, L"\xff");
         buffer->fromWA(sw);
     }
+    void SLPM65785(TextBuffer *buffer, HookParam *hp)
+    {
+        if (*(WORD *)buffer->buff < 0x100)
+            buffer->clear();
+    }
+    void SLPM62375(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        buffer->from((char *)PCSX2_REG(v1), 1);
+    }
+    void SLPS25409(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        WORD _ = PCSX2_REG(v0) | (PCSX2_REG(a0) << 8);
+        buffer->from_t(_);
+    }
+    void SLPM65762(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        if (endWith(s, L"p"))
+            s = s.substr(0, s.size() - 1);
+        strReplace(s, L"kn", L"\n");
+        buffer->fromWA(s);
+    }
+    void SLPM65736(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("#n\x81\x40"));
+        FSLPM65997(buffer, hp);
+        auto s = buffer->strA();
+        static std::string last;
+        if (last == s)
+            return buffer->clear();
+        last = s;
+    }
+    void SLPM65717(TextBuffer *buffer, HookParam *hp)
+    {
+        static int idx = 0;
+        if ((idx++) % 2 == 0)
+            return buffer->clear();
+        auto s = buffer->strAW();
+        strReplace(s, L"s");
+        strReplace(s, L"n");
+        buffer->fromWA(s);
+    }
+    void SLPM65641(TextBuffer *buffer, HookParam *hp)
+    {
+        static std::string last;
+        auto s = buffer->strA();
+        if (all_ascii(s.substr(0, 3)))
+            return buffer->clear();
+        if (s.size() == 3)
+            return buffer->clear();
+        if (last == s)
+            return buffer->clear();
+        last = s;
+        StringFilter(buffer, TEXTANDLEN("\x81\xa1"));
+    }
+    void SLPM67009(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        s = re::sub(s, L"<.*?>");
+        strReplace(s, L"//　");
+        strReplace(s, L"//");
+        buffer->fromWA(s);
+    }
+    void SLPS25395(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("\\n\x81\x40"));
+    }
+    void SLPM65555(TextBuffer *buffer, HookParam *hp)
+    {
+        static lru_cache<std::string> last(4);
+        auto s = buffer->strA();
+        auto spls = strSplit(s, "\n");
+        s.clear();
+        for (auto &&_ : spls)
+        {
+            if (last.touch(_))
+                continue;
+            if (!s.empty())
+                s += '\n';
+            s += _;
+        }
+        buffer->from(s);
+    }
 }
 struct emfuncinfoX
 {
@@ -1641,6 +1737,50 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // サクラ大戦Ⅴ ～さらば愛しき人よ～
+    {0x1F6E550, {DIRECT_READ, 0, 0, 0, SLPM67009, "SLPM-67009"}},
+    // 月は東に日は西に -Operation Sanctuary-
+    {0x131890, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65717, "SLPM-65717"}},
+    // うたう♪タンブリング・ダイス ～私たち3人、あ・げ・る～
+    {0x122A60, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65641, "SLPM-65641"}},
+    // CROSS+CHANNEL ～To all people～ [限定版]
+    {0x198500, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM55170, "SLPM-65546"}},
+    // THE 娘育成シミュレーション
+    {0x132234, {0, 0, 0, SLPM62375, 0, "SLPM-62375"}},
+    // ドラゴンクエストⅤ 天空の花嫁
+    {0x745A7C, {DIRECT_READ, 0, 0, 0, SLPM65555, "SLPM-65555"}},
+    // プリンセスナイトメア
+    {0x3E1960, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66973"}},
+    // Routes PE
+    {0x175D48, {USING_CHAR, PCSX2_REG_OFFSET(a1), 0, 0, 0, "SLPS-25727"}},
+    // Drastic Killer (Excellent Box)
+    {0x1AC6040, {DIRECT_READ, 0, 0, 0, SLPS25870, "SLPS-25870"}},
+    // カラフルBOX ～to LOVE～ [通常版]
+    {0xD1A970, {DIRECT_READ, 0, 0, 0, SLPM65589, "SLPM-65589"}},
+    // PIZZICATO POLKA ～縁鎖現夜～
+    {0x4DD7C6, {DIRECT_READ, 0, 0, 0, SLPM55170, "SLPM-65611"}},
+    // なついろ ～星屑のメモリー～ [初回限定版]
+    {0x16D22C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s0), 0, 0, SLPM65785, "SLPM-65785"}},
+    // こころの扉 初回限定版 [コレクターズエディション]
+    {0x12A508, {0, PCSX2_REG_OFFSET(a1), 0, 0, 0, "SLPS-25348"}},
+    // センチメンタルプレリュード
+    {0x1653680, {DIRECT_READ, 0, 0, 0, SLPS25395, "SLPS-25395"}},
+    // 蒼のままで・・・・・・
+    {0x2DB2B0, {DIRECT_READ, 0, 0, 0, SLPM65736, "SLPM-65736"}},
+    // 片神名 ～喪われた因果律～
+    {0x1CF65c, {DIRECT_READ, 0, 0, 0, SLPM65762, "SLPM-65762"}},
+    // 双恋—フタコイ— [初回限定版]
+    {0x18A4F8, {USING_CHAR, 0, 0, SLPS25409, 0, "SLPS-25409"}},
+    // ラブルートゼロ KissKiss☆ラビリンス [通常版]
+    {0x2E8368, {DIRECT_READ, 0, 0, 0, SLPS25604, "SLPM-55149"}},
+    // ふしぎ遊戯 朱雀異聞
+    {0xF7294C, {DIRECT_READ, 0, 0, 0, FSLPM65997, std::vector<const char *>{"SLPM-66998", "SLPM-66999"}}},
+    // ふしぎ遊戯 玄武開伝 外伝 鏡の巫女
+    {0x17975E5, {DIRECT_READ, 0, 0, 0, FSLPM65997, std::vector<const char *>{"SLPM-66023", "SLPM-66024"}}}, // [限定版] && [通常版]
+    // きまぐれストロベリーカフェ
+    {0x2151f0, {DIRECT_READ, 0, 0, SLPM66344<0x2151f0, 0x215215, 0x21523a>, 0, "SLPM-65381"}},
+    // Yo-Jin-Bo ～運命のフロイデ～
+    {0x20ee28, {0, PCSX2_REG_OFFSET(t4), 0, 0, SLPM66543, "SLPM-66543"}},
     // 永遠のアセリア −この大地の果てで−
     {0x141A80, {0, PCSX2_REG_OFFSET(t7), 0, 0, SLPS25468, "SLPS-25468"}},
     // IZUMO コンプリート
@@ -1948,7 +2088,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x1FFACA0, {DIRECT_READ, 0, 0, 0, SLPM66458, "SLPM-66458"}},
     // 風雨来記2
     {0x2AC77C, {0, 0, 0, SLPM66163, 0, "SLPM-66163"}}, //@mills
-    // SIMPLE2000シリーズ Vol.9 THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～
+    // THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～
     {0x16C798, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM62207, "SLPM-62207"}},
     // あかね色に染まる坂 ぱられる
     {0x126660, {0, PCSX2_REG_OFFSET(v1), 0, 0, SLPM55006, "SLPM-55006"}},

@@ -459,7 +459,13 @@ def selectdebugfile(path: str, ismypost=False, ishotkey=False, istts=False):
 
 
 def dynamiclink(text: str = "", docs=False) -> str:
-    return static_data[("main_server", "docs_server")[docs]][gobject.serverindex] + text
+    base = static_data[("main_server", "docs_server")[docs]][
+        [gobject.serverindex, gobject.serverindex2][docs]
+    ]
+    _ = [base, text]
+    if docs:
+        _.insert(1, str(getlanguse()))
+    return urlpathjoin(*_)
 
 
 def makehtml(text: str, show=None, docs=False) -> str:
@@ -510,7 +516,9 @@ def case_insensitive_replace(text: str, old: str, new: str) -> str:
 
 
 @tryprint
-def parsemayberegexreplace(lst: list, line: str) -> str:
+def parsemayberegexreplace(lst: "list[dict]", line: str) -> str:
+    if not line:
+        line = ""
     for fil in lst:
         regex = fil.get("regex", False)
         escape = fil.get("escape", regex)
@@ -658,12 +666,14 @@ def parsekeystringtomodvkcode(keystring: str, modes=False, canonlymod=False):
     return mode, vkcode
 
 
-def get_time_stamp(ct=None, ms=True):
+def get_time_stamp(ct=None, ms=True, forfilename=False):
     if ct is None:
         ct = time.time()
     local_time = time.localtime(ct)
-    data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-    if ms:
+    data_head = time.strftime(
+        "%Y-%m-%d %H-%M-%S" if forfilename else "%Y-%m-%d %H:%M:%S", local_time
+    )
+    if ms and not forfilename:
         data_secs = (ct - int(ct)) * 1000
         time_stamp = "%s.%03d" % (data_head, data_secs)
         return time_stamp
@@ -814,7 +824,7 @@ def checkv1(api_url: str):
         return api_url + "/v1"
 
 
-def urlpathjoin(*argc):
+def urlpathjoin(*argc: str):
     urlx = []
     for i, u in enumerate(argc):
         if u.startswith("/") and i != 0:

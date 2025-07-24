@@ -1,4 +1,4 @@
-# Using MeCab for Word Segmentation & Part-of-Speech Color Highlighting
+# Japanese Word Segmentation and Kana Pronunciation
 
 1. ## Downloading MeCab's UniDic Dictionary
     
@@ -6,7 +6,7 @@
 
         In the **Dictionary Settings**, expand **Resource Download**. If the UniDic dictionary hasn't been downloaded before, a **Download** button will appear. Clicking this button will automatically download and configure the path.
 
-        ![img](https://image.lunatranslator.org/zh/unidic.png)
+        ![img](https://image.lunatranslator.org/en/unidic.png)
 
     1. ### Method 2: Manual Download
 
@@ -14,8 +14,12 @@
         
         For example, after downloading the [official latest version](https://clrd.ninjal.ac.jp/unidic/), extract it to the software's directory. It will automatically detect the path upon restarting. Alternatively, you can extract it to any directory and then set the path manually.
 
-        ![img](https://image.lunatranslator.org/zh/mecab.png)
+        ![img](https://image.lunatranslator.org/en/mecab.png)
 
 1. ## Activate **Furigana Display** (enabled by default) and **Syntax Highlighting**
 
-![img](https://image.lunatranslator.org/zh/fenci.png)
+    ![img](https://image.lunatranslator.org/en/fenci.png)
+
+1. ## Final Effect
+
+    ![img](https://image.lunatranslator.org/zh/mecabresult.png)

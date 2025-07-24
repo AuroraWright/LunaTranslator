@@ -11,11 +11,11 @@ from gui.usefulwidget import (
     closeashidewindow,
     getsimplecombobox,
     MySwitch,
+    D_getdoclink,
     getsimpleswitch,
     getsimplepatheditor,
     FocusSpin,
     FocusCombo,
-    IconButton,
     TableViewW,
 )
 from gui.dynalang import (
@@ -35,6 +35,7 @@ class HOSTINFO:
     Console = 0
     Warning = 1
     EmuGameName = 2
+    IsEmuNotify = 3
 
 
 def getformlayoutw(w=None, cls=LFormLayout, hide=False):
@@ -648,21 +649,17 @@ class hookselect(closeashidewindow):
         self.searchtextlayout = QHBoxLayout()
         self.vboxlayout.addLayout(self.searchtextlayout)
         __ = LPushButton("游戏适配")
-        __.clicked.connect(lambda: os.startfile(dynamiclink("/Resource/game_support")))
+        __.clicked.connect(lambda: os.startfile(dynamiclink("Resource/game_support")))
 
         self.userhook = QLineEdit()
         self.searchtextlayout.addWidget(self.userhook)
-        self.userhookinsert = LPushButton("插入特殊码")
-        self.userhookinsert.clicked.connect(self.inserthook)
-        self.searchtextlayout.addWidget(self.userhookinsert)
+        userhookinsert = LPushButton("插入特殊码")
+        userhookinsert.clicked.connect(self.inserthook)
+        self.searchtextlayout.addWidget(userhookinsert)
 
-        self.userhookinsert = IconButton("fa.question")
-        self.userhookinsert.clicked.connect(
-            lambda: os.startfile(
-                dynamiclink("/zh/hooksettings.html#特殊码格式", docs=True)
-            )
+        self.searchtextlayout.addWidget(
+            D_getdoclink("hooksettings.html#特殊码格式")()
         )
-        self.searchtextlayout.addWidget(self.userhookinsert)
 
         self.userhookfind = LPushButton("搜索特殊码")
         self.userhookfind.clicked.connect(self.findhook)
@@ -945,6 +942,15 @@ class hookselect(closeashidewindow):
             QMessageBox.warning(self, _TR("警告"), sentence)
         elif info == HOSTINFO.EmuGameName:
             gobject.base.displayinfomessage(sentence, "<msg_info_refresh>")
+        elif info == HOSTINFO.IsEmuNotify:
+            t = _TR("检测到模拟器")
+            t += ": "
+            t += sentence
+            t += "\n"
+            t += _TR(
+                "请在模拟器加载游戏之前，先让翻译器HOOK模拟器，否则将无法识别模拟器内加载的游戏"
+            )
+            gobject.base.displayinfomessage(t, "<msg_info_append>")
 
     def getnewsentence(self, sentence):
         if self.at1 == 2:

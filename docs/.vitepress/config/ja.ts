@@ -69,7 +69,7 @@ export const ja = defineConfig({
             }
         },
         nav: [
-            { text: "公式サイト", link: "https://lunatranslator.org/" },
+            // { text: "公式サイト", link: "https://lunatranslator.org/" },
             { text: "Discord", link: "https://discord.com/invite/ErtDwVeAbB" },
             { text: "作者を支援する", link: "/ja/support" },
         ],
@@ -77,9 +77,8 @@ export const ja = defineConfig({
             {
                 text: '基本的な',
                 items: [
-                    { text: 'ダウンロードと起動', link: '/ja/README' },
+                    { text: 'ダウンロード ＆ 起動 ＆ 更新', link: '/ja/README' },
                     { text: '基本的な使用方法', link: '/ja/basicuse' },
-                    { text: 'ソフトウェアの更新', link: '/ja/update' },
                     { text: '作者を支援する', link: '/ja/support' }
                 ]
             },
@@ -129,10 +128,12 @@ export const ja = defineConfig({
                         ]
                     },
                     {
-                        text: '形態素解析＆辞書&Anki', link: '/ja/qa1',
+                        text: '言語学習', link: '/ja/qa1',
                         collapsed: true,
                         items: [
-                            { text: 'Mecabを使用した形態素解析＆品詞カラー表示', link: '/ja/qa1' },
+                            { text: '日本語の分かち書きと仮名振り', link: '/ja/qa1' },
+                            { text: '組み込み辞書ツールの使用方法', link: '/ja/internaldict' },
+                            { text: 'Yomitanブラウザ拡張機能をインストールする', link: '/ja/yomitan' },
                             { text: 'Anki統合', link: '/ja/qa2' }
                         ]
                     },

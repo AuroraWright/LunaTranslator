@@ -304,10 +304,10 @@ namespace
     void ULJM06119_filter(TextBuffer *buffer, HookParam *hp)
     {
         std::string s = buffer->strA();
-        s = re::sub(s, R"(/\[[^\]]+./g)");
-        s = re::sub(s, R"(/\\k|\\x|%C|%B)");
-        s = re::sub(s, R"(/\%\d+\#[0-9a-fA-F]*\;)");
-        s = re::sub(s, R"(/\n+)", " ");
+        s = re::sub(s, R"(\[[^\]]+.)");
+        s = re::sub(s, R"(\\k|\\x|%C|%B)");
+        s = re::sub(s, R"(\%\d+\#[0-9a-fA-F]*\;)");
+        s = re::sub(s, R"(\n+)");
         buffer->from(s);
     }
     void ULJM06036_filter(TextBuffer *buffer, HookParam *hp)
@@ -926,7 +926,7 @@ namespace
     void ULJM06129(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, R"(#\w+?\[\d\])");
+        s = re::sub(s, R"(#\w+?\[[\.\d]*\])");
         strReplace(s, "#n");
         buffer->from(s);
     }
@@ -1485,7 +1485,14 @@ struct emfuncinfoX
 static const emfuncinfoX emfunctionhooks_1[] = {
     // 花と乙女に祝福を　～春風の贈り物～　portable
     {0x8814B08, {0, 0, 0, 0, ULJM05954, "ULJM05962"}},
-
+    // Starry☆Sky ～in Spring～ Portable
+    {0x88649A0, {0, 0, 0, 0, ULJM06397, "ULJM05683"}},
+    // Starry☆Sky～in Summer～Portable
+    {0x88653D4, {0, 0, 0, 0, FULJM05889, "ULJM05740"}},
+    // Starry☆Sky～in Autumn～Portable
+    {0x8835E10, {USING_CHAR | DATA_INDIRECT, 0XD, 0, 0, 0, "ULJM05809"}},
+    // Starry☆Sky～in Winter～Portable
+    {0x8835DD0, {USING_CHAR | DATA_INDIRECT, 0XD, 0, 0, 0, "ULJM05861"}},
     /* sceFontGetCharInfo 还有很多无法用JIThook的游戏可以用这个函数，包括有JIThook地址的，但之前没有进行记录，现在进行以下记录，仅用于避免未来重复劳动。*/
     // Starry☆Sky～After Spring～Portable //ULJM06207
     // Starry☆Sky～After Summer～Portable //ULJM06208
@@ -2109,8 +2116,6 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8842490, {0, 1, 0, 0, ULJS00124, "ULJM06259"}},
     // Stellar☆Theater Portable
     {0x88817F4, {0, 0, 0, 0, 0, "ULJM06224"}},
-    // Starry☆Sky ～in Spring～ Portable
-    {0x88649A0, {0, 0, 0, 0, ULJM06397, "ULJM05683"}},
     // 英国探偵ミステリア
     {0x887AE48, {0, 3, 0, 0, 0, "ULJS00563"}},
     // 変態王子と笑わない猫。

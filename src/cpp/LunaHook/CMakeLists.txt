@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(LunaHook)
 
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+
 option(BUILD_HOST "BUILD_HOST" ON)
 option(BUILD_HOOK "BUILD_HOOK" ON)
 option(WIN10ABOVE "WIN10ABOVE" OFF)
@@ -52,7 +54,8 @@ include_directories(.)
 
 FetchContent_Declare(minhook 
   GIT_REPOSITORY https://github.com/TsudaKageyu/minhook
-  GIT_TAG 2b003bb063d66f016cc1aef7d63951350ce60f35
+    GIT_TAG master
+    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(minhook)
 

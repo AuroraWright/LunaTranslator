@@ -127,96 +127,176 @@ DECLARE_API bool IsWindowViewable(HWND hwnd)
     RECT _;
     return IntersectRect(&_, &windowRect, &monitorInfo.rcWork);
 }
+#define preparelc(pid)                                                                                                          \
+    CO_INIT co;                                                                                                                 \
+    if (FAILED(co))                                                                                                             \
+        return;                                                                                                                 \
+    CComPtr<IUIAutomation> automation;                                                                                          \
+    if (FAILED(CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation))) || !automation) \
+        return;                                                                                                                 \
+    AutoVariant var_pid;                                                                                                        \
+    V_VT(&var_pid) = VT_I4;                                                                                                     \
+    V_I4(&var_pid) = pid;                                                                                                       \
+    CComPtr<IUIAutomationCondition> condition_pid;                                                                              \
+    if (FAILED(automation->CreatePropertyCondition(UIA_ProcessIdPropertyId, var_pid, &condition_pid)) || !condition_pid)        \
+        return;                                                                                                                 \
+    CComPtr<IUIAutomationElement> pRoot;                                                                                        \
+    if (FAILED(automation->GetRootElement(&pRoot)) || !pRoot)                                                                   \
+        return;                                                                                                                 \
+    CComPtr<IUIAutomationElement> element;                                                                                      \
+    if (FAILED(pRoot->FindFirst(TreeScope_Children, condition_pid, &element)) || !element)                                      \
+        return;                                                                                                                 \
+    CComBSTR className;                                                                                                         \
+    if (FAILED(element->get_CurrentClassName(&className)))                                                                      \
+        return;                                                                                                                 \
+    if (className != L"LiveCaptionsDesktopWindow")                                                                              \
+        return;
+DECLARE_API void ShowLiveCaptionsWindow(DWORD pid, bool show)
+{
+    preparelc(pid);
 
+    UIA_HWND hwnd;
+    if (FAILED(element->get_CurrentNativeWindowHandle(&hwnd)))
+        return;
+    if (show)
+    {
+        SetWindowLong((HWND)hwnd, GWL_EXSTYLE, GetWindowLong((HWND)hwnd, GWL_EXSTYLE) & ~WS_EX_TOOLWINDOW);
+        ShowWindow((HWND)hwnd, SW_RESTORE);
+    }
+    else
+    {
+        ShowWindow((HWND)hwnd, SW_MINIMIZE);
+        SetWindowLong((HWND)hwnd, GWL_EXSTYLE, GetWindowLong((HWND)hwnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
+    }
+}
+DECLARE_API void GetLiveCaptionsText(DWORD pid, void (*cb)(const wchar_t *))
+{
+    preparelc(pid);
+
+    AutoVariant CaptionsTextBlock;
+    V_VT(&CaptionsTextBlock) = VT_BSTR;
+    CComBSTR BSCaptionsTextBlock = L"CaptionsTextBlock";
+    V_BSTR(&CaptionsTextBlock) = BSCaptionsTextBlock;
+    CComPtr<IUIAutomationCondition> condition;
+    if (FAILED(automation->CreatePropertyCondition(UIA_AutomationIdPropertyId, CaptionsTextBlock, &condition)) || !condition)
+        return;
+
+    CComPtr<IUIAutomationElementArray> elements;
+    if (FAILED(element->FindAll(TreeScope_Descendants, condition, &elements)) || !elements)
+        return;
+    int length;
+    if (FAILED(elements->get_Length(&length)))
+        return;
+    std::wstring result;
+    for (int i = 0; i < length; i++)
+    {
+        CComPtr<IUIAutomationElement> subele;
+        if (FAILED(elements->GetElement(i, &subele)) || !subele)
+            continue;
+        CComBSTR subres;
+        if (FAILED(subele->get_CurrentName(&subres)))
+            continue;
+        result += subres;
+    }
+    cb(result.c_str());
+}
 DECLARE_API bool GetSelectedText(void (*cb)(const wchar_t *))
 {
-    bool succ = true;
-    try
+    CO_INIT co;
+    if (FAILED(co))
+        return false;
+    // 初始化 COM
+    CComPtr<IUIAutomation> automation;
+    if (FAILED(CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation))) || !automation)
     {
-        CO_INIT co;
-        if (FAILED(co))
-            throw std::runtime_error("");
-        // 初始化 COM
-        CComPtr<IUIAutomation> automation;
-        if (FAILED(CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation))) || !automation)
-        {
-            succ = false;
-            throw std::runtime_error("无法初始化 UI Automation.");
-        }
-
-        // 获取焦点元素
-        CComPtr<IUIAutomationElement> focusedElement;
-        if (FAILED(automation->GetFocusedElement(&focusedElement)) || !focusedElement)
-        {
-            throw std::runtime_error("无法获取当前焦点元素.");
-        }
-
-        // 检查是否支持 TextPattern
-        CComPtr<IUIAutomationTextPattern> textPattern;
-        if (FAILED(focusedElement->GetCurrentPatternAs(UIA_TextPatternId, IID_PPV_ARGS(&textPattern))) || !textPattern)
-        {
-            succ = false;
-            throw std::runtime_error("当前元素不支持 TextPattern.");
-        }
-
-        // 获取选定的文本范围
-        CComPtr<IUIAutomationTextRangeArray> selection;
-        if (FAILED(textPattern->GetSelection(&selection)) || !selection)
-        {
-            throw std::runtime_error("无法获取选定的文本范围.");
-        }
-
-        // 获取第一个选定范围
-        CComPtr<IUIAutomationTextRange> range;
-        if (FAILED(selection->GetElement(0, &range)) || !range)
-        {
-            throw std::runtime_error("没有选定文本.");
-        }
-
-        // 提取文本
-        CComBSTR text;
-        if (FAILED(range->GetText(-1, &text)) || !text)
-        {
-            throw std::runtime_error("无法提取选定的文本.");
-        }
-        cb(text);
+        return false;
     }
-    catch (std::exception &e)
+
+    // 获取焦点元素
+    CComPtr<IUIAutomationElement> focusedElement;
+    if (FAILED(automation->GetFocusedElement(&focusedElement)) || !focusedElement)
     {
-        printf(e.what());
+        return true;
     }
-    return succ;
+
+    // 检查是否支持 TextPattern
+    CComPtr<IUIAutomationTextPattern> textPattern;
+    if (FAILED(focusedElement->GetCurrentPatternAs(UIA_TextPatternId, IID_PPV_ARGS(&textPattern))) || !textPattern)
+    {
+        return false;
+    }
+
+    // 获取选定的文本范围
+    CComPtr<IUIAutomationTextRangeArray> selection;
+    if (FAILED(textPattern->GetSelection(&selection)) || !selection)
+    {
+        return true;
+    }
+
+    // 获取第一个选定范围
+    CComPtr<IUIAutomationTextRange> range;
+    if (FAILED(selection->GetElement(0, &range)) || !range)
+    {
+        return true;
+    }
+
+    // 提取文本
+    CComBSTR text;
+    if (FAILED(range->GetText(-1, &text)) || !text)
+    {
+        return true;
+    }
+    cb(text);
+    return true;
 }
 DECLARE_API LPSECURITY_ATTRIBUTES GetSecurityAttributes()
 {
     return &allAccess;
 }
-DECLARE_API HANDLE CreateAutoKillProcess(LPCWSTR command, LPCWSTR path, DWORD *pid)
+DECLARE_API void SetJobAutoKill(HANDLE hJob, bool kill)
+{
+    if (!hJob)
+        return;
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = {0};
+    jeli.BasicLimitInformation.LimitFlags = kill ? JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE : 0;
+    SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli));
+}
+static HANDLE CreateJobAndAssignProcess(HANDLE hp, bool kill)
+{
+    if (!hp)
+        return NULL;
+    HANDLE hJob = CreateJobObject(NULL, NULL);
+    if (!hJob)
+        return NULL;
+    if (!AssignProcessToJobObject(hJob, hp))
+        return NULL;
+    // 设置Job Object选项，使父进程退出时子进程自动终止
+    SetJobAutoKill(hJob, kill);
+    // closehandle会关闭子进程
+    return hJob;
+}
+DECLARE_API HANDLE CreateJobForProcess(DWORD pid, bool kill)
+{
+    CHandle hp{OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, FALSE, pid)};
+    return CreateJobAndAssignProcess(hp, kill);
+}
+DECLARE_API HANDLE CreateProcessWithJob(LPCWSTR command, LPCWSTR path, DWORD *pid, bool hide, bool kill)
 {
     // 防止进程意外退出时，子进程僵死
     std::wstring _ = command;
     STARTUPINFO si = {sizeof(si)};
-    si.dwFlags |= STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
+    if (hide)
+    {
+        si.dwFlags |= STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_HIDE;
+    }
     PROCESS_INFORMATION pi;
-    HANDLE hJob = CreateJobObject(NULL, NULL);
-    if (!hJob)
-        return NULL;
     if (!CreateProcessW(NULL, _.data(), NULL, NULL, FALSE, 0, NULL, path, &si, &pi))
         return NULL;
     CHandle _1{pi.hProcess}, _2{pi.hThread};
     *pid = pi.dwProcessId;
-    if (!AssignProcessToJobObject(hJob, pi.hProcess))
-        return NULL;
-    // 设置Job Object选项，使父进程退出时子进程自动终止
-    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = {0};
-    jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-    if (!SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli)))
-        return NULL;
-    // closehandle会关闭子进程
-    return hJob;
+    return CreateJobAndAssignProcess(pi.hProcess, kill);
 }
-
 DECLARE_API void OpenFileEx(LPCWSTR file)
 {
     OPENASINFO INFO;
@@ -227,12 +307,12 @@ DECLARE_API void OpenFileEx(LPCWSTR file)
         ShellExecuteW(NULL, L"open", file, NULL, NULL, SW_SHOWNORMAL);
     }
 }
-DECLARE_API bool IsDLLBit64(LPCWSTR file)
+__declspec(dllexport) std::optional<WORD> MyGetBinaryType(LPCWSTR file)
 {
     CHandle hFile{CreateFileW(file, GENERIC_READ, FILE_SHARE_READ, 0,
                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)};
     if (!hFile)
-        return false;
+        return {};
     CHandle hMap{CreateFileMappingW(
         hFile,
         NULL,          // security attrs
@@ -241,7 +321,7 @@ DECLARE_API bool IsDLLBit64(LPCWSTR file)
         0,             // max size - low DWORD
         NULL)};        // mapping name - not used
     if (!hMap)
-        return false;
+        return {};
 
     // next, map the file to our address space
     void *mapAddr = MapViewOfFileEx(
@@ -252,11 +332,19 @@ DECLARE_API bool IsDLLBit64(LPCWSTR file)
         0,             // #bytes to map - 0=all
         NULL);         // suggested map addr
     if (!mapAddr)
-        return false;
+        return {};
     auto peHdr = ImageNtHeader(mapAddr);
-    auto is64 = peHdr->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64;
+    auto type = peHdr->FileHeader.Machine;
     UnmapViewOfFile(mapAddr);
-    return is64;
+    return type;
+}
+
+DECLARE_API bool IsDLLBit64(LPCWSTR file)
+{
+    auto type = MyGetBinaryType(file);
+    if (!type)
+        return false;
+    return type.value() == IMAGE_FILE_MACHINE_AMD64;
 }
 
 typedef struct
