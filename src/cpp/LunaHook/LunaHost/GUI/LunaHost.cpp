@@ -1,4 +1,3 @@
-
 #include <CommCtrl.h>
 #include <TlHelp32.h>
 #include <stdio.h>
@@ -8,7 +7,7 @@
 #include "textthread.h"
 #include "LunaHost.h"
 #include "http.hpp"
-extern std::vector<std::tuple<SUPPORT_LANG, std::wstring, std::vector<std::string>>> lang_map;
+
 bool sendclipboarddata_i(const std::wstring &text, HWND hwnd)
 {
     if (!OpenClipboard((HWND)hwnd))
@@ -62,9 +61,10 @@ void LunaHost::savesettings()
     configs->set("fontsize", uifont.fontsize);
     configs->set("font_italic", uifont.italic);
     configs->set("font_bold", uifont.bold);
-    configs->set("Language", map_from_support_lang(curr_lang));
+    // configs->set("Language", map_from_support_lang(curr_lang));
 }
 
+/*
 std::string getdefaultlang()
 {
     LANGID langid = GetUserDefaultUILanguage();
@@ -77,9 +77,11 @@ std::string getdefaultlang()
     lang += szLang;
     return lang;
 }
+*/
+
 void LunaHost::loadsettings()
 {
-    curr_lang = map_to_support_lang(configs->get("Language", getdefaultlang()).c_str());
+    // curr_lang = map_to_support_lang(configs->get("Language", getdefaultlang()).c_str());
     uifont.italic = configs->get("font_italic", false);
     uifont.bold = configs->get("font_bold", false);
     uifont.fontsize = configs->get("fontsize", 14);
@@ -267,7 +269,10 @@ LunaHost::LunaHost()
         [=](HOSTINFO type, const std::wstring &output)
         { on_info(type, output); },
         {},
-        {});
+        {},
+        [](const std::wstring &str) -> std::optional<std::wstring> {
+            return std::nullopt;
+        });
 
     mainlayout = new gridlayout();
     mainlayout->addcontrol(g_selectprocessbutton, 0, 0);
@@ -399,7 +404,7 @@ void LunaHost::on_info(HOSTINFO type, const std::wstring &warning)
 {
     switch (type)
     {
-    case HOSTINFO::Warning:
+    case HOSTINFO::EmuWarning:
         MessageBoxW(winId, warning.c_str(), TR[T_WARNING], 0);
         break;
     default:
@@ -527,6 +532,8 @@ Settingwindow::Settingwindow(LunaHost *host) : mainwindow(host)
             showfont->settext(f.fontfamily);
             host->setfont(f); });
     };
+
+    /*
     language = new combobox(this);
     for (auto &&[_, l, __] : lang_map)
     {
@@ -537,28 +544,31 @@ Settingwindow::Settingwindow(LunaHost *host) : mainwindow(host)
     {
         curr_lang = (decltype(curr_lang))idx;
     };
+    */
+    
     mainlayout = new gridlayout();
-    mainlayout->addcontrol(new label(this, TR[LblLanguage]), 0, 0);
-    mainlayout->addcontrol(language, 0, 1);
-    mainlayout->addcontrol(new label(this, TR[LblFlushDelay]), 1, 0);
-    mainlayout->addcontrol(g_timeout, 1, 1);
+    // mainlayout->addcontrol(new label(this, TR[LblLanguage]), 0, 0);
+    // mainlayout->addcontrol(language, 0, 1);
+    
+    mainlayout->addcontrol(new label(this, TR[LblFlushDelay]), 0, 0);
+    mainlayout->addcontrol(g_timeout, 0, 1);
 
-    mainlayout->addcontrol(new label(this, TR[LblCodePage]), 2, 0);
-    mainlayout->addcontrol(g_codepage, 2, 1);
+    mainlayout->addcontrol(new label(this, TR[LblCodePage]), 1, 0);
+    mainlayout->addcontrol(g_codepage, 1, 1);
 
-    mainlayout->addcontrol(new label(this, TR[LblMaxBuff]), 3, 0);
-    mainlayout->addcontrol(spinmaxbuffsize, 3, 1);
+    mainlayout->addcontrol(new label(this, TR[LblMaxBuff]), 2, 0);
+    mainlayout->addcontrol(spinmaxbuffsize, 2, 1);
 
-    mainlayout->addcontrol(new label(this, TR[LblMaxHist]), 4, 0);
-    mainlayout->addcontrol(spinmaxhistsize, 4, 1);
+    mainlayout->addcontrol(new label(this, TR[LblMaxHist]), 3, 0);
+    mainlayout->addcontrol(spinmaxhistsize, 3, 1);
 
-    mainlayout->addcontrol(ckbfilterrepeat, 5, 0, 1, 2);
-    mainlayout->addcontrol(g_check_clipboard, 6, 0, 1, 2);
-    mainlayout->addcontrol(autoattach, 7, 0, 1, 2);
-    mainlayout->addcontrol(autoattach_so, 8, 0, 1, 2);
-    mainlayout->addcontrol(readonlycheck, 9, 0, 1, 2);
-    mainlayout->addcontrol(showfont, 10, 1);
-    mainlayout->addcontrol(selectfont, 10, 0);
+    mainlayout->addcontrol(ckbfilterrepeat, 4, 0, 1, 2);
+    mainlayout->addcontrol(g_check_clipboard, 5, 0, 1, 2);
+    mainlayout->addcontrol(autoattach, 6, 0, 1, 2);
+    mainlayout->addcontrol(autoattach_so, 7, 0, 1, 2);
+    mainlayout->addcontrol(readonlycheck, 8, 0, 1, 2);
+    mainlayout->addcontrol(showfont, 9, 1);
+    mainlayout->addcontrol(selectfont, 9, 0);
 
     setlayout(mainlayout);
     setcentral(600, 500);
