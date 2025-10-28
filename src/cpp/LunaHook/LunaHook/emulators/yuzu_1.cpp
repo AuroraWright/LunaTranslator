@@ -110,6 +110,12 @@ namespace
             return;
         buffer->from((char *)a2);
     }
+    void F010073A020C00000(TextBuffer *buffer, HookParam *)
+    {
+        CharReplacer(buffer, L'③', L'—');
+        CharReplacer(buffer, L'④', L'—');
+        CharReplacer(buffer, L'⑤', L'—');
+    }
     void Fliuxingzhishen(TextBuffer *buffer, HookParam *)
     {
         StringReplacer(buffer, TEXTANDLEN("\x87\x85"), TEXTANDLEN("\x81\x5c"));
@@ -539,15 +545,22 @@ namespace
         s = re::sub(s, R"(#Color\[\d+?\])");
         buffer->from(s);
     }
+    template <int t = 0>
     void F0100D4800C476000(TextBuffer *buffer, HookParam *hp)
     {
         auto ws = buffer->strAW(CP_UTF8);
         ws = remapkatakana(ws);
+        if (t == 1)
+        {
+            ws = re::sub(ws, LR"(@v[/\d]+\.)");
+            ws = re::sub(ws, LR"(@b(.*?)\.@<(.*?)@>)", L"$2");
+        }
         ws = re::sub(ws, LR"(@v\w+\.)");
         ws = re::sub(ws, LR"(@v\d+)");
         ws = re::sub(ws, LR"(@x\w+\.)");
         ws = re::sub(ws, LR"(@s\d{4})");
-        ws = re::sub(ws, L"@r(.*?)@(.*?)@", L"$1");
+        if (t == 0)
+            ws = re::sub(ws, L"@r(.*?)@(.*?)@", L"$1");
         ws = re::sub(ws, LR"(@t\d+)");
         strReplace(ws, L"@r");
         strReplace(ws, L"@y");
@@ -1257,21 +1270,12 @@ namespace
         s = re::sub(s, "@(.*?)@", u8"【$1】");
         buffer->from(s);
     }
-    template <bool choice>
-    void F010027401A2A2000(TextBuffer *buffer, HookParam *hp)
+    void f0100D2A02101C000(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strW();
-        s = re::sub(s, L"\\[dic.*?text=");
-        s = re::sub(s, L"\\[|'.*?\\]");
-        s = re::sub(s, L"\\]");
-        if (choice)
-        {
-            s = re::sub(s, LR"([ \t\r\f\v]|　)");
-        }
-        else
-        {
-            s = re::sub(s, L"\\s|　");
-        }
+        s = re::sub(s, LR"(\[dic.*?text=(.*?)\])", L"$1");
+        s = re::sub(s, LR"(\[(.*?)'(.*?)\])", L"$1");
+        s = re::sub(s, L"　*\n　*");
         buffer->from(s);
     }
     void F010027401A2A2000_2(TextBuffer *buffer, HookParam *hp)
@@ -1283,7 +1287,7 @@ namespace
         last = s;
         if (x)
             return buffer->clear();
-        F010027401A2A2000<false>(buffer, hp);
+        f0100D2A02101C000(buffer, hp);
     }
 
     void F0100BD4014D8C000(TextBuffer *buffer, HookParam *hp)
@@ -1577,6 +1581,7 @@ namespace
         auto s = buffer->strA();
         s = re::sub(s, u8"《.*?》");
         s = re::sub(s, "<[^>]*>");
+        s = re::sub(s, u8"^　");
         buffer->from(s);
     }
     template <int idx>
@@ -2587,18 +2592,6 @@ namespace
         CharFilter(buffer, L'\n');
         StringCharReplacer(buffer, TEXTANDLEN(L"<sprite=\"Emoji\" name=\"heart\">"), L'♥');
     }
-    void NewLineCharToSpaceW(TextBuffer *buffer, HookParam *)
-    {
-        CharReplacer(buffer, L'\n', L' ');
-    }
-    void NewLineCharFilterW(TextBuffer *buffer, HookParam *)
-    {
-        CharFilter(buffer, L'\n');
-    }
-    void NewLineCharFilter(TextBuffer *buffer, HookParam *)
-    {
-        CharFilter(buffer, '\n');
-    }
     void F0100E9801CAC2000(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strW();
@@ -2631,6 +2624,27 @@ namespace
         strReplace(s, "%N");
         buffer->from(s);
     }
+    void f0100AAD0210B6000(TextBuffer *buffer, HookParam *)
+    {
+        auto s = buffer->strW();
+        s = re::sub(s, LR"(\\　*)");
+        s = re::sub(s, LR"(#(.*?)#\[.*?\])", L"$1"); // 注音
+        strReplace(s, L"$");                         // 颜色 $text$
+        strReplace(s, L"+", L" ");
+        buffer->from(s);
+    }
+    void f0100AAD0210B6000_1(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strW();
+        std::wstring collect;
+        while (auto result = re::search(s, LR"(\"(.*?)\")"))
+        {
+            collect += result.value()[1].str();
+            s = result.value().suffix();
+        }
+        buffer->from(collect);
+        f0100AAD0210B6000(buffer, hp);
+    }
 }
 struct emfuncinfoX
 {
@@ -2638,6 +2652,11 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 勿ノ怪契リ
+    {0x818F9200, {CODEC_UTF16, 1, 0X14, 0, f0100AAD0210B6000_1, 0x0100AAD0210B6000ull, "1.0.0"}},
+    {0x818F970C, {CODEC_UTF16, 1, 0X14, 0, f0100AAD0210B6000, 0x0100AAD0210B6000ull, "1.0.0"}},
+    // アルカナ・ファミリア Rinato (Arcana Famiglia Rinato)
+    {0x8189483C, {CODEC_UTF16, 0, 0X14, 0, F010043901E972000, 0x010008702297A000ull, "1.0.0"}},
     // Side Kicks! beyond
     {0x81A16000, {CODEC_UTF16, 0, 0X14, 0, NewLineCharFilterW, 0x010087201EEA6000ull, nullptr}}, // 1.0.0 & 1.0.2
     // Romance MD: Always On Call
@@ -2669,8 +2688,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x801A0590, {CODEC_UTF8, 1, 0, 0, F010050E012CB6000, 0x010050E012CB6000ull, "1.0.0"}}, // 人名+文本
     {0x800DE554, {CODEC_UTF8, 0, 0, 0, F010050E012CB6000, 0x010050E012CB6000ull, "1.0.0"}}, // prolog+文本
     // 放課後シンデレラ２
-    {0x800B1948, {CODEC_UTF8, 0, 0, 0, NewLineCharFilter, 0x0100AA301A99E000ull, "1.0.0"}},
-    {0x800B1950, {CODEC_UTF8, 0, 0, 0, NewLineCharFilter, 0x0100AA301A99E000ull, "1.0.2"}},
+    {0x800B1948, {CODEC_UTF8, 0, 0, 0, NewLineCharFilterA, 0x0100AA301A99E000ull, "1.0.0"}},
+    {0x800B1950, {CODEC_UTF8, 0, 0, 0, NewLineCharFilterA, 0x0100AA301A99E000ull, "1.0.2"}},
     // はつゆきさくら
     {0x800209CC, {0, 0, 0, 0, 0, 0x01009D3019684000ull, "1.0.0"}},
     // VARIABLE BARRICADE
@@ -2721,12 +2740,16 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Memories Off ～それから～
     {0x8003fb7c, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100B4A01326E000ull, "1.0.0"}},
     {0x8003fb8c, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100B4A01326E000ull, "1.0.1"}},
+    // メモリーズオフ それからagain
+    {0x800295BC, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x01004B3020BFE000ull, "1.0.0"}},
     // Memories Off 2nd
     {0x8003ee0c, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100D31013274000ull, "1.0.0"}},
     {0x8003ee1c, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100D31013274000ull, "1.0.1"}},
     // Memories Off #5 とぎれたフィルム
     {0x8003f6ac, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x010073901326C000ull, "1.0.0"}},
     {0x8003f5fc, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x010073901326C000ull, "1.0.1"}},
+    // メモリーズオフ #5 encore
+    {0x80051710, {CODEC_UTF16, 0, 0, mages_readstring, F010073A020C00000, 0x010073A020C00000ull, "1.0.0"}},
     // メモリーズオフ ゆびきりの記憶
     {0x800440ec, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x010079C012896000ull, "1.0.0"}},
     // メモリーズオフ6 ～T-wave～
@@ -3026,6 +3049,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 探偵撲滅
     {0x8011c340, {CODEC_UTF8, 1, 0, 0, F0100CBA014014000, 0x0100CBA014014000ull, "1.0.0"}}, // Text
     {0x80064f20, {CODEC_UTF8, 1, 0, 0, F0100CBA014014000, 0x0100CBA014014000ull, "1.0.0"}}, // Choices
+    {0x8011B9C0, {CODEC_UTF8, 1, 0, 0, F0100CBA014014000, 0x0100CBA014014000ull, "1.0.2"}}, // Text
     // Ys X: Nordics
     {0x80817758, {CODEC_UTF8, 1, 0, 0, F0100CC401A16C000<0>, 0x0100CC401A16C000ull, "1.0.4"}}, // Main Text
     {0x80981e3c, {CODEC_UTF8, 0, 0, 0, F0100CC401A16C000<1>, 0x0100CC401A16C000ull, "1.0.4"}}, // Secondary Text
@@ -3057,11 +3081,13 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x80039340, {CODEC_UTF8, 0, 0, 0, F0100C310110B4000, 0x01009E30120F4000ull, "1.0.0"}}, // handlerPrompt
     // Pokémon Let’s Go, Pikachu!
     {0x8067d9fc, {CODEC_UTF16, 0, 0, 0, F010003F003A34000, 0x010003F003A34000ull, "1.0.2"}}, // Text
-    // イケメン戦国◆時をかける恋 新たなる出逢い
-    {0x813e4fb4, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}}, // Main Text
-    {0x813e4c60, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}}, // Name
-    {0x813b5360, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}}, // Choices
-    {0x81bab9ac, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}}, // Info
+    // イケメン戦国◆時をかける恋　新たなる出逢い
+    {0x813e4fb4, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, F010042300C4F6000_1, 0x01008BE016CE2000ull, "1.0.0"}}, // Main Text
+    {0x813e4c60, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}},                   // Name
+    {0x813b5360, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}},                   // Choices
+    {0x81bab9ac, {CODEC_UTF16, 1, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.0"}},                   // Info
+    {0x812E9A44, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, F010042300C4F6000_1, 0x01008BE016CE2000ull, "1.0.1"}}, // Main Text
+    {0x812E96F0, {CODEC_UTF16, 0, 0, ReadTextAndLenDW, 0, 0x01008BE016CE2000ull, "1.0.1"}},                   // Name
     // Shin Megami Tensei V
     {0x80ce01a4, {CODEC_UTF16, 0, 0, 0, 0, 0x01006BD0095F4000ull, "1.0.2"}}, // Text
     // The Legend of Zelda: Link's Awakening
@@ -3126,6 +3152,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x81e99d64, {CODEC_UTF16, 0, 0, ReadTextAndLenW, F0100874017BE2000, 0x0100874017BE2000ull, "1.0.0"}}, // choice
     {0x8186f81c, {CODEC_UTF16, 0, 0, ReadTextAndLenW, F0100874017BE2000, 0x0100874017BE2000ull, "1.0.0"}}, // archives
     {0x819ED7C8, {CODEC_UTF16, 1, 0, ReadTextAndLenW, F0100874017BE2000, 0x0100874017BE2000ull, "1.0.2"}},
+    // BUSTAFELLOWS season2
+    {0x81931BB0, {CODEC_UTF16, 0, 0x14, 0, NewLineCharToSpaceW, 0x0100F6F0207CC000ull, "1.0.0"}},
     // 5分後に意外な結末　モノクロームの図書館
     {0x81fa4890, {CODEC_UTF16, 1, 0X14, 0, F010094601D910000, 0x010094601D910000ull, "1.0.1"}}, // book text
     {0x81fa5250, {CODEC_UTF16, 1, 0X14, 0, F010094601D910000, 0x010094601D910000ull, "1.0.1"}}, // book text
@@ -3303,10 +3331,11 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x800bd6c8, {0, 0, 0, 0, F0100F6A00A684000, 0x0100F6A00A684000ull, "1.0.0"}}, // sjis
     {0x800c2d20, {0, 0, 0, 0, F0100F6A00A684000, 0x0100F6A00A684000ull, nullptr}}, //  1.2.0 && 2.0.2
     // うみねこのなく頃に咲 ～猫箱と夢想の交響曲～
-    {0x800b4560, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}}, // x0 name + text (bottom, center) - whole line. filter is to complex, quit.
-    {0x801049c0, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}}, // x0 prompt, bottomLeft
-    {0x80026378, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}}, // x0 Yes|No
-    {0x801049a8, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}}, // x0 topLeft (double: ♪ + text)
+    {0x800b4560, {CODEC_UTF8, 0, 0, 0, F0100D4800C476000<1>, 0x01006A300BA2C000ull, "1.0.0"}}, // x0 name + text
+    {0x801049c0, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}},                    // x0 prompt, bottomLeft
+    {0x80026378, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}},                    // x0 Yes|No
+    {0x801049a8, {CODEC_UTF8, 0, 0, 0, 0, 0x01006A300BA2C000ull, "1.0.0"}},                    // x0 topLeft (double: ♪ + text)
+    {0x800B44C0, {CODEC_UTF8, 0, 0, 0, F0100D4800C476000<1>, 0x01006A300BA2C000ull, "1.0.3"}}, // name + text
     // 殺し屋とストロベリー
     {0x81322cec, {CODEC_UTF16, 0, 0, ReadTextAndLenW, F010042300C4F6000, 0x0100E390145C8000ull, "1.0.0"}}, // dialogue
     {0x819b1a78, {CODEC_UTF16, 2, 0, ReadTextAndLenW, F010042300C4F6000, 0x0100E390145C8000ull, "1.0.0"}}, // dialogue
@@ -3468,7 +3497,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x80ac651c, {CODEC_UTF8, 0, 0, 0, F0100C4E013E5E000, 0x0100C4E013E5E000ull, "1.0.0"}}, // Main Text
     {0x80335ea0, {CODEC_UTF8, 0, 0, 0, F0100C4E013E5E000, 0x0100C4E013E5E000ull, "1.0.0"}}, // Name
     // 遙かなる時空の中で６ DX
-    {0x80193FAC, {0, 0, 0, 0, F0100F7700CB82000, 0x0100F7700CB82000ull, "1.0.0"}}, // 1.0.0 & 1.0.1
+    {0x80193FAC, {0, 0, 0, 0, F0100F7700CB82000, 0x0100F7700CB82000ull, nullptr}}, // 1.0.0 & 1.0.1
     // 遙かなる時空の中で7
     {0x800102bc, {0, 0, 0, 0, 0, 0x0100CF400F7CE000ull, "1.0.0"}},                                 // name
     {0x80051f90, {0, 1, 0, T0100CF400F7CE000, F0100B5801D7CE000, 0x0100CF400F7CE000ull, "1.0.0"}}, // text
@@ -3603,10 +3632,14 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // プリズンプリンセス
     {0x800eba00, {CODEC_UTF16, 2, 0x14, 0, 0, 0x0100F4800F872000ull, "1.0.0"}},
     // 泡沫のユークロニア
-    {0x8180de40, {CODEC_UTF16, 0, 0, ReadTextAndLenW, F010027401A2A2000<false>, 0x010027401A2A2000ull, "1.0.0"}}, // text box
-    {0x816b61c0, {CODEC_UTF16, 0, 0, ReadTextAndLenW, F010027401A2A2000<false>, 0x010027401A2A2000ull, "1.0.0"}}, // dictionary
-    {0x815fe594, {CODEC_UTF16, 0, 0, ReadTextAndLenW, F010027401A2A2000<true>, 0x010027401A2A2000ull, "1.0.0"}},  // choices
+    {0x8180de40, {CODEC_UTF16, 0, 0, ReadTextAndLenW, f0100D2A02101C000, 0x010027401A2A2000ull, "1.0.0"}}, // text box
+    {0x816b61c0, {CODEC_UTF16, 0, 0, ReadTextAndLenW, f0100D2A02101C000, 0x010027401A2A2000ull, "1.0.0"}}, // dictionary
+    {0x815fe594, {CODEC_UTF16, 0, 0, ReadTextAndLenW, f0100D2A02101C000, 0x010027401A2A2000ull, "1.0.0"}}, // choices
     {0x81836E0C, {CODEC_UTF16, 1, 0, 0, F010027401A2A2000_2, 0x010027401A2A2000ull, "1.0.1"}},
+    // 泡沫のユークロニア trail
+    {0x81A661D8, {CODEC_UTF16, 1, 0, 0, F010027401A2A2000_2, 0x0100D2A02101C000ull, "1.0.0"}},
+    {0x81A66EC8, {CODEC_UTF16, 1, 0, 0, F010027401A2A2000_2, 0x0100D2A02101C000ull, "1.0.0"}},  // prolog
+    {0x818438B0, {CODEC_UTF16, 0, 0x14, 0, f0100D2A02101C000, 0x0100D2A02101C000ull, nullptr}}, // 1.0.0 & 1.0.1
     // リトルバスターズ！Converted Edition
     {0x800A97C8, {CODEC_UTF8, 9, 0, 0, F0100943010310000, 0x0100943010310000ull, "1.0.0"}},
     // GrimGrimoire OnceMore

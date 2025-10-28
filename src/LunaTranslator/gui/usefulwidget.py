@@ -511,16 +511,20 @@ class TableViewW(DelayLoadTableView):
         output.close()
         NativeUtils.ClipBoard.text = csv_str
 
+    def parsepastetext(self, string) -> list:
+        csv_file = io.StringIO(string)
+        csv_reader = csv.reader(csv_file, delimiter="\t")
+        my_list = list(csv_reader)
+        csv_file.close()
+        return my_list
+
     def pastetable(self):
         current = self.currentIndex()
         if not current.isValid():
             return
         string = NativeUtils.ClipBoard.text
         try:
-            csv_file = io.StringIO(string)
-            csv_reader = csv.reader(csv_file, delimiter="\t")
-            my_list = list(csv_reader)
-            csv_file.close()
+            my_list = self.parsepastetext(string)
             if len(my_list) == 1 and len(my_list[0]) == 1:
                 self.setindexdata(current, my_list[0][0])
                 return
@@ -579,11 +583,12 @@ class saveposwindow(LMainWindow):
         self.adjust_window_to_screen_bounds(geo)
         self.screengeochanged.emit()
 
-    @tryprint
     def __screenChanged(self, screen: QScreen):
-        screen.geometryChanged.connect(
-            functools.partial(self._changed, screen.serialNumber())
-        )
+        try:
+            _id = screen.serialNumber()
+        except:
+            return
+        screen.geometryChanged.connect(functools.partial(self._changed, _id))
 
     @tryprint
     def adjust_window_to_screen_bounds(self, screen_rect: QRect):
@@ -660,20 +665,6 @@ class closeashidewindow(saveposwindow):
         super().closeEvent(event)
 
 
-def disablecolor(__: QColor):
-    if __.rgb() == 0xFF000000:
-        return Qt.GlobalColor.gray
-    __ = QColor(
-        max(0, (__.red() - 64)),
-        max(
-            0,
-            (__.green() - 64),
-        ),
-        max(0, (__.blue() - 64)),
-    )
-    return __
-
-
 class MySwitch(QAbstractButton):
     clicksignal = pyqtSignal()
 
@@ -739,7 +730,7 @@ class MySwitch(QAbstractButton):
             ]
         )
         if not self.isEnabled():
-            __ = disablecolor(__)
+            __ = qtawesome.disablecolor(__)
         return __
 
     def paintanime(self, painter: QPainter):
@@ -3331,13 +3322,10 @@ class IconButton(LPushButton):
                 else:
                     icons = self._icon
                 icon = icons[self.isChecked()]
-                colors = ["", gobject.Consts.buttoncolor]
-                color = QColor(colors[self.isChecked()])
+                color = (None, gobject.Consts.buttoncolor)[self.isChecked()]
             else:
-                color = QColor(gobject.Consts.buttoncolor)
+                color = gobject.Consts.buttoncolor
                 icon = self._icon
-            if not self.isEnabled():
-                color = disablecolor(color)
             icon = qtawesome.icon(icon, color=color)
         self.setIcon(icon)
 

@@ -1,18 +1,14 @@
 # 模拟器游戏支持
 
-LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
+LunaTranslator通过模拟器支持大量游戏。对于未支持的游戏，请向我发[issue](https://lunatranslator.org/Resource/game_support)。
 
-对于未支持的游戏，请向我发[issue](https://lunatranslator.org/Resource/game_support)。
-
-::: details 支持的模拟器
-| 平台 | 模拟器 |
+| 平台 | 支持的模拟器 |
 | - | - |
 | NS | yuzu(&ge;1616), [sudachi](https://github.com/emuplace/sudachi.emuplace.app), [Citron](https://git.citron-emu.org/citron/emu), [Eden](https://git.eden-emu.dev/eden-emu/eden) |
 | PSP | [PPSSPP](https://github.com/hrydgard/ppsspp) &ge;v1.15.0 |
 | PSV | [Vita3K](https://github.com/Vita3K/Vita3K) &ge;v0.1.9.3339 |
 | PS2 | [PCSX2](https://github.com/PCSX2/pcsx2) &ge;v1.7.4473 |
 <!-- | PS3 | [RPCS3](https://github.com/RPCS3/rpcs3) |-->
-:::
 
 ::: tabs
 
@@ -21,6 +17,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | 0100AAD0210B6000 | 勿ノ怪契リ |
+|  | 010008702297A000 | アルカナ・ファミリア Rinato (Arcana Famiglia Rinato) |
 |  | 010087201EEA6000 | Side Kicks! beyond |
 |  | 0100C9C01E960000 | Romance MD: Always On Call |
 |  | 01003D9020854000 | ToHeart |
@@ -52,8 +50,10 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100E9801CAC2000 | OVER REQUIEMZ |
 |  | 0100978013276000 | Memories Off |
 |  | 0100B4A01326E000 | Memories Off ～それから～ |
+|  | 01004B3020BFE000 | メモリーズオフ それからagain |
 |  | 0100D31013274000 | Memories Off 2nd |
 |  | 010073901326C000 | Memories Off #5 とぎれたフィルム |
+|  | 010073A020C00000 | メモリーズオフ #5 encore |
 |  | 010079C012896000 | メモリーズオフ ゆびきりの記憶 |
 |  | 010047A013268000 | メモリーズオフ6 ～T-wave～ |
 |  | 0100FFA013272000 | 想い出にかわる君 ～メモリーズオフ～ |
@@ -138,7 +138,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 01005F700DC56000 | ピオフィオーレの晩鐘 -Ricordo- |
 |  | 01009E30120F4000 | ピオフィオーレの晩鐘 -Episodio1926- |
 |  | 010003F003A34000 | Pokémon Let’s Go, Pikachu! |
-|  | 01008BE016CE2000 | イケメン戦国◆時をかける恋 新たなる出逢い |
+|  | 01008BE016CE2000 | イケメン戦国◆時をかける恋　新たなる出逢い |
 |  | 01006BD0095F4000 | Shin Megami Tensei V |
 |  | 01006BB00C6F0000 | The Legend of Zelda: Link's Awakening |
 |  | 01006B000A666000 | Cendrillon palikA |
@@ -154,6 +154,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 010050000705E000 | Dragon Quest Builders 2 |
 |  | 010060800B7A8000 | BUSTAFELLOWS |
 |  | 0100874017BE2000 | BUSTAFELLOWS シーズン2 |
+|  | 0100F6F0207CC000 | BUSTAFELLOWS season2 |
 |  | 010094601D910000 | 5分後に意外な結末　モノクロームの図書館 |
 |  | 010024200E00A000 | うたの☆プリンスさまっ♪ Repeat LOVE |
 |  | 01000C7019E1C000 | ワンド オブ フォーチュン Ｒ～ |
@@ -238,6 +239,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | 0100815019488000 | ヤマノススメ Next Summit ～あの山に、もう一度～ |
 |  | 0100F4800F872000 | プリズンプリンセス |
 |  | 010027401A2A2000 | 泡沫のユークロニア |
+|  | 0100D2A02101C000 | 泡沫のユークロニア trail |
 |  | 0100943010310000 | リトルバスターズ！Converted Edition |
 |  | 01003F5017760000 | GrimGrimoire OnceMore |
 |  | 0100A62019078000 | テミラーナ国の強運姫と悲運騎士団 |
@@ -382,6 +384,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | ULJM05491 | サイファーPORTABLE |
 |  | ULJM05962 | 花と乙女に祝福を　～春風の贈り物～　portable |
 |  | ULJM05683 | Starry☆Sky ～in Spring～ Portable |
 |  | ULJM05740 | Starry☆Sky～in Summer～Portable |
@@ -400,6 +403,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | ULJM06192 | 黄昏のシンセミア portable |
 |  | NPJH50836 | 俺の彼女のウラオモテ ～Pure Sweet Heart～ |
 |  | NPJH50867 | 越えざるは紅い花　大河は未来を紡ぐ |
+|  | ULJM06234 | 下天の華 |
 |  | NPJH50864 | 下天の華 夢灯り |
 |  | ULJM06353 | 忍び、恋うつつ |
 |  | ULJM05387 | 蘭島物語 レアランドストーリー 少女の約定 |
@@ -541,6 +545,7 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | ULJM05441 | 遙かなる時空の中で３ with 十六夜記 愛蔵版 |
 |  | ULJM05547 | 遙かなる時空の中で３ 運命の迷宮 愛蔵版 |
 |  | ULJM05810 | 遙かなる時空の中で４ 愛蔵版 |
+|  | ULJM05843 | 遙かなる時空の中で５ |
 |  | ULJM06025 | 遙かなる時空の中で５ 風花記 |
 |  | NPJH50901 | 遙かなる時空の中で６ |
 |  | ULJM06328 | SNOW BOUND LAND |
@@ -616,11 +621,17 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 |  | NPJH50866 | 黒雪姫～スノウ・ブラック～ |
 |  | ULJM06318 | ロミオVSジュリエット |
 |  | NPJH50862 | ロミオ＆ジュリエット |
-|  | NPJH50902 | うたの☆プリンスさまっ♪All Star After Secret |
+|  | NPJH50269 | うたの☆プリンスさまっ♪ |
 |  | NPJH50446 | うたの☆プリンスさまっ♪Repeat |
+|  | NPJH50734 | うたの☆プリンスさまっ♪All Star |
+|  | NPJH50902 | うたの☆プリンスさまっ♪All Star After Secret |
+|  | NPJH50381 | うたの☆プリンスさまっ♪-Amazing Aria- |
+|  | NPJH50500 | うたの☆プリンスさまっ♪Debut |
+|  | NPJH50393 | うたの☆プリンスさまっ♪-Sweet Serenade- |
 |  | ULJM06006 | スカーレッドライダーゼクス |
 |  | ULJM06007 | スカーレッドライダーゼクス　スターダストラバーズ |
 |  | ULJM06046 | エルクローネのアトリエ ～Dear for Otomate～ |
+|  | ULJM06344 | 放課後colorful＊step～うんどうぶ！～ |
 |  | ULJM06363 | 放課後colorful＊step～ぶんかぶ！～ |
 |  | ULJM05949 | お菓子な島のピーターパン～Sweet Never Land～ |
 |  | ULJM06276 | NORN9 ノルン＋ノネット |
@@ -710,6 +721,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | PCSG00139 | フォトカノ Kiss |
+|  | PCSG00509 | POSSESSION MAGENTA |
 |  | PCSG00020 | 極限脱出ＡＤＶ 善人シボウデス |
 |  | PCSG01063 | イケメン戦国◆時をかける恋　新たなる出逢い |
 |  | PCSG00766 | ニル・アドミラリの天秤 帝都幻惑綺譚 |
@@ -880,6 +893,8 @@ LunaTranslator支持通过模拟器HOOK NS/PSP/PSV/PS2上的大量游戏。
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | SLPM-65607 | 3LDK ～幸せになろうよ～ [初回限定版] |
+|  | SLPS-25433 | 帝国千戦記 [初回限定版] |
 |  | SLPM-67009 | サクラ大戦Ⅴ ～さらば愛しき人よ～ |
 |  | SLPM-65717 | 月は東に日は西に -Operation Sanctuary- |
 |  | SLPM-65641 | うたう♪タンブリング・ダイス ～私たち3人、あ・げ・る～ |

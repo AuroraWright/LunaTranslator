@@ -24,7 +24,6 @@ from myutils.utils import (
     dynamiclink,
     find_or_create_uid,
     parsekeystringtomodvkcode,
-    checkisusingwine,
     checkpostusing,
     checkmd5reloadmodule,
     stringfyerror,
@@ -390,7 +389,6 @@ class BASEOBJECT(QObject):
         waitforresultcallbackengine=None,
         waitforresultcallbackengine_force=False,
         erroroutput=None,
-        donttrans=False,
         updateTranslate=False,
         isFromHook=False,
     ):
@@ -402,7 +400,6 @@ class BASEOBJECT(QObject):
                 waitforresultcallbackengine=waitforresultcallbackengine,
                 waitforresultcallbackengine_force=waitforresultcallbackengine_force,
                 erroroutput=erroroutput,
-                donttrans=donttrans,
                 updateTranslate=updateTranslate,
                 isFromHook=isFromHook,
             )
@@ -426,7 +423,6 @@ class BASEOBJECT(QObject):
         waitforresultcallbackengine=None,
         waitforresultcallbackengine_force=False,
         erroroutput=None,
-        donttrans=False,
         updateTranslate=False,
         isFromHook=False,
     ):
@@ -470,8 +466,6 @@ class BASEOBJECT(QObject):
             self.textsource.sqlqueueput((text, origin))
         except:
             pass
-        if donttrans:
-            return
         _showrawfunction_unsafe = None
         if not waitforresultcallback:
             self.currenttext = text
@@ -1262,7 +1256,7 @@ class BASEOBJECT(QObject):
                 lambda: os.startfile(dynamiclink(docs=True)),
             )
             self.settin_ui.show()
-        elif version != tuple(globalconfig["load_doc_or_log"]):
+        elif 0:  # version != tuple(globalconfig["load_doc_or_log"]):
             vs = ".".join(str(_) for _ in version)
             if vs.endswith(".0"):
                 vs = vs[:-2]
@@ -1322,7 +1316,7 @@ class BASEOBJECT(QObject):
         darklight = ["light", "dark"][dark]
 
         self.currentisdark = dark
-
+        qtawesome.isdark = dark
         for widget in QApplication.topLevelWidgets():
             self.setdarkandbackdrop(widget, dark)
         style = ""

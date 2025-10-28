@@ -10,10 +10,21 @@ from myutils.config import (
     globalconfig,
 )
 from myutils.hwnd import clipboard_set_image
-from myutils.utils import get_time_stamp, getimageformatlist, targetmod
+from myutils.utils import (
+    get_time_stamp,
+    getimageformatlist,
+    targetmod,
+    getimagefilefilter,
+)
 from gui.inputdialog import autoinitdialog
 from gui.specialwidget import stackedlist, shrinkableitem, shownumQPushButton
-from gui.usefulwidget import pixmapviewer, makesubtab_lazy, tabadd_lazy, request_delete_ok
+from gui.usefulwidget import (
+    pixmapviewer,
+    makesubtab_lazy,
+    tabadd_lazy,
+    request_delete_ok,
+    IconButton,
+)
 from gui.gamemanager.setting import dialog_setting_game_internal
 from gui.gamemanager.common import (
     getalistname,
@@ -112,22 +123,61 @@ class clickitem(QWidget):
         self.lay.addWidget(_)
 
 
-class fadeoutlabel(QLabel):
-    def __init__(self, p=None):
+class fadeoutlabel(QWidget):
+    def setText(self, t):
+        self.text.setText(t)
+        self.resize(
+            self.width(),
+            max(self.btn.height() * 2, self.text.heightForWidth(self.text.width())),
+        )
+
+    def wheelEvent(self, e: QWheelEvent) -> None:
+        self.wheelto.wheelEvent(e)
+
+    def addimage(self):
+        f = QFileDialog.getOpenFileNames(filter=getimagefilefilter())
+        res = f[0]
+        self.parent1.addimages(res)
+
+    def delimage(self):
+        if not request_delete_ok(self, "9b524251-9639-478c-b3f9-2d254ef50084"):
+            return
+        self.parent1.removecurrent(False)
+
+    def __init__(self, p, wheelto: QWidget, parent: "pixwrapper"):
         super().__init__(p)
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.showmenu)
+        self.parent1 = parent
+        l = QHBoxLayout(self)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(0)
+        self.text = QLabel()
+        self.text.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.text.setScaledContents(True)
+        l.addWidget(self.text)
+        hb = QVBoxLayout()
+        hb.setContentsMargins(0, 0, 0, 0)
+        hb.setSpacing(0)
+        l.addLayout(hb)
+        self.btn = IconButton("fa.plus", tips="添加图片")
+        self.xbtn = IconButton("fa.times", tips="删除图片")
+        self.btn.clicked.connect(self.addimage)
+        self.xbtn.clicked.connect(self.delimage)
+        hb.addWidget(self.btn)
+        hb.addWidget(self.xbtn)
+        self.wheelto = wheelto
+        self.text.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.text.customContextMenuRequested.connect(self.showmenu)
         effect = QGraphicsOpacityEffect(self)
         effect.setOpacity(0)
         self.setGraphicsEffect(effect)
         self.effect = effect
-
-        self.setStyleSheet("""background-color: rgba(255,255,255, 0);""")
+        self.setStyleSheet("""QLabel{background-color: rgba(255,255,255, 0);}""")
         self.animation = QPropertyAnimation(effect, b"opacity")
         self.animation.setDuration(2000)
         self.animation.setStartValue(1.0)
         self.animation.setEndValue(0.0)
         self.animation.setDirection(QPropertyAnimation.Direction.Forward)
+        self.setText("")
 
     def enterEvent(self, a0):
         self.animation.stop()
@@ -139,13 +189,16 @@ class fadeoutlabel(QLabel):
         return super().leaveEvent(a0)
 
     def showmenu(self, _):
+        t = self.text.text()
+        if not t:
+            return
         menu = QMenu(self)
         copy = LAction("复制", menu)
         menu.addAction(copy)
 
         action = menu.exec(QCursor.pos())
         if action == copy:
-            NativeUtils.ClipBoard.text = self.text()
+            NativeUtils.ClipBoard.text = self.text.text()
 
 
 def getselectpos(parent, callback):
@@ -296,8 +349,11 @@ class previewimages(QWidget):
         self.list.blockSignals(True)
         if clear:
             self.list.clear()
+        first = None
         for path in paths:
             item = QListWidgetItem()
+            if first is None:
+                first = item
             item.setData(PathRole, path)
             item.setData(ImageRequestedRole, False)
             if insert:
@@ -305,6 +361,8 @@ class previewimages(QWidget):
             else:
                 self.list.addItem(item)
         self.list.blockSignals(False)
+        if first:
+            self.list.setCurrentItem(first)
 
     def setpixmaps(self, paths: list, currentpath):
         self.list.setCurrentRow(-1)
@@ -386,9 +444,7 @@ class viewpixmap_x(QWidget):
         self.pixmapviewer.tolastnext.connect(self.tolastnext)
         self.bottombtn = hoverbtn("开始游戏", self)
         self.bottombtn.clicked.connect(self.startgame)
-        self.infoview = fadeoutlabel(self)
-        self.infoview.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.infoview.setScaledContents(True)
+        self.infoview = fadeoutlabel(self, self.pixmapviewer, parent)
         self.currentimage = None
 
     def resizeEvent(self, e: QResizeEvent):
@@ -415,9 +471,6 @@ class viewpixmap_x(QWidget):
             pass
 
         self.infoview.setText(t)
-        self.infoview.resize(
-            self.infoview.width(), self.infoview.heightForWidth(self.infoview.width())
-        )
         if not path:
             pixmap = QPixmap()
         else:
@@ -460,15 +513,22 @@ class pixwrapper(QWidget):
         newf = []
         sups = getimageformatlist()
         for f in files:
-            if f in savehook_new_data[self.k].get("imagepath_all", []):
-                continue
             ext = os.path.splitext(f)[1]
             if ext.lower()[1:] not in sups:
                 continue
             newf.append(f)
         if not newf:
             return
+        self.addimages(newf)
 
+    def addimages(self, files):
+        newf = []
+        for f in files:
+            if f in savehook_new_data[self.k].get("imagepath_all", []):
+                continue
+            newf.append(f)
+        if not newf:
+            return
         if "imagepath_all" not in savehook_new_data[self.k]:
             savehook_new_data[self.k]["imagepath_all"] = []
         self.previewimages.additems(newf, clear=False, insert=True)
@@ -511,6 +571,7 @@ class pixwrapper(QWidget):
         self.pixview = viewpixmap_x(self)
         self.pixview.startgame.connect(self.startgame)
         self.spliter = QSplitter(self)
+        self.spliter.setHandleWidth(0)
         self.vlayout.addWidget(self.spliter)
         self.setrank(rank)
         self.sethor(hor)
@@ -553,10 +614,14 @@ class pixwrapper(QWidget):
             menu.addAction(pos)
         action = menu.exec(QCursor.pos())
         if action == deleteimage:
+            if not request_delete_ok(self, "9b524251-9639-478c-b3f9-2d254ef50084"):
+                return
             self.removecurrent(False)
         elif copyimage == action:
             clipboard_set_image(extradatas["localedpath"].get(curr, curr))
         elif action == deleteimage_x:
+            if not request_delete_ok(self, "d836ae43-b895-46e1-be0b-949dd5e2d4de"):
+                return
             self.removecurrent(True)
         elif action == pos:
             getselectpos(self, self.switchpos)
@@ -646,7 +711,8 @@ class dialog_savedgame_v3(QWidget):
 
     def newline(self, res):
         self.reallist[self.reftagid].insert(0, res)
-        self.stack.w(calculatetagidx(self.reftagid)).insertw(
+        group = self.stack.w(calculatetagidx(self.reftagid))
+        group.insertw(
             0,
             functools.partial(
                 self.delayitemcreater,
@@ -656,6 +722,7 @@ class dialog_savedgame_v3(QWidget):
                 getreflist(self.reftagid),
             ),
         )
+        group.button().setnum(len(self.reallist[self.reftagid]))
         self.stack.directshow()
 
     def stack_showmenu(self, p):
@@ -780,8 +847,8 @@ class dialog_savedgame_v3(QWidget):
         super().__init__(parent)
         parent.setWindowTitle("游戏管理")
         self.currentfocusuid = None
-        self.reftagid = None
-        self.reallist = {}
+        self.reftagid: str = None
+        self.reallist: "dict[str,list]" = {}
         self.keepindexobject = {}
 
         class ___(stackedlist):
@@ -821,6 +888,7 @@ class dialog_savedgame_v3(QWidget):
         self.stack.bgclicked.connect(clickitem.clearfocus)
         self.setstyle()
         spl = QSplitter()
+        spl.setHandleWidth(0)
         _l = QHBoxLayout(self)
         _l.setContentsMargins(0, 0, 0, 0)
         _l.addWidget(spl)

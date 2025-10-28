@@ -14,6 +14,7 @@
 #include "engine32/ADVSystem.h"
 #include "engine32/Pinpai.h"
 #include "engine32/AbogadoPowers.h"
+#include "engine32/Broccoli.h"
 #include "engine32/Winters.h"
 #include "engine32/CoffeeMaker.h"
 #include "engine32/TACTICS.h"
@@ -129,7 +130,7 @@
 #include "engine32/Onscripter.h"
 #include "engine32/Candy.h"
 #include "engine32/AIL.h"
-#include "engine32/ApricoT.h"
+#include "engine32/ApRicoT.h"
 #include "engine32/Triangle.h"
 #include "engine32/GASTRO.h"
 #include "engine32/akatombo.h"
@@ -142,6 +143,7 @@
 #include "engine32/SRPGStudio.h"
 #include "engine32/RpgmXP.h"
 #include "engine32/littlecheese.h"
+#include "engine32/Arcturus.h"
 #include "engine32/Eagls.h"
 #include "engine32/Debonosu.h"
 #include "engine32/C4.h"
@@ -234,6 +236,7 @@ std::vector<ENGINE *> check_engines()
         new SilkysOld,
         new CMVS,
         new Wolf,
+        new Arcturus,
         new Circus1,
         new Circus2,
         new Circus_old,
@@ -274,7 +277,7 @@ std::vector<ENGINE *> check_engines()
         new Candy,
         new WillowSoft,
         new AIL,
-        new ApricoT,
+        new ApRicoT,
         new Triangle2,
         new Triangle,
         new AB2Try,
@@ -398,7 +401,7 @@ std::vector<ENGINE *> check_engines()
         new ScenarioPlayer_last,
         new HorkEye,
         new Nexton1,
-        new ApricoTlast,
+        new ApRicoTlast,
         new Leaf,
         new Nekopack,
         new AdobeFlash10,
@@ -452,7 +455,7 @@ std::vector<ENGINE *> check_engines()
         new MerRouge,
         new GROOVER,
         new SmartAdv,
-        new MapleColors,
+        new ApRicoTOld,
         new Hug,
         new GJ,
         new Pinpai,
@@ -462,5 +465,6 @@ std::vector<ENGINE *> check_engines()
         new Nekotaro,
         new PixelGameMakerMVplayer,
         new TamaSoft,
+        new Broccoli,
     };
 }

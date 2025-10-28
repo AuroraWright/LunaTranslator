@@ -5,7 +5,7 @@ project(LunaPlugins)
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 option(WINXP "WINXP" OFF)
-option(WIN10ABOVE "WIN10ABOVE" OFF)
+option(WIN10ABOVE "WIN10ABOVE" ON)
 
 if(NOT WIN10ABOVE)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -25,6 +25,7 @@ add_definitions(-DUNICODE -D_UNICODE)
 if(MSVC)
 add_compile_options(/MP)
 endif()
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
     set(platform "x64")

@@ -139,7 +139,7 @@ namespace
     void FSLPM66302(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strAW();
-        s = strSplit(s, L"\");")[0];
+        s = strSplit(s, L");")[0];
         s = re::sub(s, LR"((\\n)+)", L" ");
         s = re::sub(s, LR"(\\d$|^\@[a-z]+|#.*?#|\$)");
         s = re::sub(s, LR"(@w|\\c)");
@@ -192,10 +192,6 @@ namespace
     {
         CharFilter(buffer, L'\r');
         CharFilter(buffer, L'\n');
-    }
-    void SLPM65396(TextBuffer *buffer, HookParam *hp)
-    {
-        CharFilter(buffer, '\n');
     }
     void SLPM66543(TextBuffer *buffer, HookParam *hp)
     {
@@ -255,7 +251,7 @@ namespace
         if (last == s)
             return buffer->clear();
         last = s;
-        s = re::sub(s, "\r\n(\x81\x40)*");
+        s = re::sub(s, "[\r\n]+(\x81\x40)*");
         buffer->from(s);
     }
     void SLPM55159(TextBuffer *buffer, HookParam *hp)
@@ -875,6 +871,13 @@ namespace
 
         buffer->from(s);
     }
+    void SLPM65607(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        const int val = PCSX2_REG(v1);
+        if (val != 0x80000000)
+            return;
+        buffer->from((char *)PCSX2_REG(t0));
+    }
     void SLPS25081(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
     {
         const uintptr_t val = PCSX2_REG(a0);
@@ -1017,7 +1020,7 @@ namespace
         last = s;
         if (startWith(s, "*"))
             buffer->from(s.substr(1));
-        SLPM65396(buffer, hp);
+        NewLineCharFilterA(buffer, hp);
     }
     void SLPM62207(TextBuffer *buffer, HookParam *hp)
     {
@@ -1730,6 +1733,10 @@ namespace
         }
         buffer->from(s);
     }
+    void SLPS25433(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, "%", 2);
+    }
 }
 struct emfuncinfoX
 {
@@ -1737,6 +1744,10 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 3LDK ～幸せになろうよ～ [初回限定版]
+    {0x15562C, {0, 0, 0, SLPM65607, SLPM66861, "SLPM-65607"}},
+    // 帝国千戦記 [初回限定版]
+    {0x1DB228, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPS25433, "SLPS-25433"}},
     // サクラ大戦Ⅴ ～さらば愛しき人よ～
     {0x1F6E550, {DIRECT_READ, 0, 0, 0, SLPM67009, "SLPM-67009"}},
     // 月は東に日は西に -Operation Sanctuary-
@@ -1750,7 +1761,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ドラゴンクエストⅤ 天空の花嫁
     {0x745A7C, {DIRECT_READ, 0, 0, 0, SLPM65555, "SLPM-65555"}},
     // プリンセスナイトメア
-    {0x3E1960, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66973"}},
+    {0x3E1960, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-66973"}},
     // Routes PE
     {0x175D48, {USING_CHAR, PCSX2_REG_OFFSET(a1), 0, 0, 0, "SLPS-25727"}},
     // Drastic Killer (Excellent Box)
@@ -1835,7 +1846,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ルーンプリンセス 初回限定版
     {0x11AA2C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(t5), 0, 0, SLPM66157, "SLPM-66157"}},
     // 式神の城 七夜月幻想曲
-    {0x1722E8, {0, PCSX2_REG_OFFSET(s4), 0, 0, SLPM65396, "SLPM-66069"}},
+    {0x1722E8, {0, PCSX2_REG_OFFSET(s4), 0, 0, NewLineCharFilterA, "SLPM-66069"}},
     // ふぁいなりすと [通常版]
     {0x167428, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s2), 0, 0, SLPM66254, "SLPM-66254"}},
     // メタルウルフREV [初回限定版]
@@ -1863,7 +1874,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 桜華 ～心輝かせる桜～
     {0x16AABC, {0, PCSX2_REG_OFFSET(s1), 0, 0, SLPM66406, "SLPM-66406"}},
     // ギャラクシーエンジェルⅡ ～絶対領域の扉～ [通常版]
-    {0x1529DC3, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66243"}},
+    {0x1529DC3, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-66243"}},
     // 魂響 ～御霊送りの詩～ [通常版]
     {0x1D344D0, {DIRECT_READ, 0, 0, 0, SLPM66757, "SLPM-66433"}},
     // あそびにいくヨ！ ～ちきゅうぴんちのこんやくせんげん～
@@ -1891,7 +1902,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 神様家族 応援願望
     {0x1293AC, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM66499, "SLPM-66499"}},
     // Gift -prism- [通常版]
-    {0x4B5A50, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66530"}},
+    {0x4B5A50, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-66530"}},
     // 女子高生 GAME'S-HIGH！
     {0x12A5445, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66495"}},
     // 世界ノ全テ ～two of us～
@@ -1923,7 +1934,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // お嬢様組曲 -Sweet Concert- [通常版]
     {0x116E34, {0, PCSX2_REG_OFFSET(t5), 0, 0, SLPM66726, "SLPM-66726"}},
     // まじしゃんず・あかでみい
-    {0x2DB307, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPS-25775"}},
+    {0x2DB307, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPS-25775"}},
     // 許嫁 [初回限定版]
     {0x1B22E4, {DIRECT_READ, 0, 0, 0, SLPM66861, "SLPM-66732"}},
     // 魔女っ娘ア・ラ・モードⅡ ～魔法と剣のストラグル～ [通常版]
@@ -1952,7 +1963,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x114128, {0, PCSX2_REG_OFFSET(s2), 0, 0, SLPM55016, "SLPM-66890"}},
     // 最終試験くじら−Alive− //SLPM-66809
     // 水夏A.S+ Eternal Name [通常版] //SLPM-66787
-    {0x1FFE8C0, {DIRECT_READ, 0, 0, 0, SLPM65396, std::vector<const char *>{"SLPM-66809", "SLPM-66787"}}},
+    {0x1FFE8C0, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, std::vector<const char *>{"SLPM-66809", "SLPM-66787"}}},
     // プリンセスメーカー5
     {0x19B5D4, {0, PCSX2_REG_OFFSET(v0), 0, 0, SLPM66918, "SLPM-66918"}},
     // School Days L×H
@@ -1992,7 +2003,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // シークレットゲーム -KILLER QUEEN-
     {0x1BC90C0, {DIRECT_READ, 0, 0, 0, 0, "SLPM-55028"}},
     // レッスルエンジェルス サバイバー2
-    {0xEAC080, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-55058"}},
+    {0xEAC080, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-55058"}},
     // 夢見白書 ～Second Dream～ [通常版]
     {0x1B3EC4, {DIRECT_READ, 0, 0, 0, 0, "SLPM-55071"}},
     // Scarlett ～日常の境界線～ [通常版]
@@ -2040,7 +2051,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 萌え萌え2次大戦（略）☆デラックス
     {0x1ACF30, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM55156, "SLPS-25896"}},
     // 萌え萌え2次大戦(略)2[chu～♪] [通常版]
-    {0x1A2690, {0, PCSX2_REG_OFFSET(t4), 0, 0, SLPM65396, "SLPS-25956"}},
+    {0x1A2690, {0, PCSX2_REG_OFFSET(t4), 0, 0, NewLineCharFilterA, "SLPS-25956"}},
     // ストライクウィッチーズ あなたとできること [通常版]
     {0x10A948, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(a0), 0, 0, 0, "SLPM-55174"}},
     // 恋姫†夢想 ～ドキッ☆乙女だらけの三国志演義～ [通常版]
@@ -2152,7 +2163,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Soul Link EXTENSION
     {0x1E14A3C, {DIRECT_READ, 0, 0, 0, SLPM66437, "SLPM-66437"}},
     // デ・ジ・キャラット ファンタジー エクセレント
-    {0x10E2C80, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-65396"}},
+    {0x10E2C80, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-65396"}},
     // I/O
     {0xF0BF80, {DIRECT_READ, 0, 0, 0, SLPM66272, "SLPM-66272"}},
     // シークレット・オブ・エヴァンゲリオン
@@ -2169,7 +2180,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ゼロの使い魔 迷子の終止符と幾千の交響曲
     {0x1FFD934, {DIRECT_READ, 0, 0, 0, SLPS25897_1, "SLPS-25897"}},
     // ゼロの使い魔 小悪魔と春風の協奏曲 [通常版]
-    {0x1C0E38, {0, 0, 0, SLPS25709, SLPM65396, "SLPS-25709"}},
+    {0x1C0E38, {0, 0, 0, SLPS25709, NewLineCharFilterA, "SLPS-25709"}},
     // スキップ・ビート
     {0x1CF70F0, {DIRECT_READ, 0, 0, 0, SLPM55170, "SLPM-55170"}},
     // Myself;Yourself
@@ -2188,7 +2199,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ゲームになったよ！ドクロちゃん～健康診断大作戦～
     {0x1B9Bbec, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66186"}},
     // 地獄少女 澪縁
-    {0x2A078F, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-55213"}},
+    {0x2A078F, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-55213"}},
     // エーデルブルーメ
     {0x46631C, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66975"}},
     // セキレイ ～未来からのおくりもの～

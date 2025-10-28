@@ -2,6 +2,8 @@ from qtsymbols import *
 import threading
 from traceback import print_exc
 from myutils.wrapper import trypass
+import qtawesome
+from gui.dynalang import IconToolButton
 
 
 class chartwidget(QWidget):
@@ -458,12 +460,22 @@ class delayloadvbox(QWidget):
         return len(self.internal_widgets)
 
 
-class shownumQPushButton(QPushButton):
-    def __init__(self, *arg, **kw):
-        super().__init__(*arg, **kw)
+class shownumQPushButton(IconToolButton):
+    def __init__(self, T):
+        super().__init__()
+        self.setText(T)
         self.num = 0
         self.setCheckable(True)
-        self.clicked.connect(self.setChecked)
+        self.toggled.connect(self.setChecked)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+    def setChecked(self, checked):
+        self.setIcon(
+            qtawesome.icon("fa.chevron-down" if checked else "fa.chevron-right")
+        )
+        super().setChecked(checked)
 
     def setnum(self, num):
         self.num = num
@@ -479,18 +491,10 @@ class shownumQPushButton(QPushButton):
 
         textRect = self.fontMetrics().boundingRect(self.text())
         numberRect = rect.adjusted(textRect.width() + 10, 0, -10, 0)
-
         painter.drawText(
             numberRect,
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
             str(self.num),
-        )
-
-        numberRect = rect.adjusted(10, 0, textRect.width() + -10, 0)
-        painter.drawText(
-            numberRect,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            ("+", "-")[self.isChecked()],
         )
 
 

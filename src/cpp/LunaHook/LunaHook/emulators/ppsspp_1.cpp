@@ -118,6 +118,12 @@ namespace
         StringReplacer(buffer, TEXTANDLEN("\x87\x87"), TEXTANDLEN("\x81\x5c"));
         StringFilter(buffer, TEXTANDLEN("\x87\x6e"));
     }
+    void NPJH50269(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("\x87\x6e"));
+        if (buffer->size == 1)
+            buffer->clear();
+    }
     void ULJS00339(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
         auto a2 = PPSSPP::emu_arg(context)[0];
@@ -206,6 +212,12 @@ namespace
         strReplace(s, "\x81\x40");
         buffer->from(s);
     }
+    void ULJM06344(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, "\n(\x81\x40)*");
+        buffer->from(s);
+    }
     void ULJS00293(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->viewA();
@@ -216,10 +228,6 @@ namespace
         CharFilter(buffer, '\n');
         StringReplacer(buffer, TEXTANDLEN("\x04(DIO)"), TEXTANDLEN("\x83\x66\x83\x42\x83\x49"));
         StringReplacer(buffer, TEXTANDLEN("\x04(MEL)"), TEXTANDLEN("\x83\x81\x83\x8b"));
-    }
-    void ULJS00124(TextBuffer *buffer, HookParam *hp)
-    {
-        CharFilter(buffer, '\n');
     }
     void NPJH50899(TextBuffer *buffer, HookParam *hp)
     {
@@ -459,35 +467,6 @@ namespace
     {
         std::string s = (char *)PPSSPP::emu_arg(context)[1];
         buffer->from(ULJM06143Code(s));
-    }
-    void NPJH50902(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
-    {
-        auto cs = (char *)PPSSPP::emu_arg(context)[3];
-        while (*(WORD *)(cs - 1))
-            cs -= 1;
-        cs += 1;
-        std::string ws;
-        while (*(char *)cs)
-        {
-            std::string s = cs;
-            for (int i = 0; i < s.size();)
-            {
-                if ((BYTE)s[i] == 0x87)
-                {
-                    if (((BYTE)s[i + 1] == 0x86) || (BYTE)s[i + 1] == 0x85)
-                        ws += "\x81\x5b";
-                    i += 2;
-                }
-                else
-                {
-                    ws += s[i];
-                    i += 1;
-                }
-            }
-            cs += s.size() + 1;
-        }
-        strReplace(ws, "\n");
-        buffer->from(ws);
     }
     void NPJH50809F(TextBuffer *buffer, HookParam *hp)
     {
@@ -1049,10 +1028,6 @@ namespace
         CharFilter(buffer, L'\n');
         StringFilterBetween(buffer, TEXTANDLEN(L"["), TEXTANDLEN(L"]"));
     }
-    void ULJM05976(TextBuffer *buffer, HookParam *hp)
-    {
-        CharFilter(buffer, L'\n');
-    }
     void NPJH50908(TextBuffer *buffer, HookParam *hp)
     {
         CharFilter(buffer, L'\n');
@@ -1476,6 +1451,20 @@ namespace
         ws = re::sub(ws, L"\\{(.*)/(.*?)\\}", L"$1");
         buffer->fromWA(ws);
     }
+    void ULJM05491(TextBuffer *buffer, HookParam *hp)
+    {
+        static int lastlen = 0;
+        static std::string firstshit;
+        auto s = buffer->strA();
+        lastlen = buffer->size;
+        if (lastlen == 2)
+        {
+            return buffer->clear();
+        }
+        static lru_cache<std::string> cache(5);
+        if (cache.touch(s))
+            return buffer->clear();
+    }
 }
 struct emfuncinfoX
 {
@@ -1483,6 +1472,8 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // サイファーPORTABLE
+    {0x880FF80, {0, 3, 0, 0, ULJM05491, "ULJM05491"}}, // 不可以快进
     // 花と乙女に祝福を　～春風の贈り物～　portable
     {0x8814B08, {0, 0, 0, 0, ULJM05954, "ULJM05962"}},
     // Starry☆Sky ～in Spring～ Portable
@@ -1517,6 +1508,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x88208F8, {0, 0, 0, 0, NPJH50836_2, "NPJH50836"}},
     // 越えざるは紅い花　大河は未来を紡ぐ
     {0x8871340, {0, 5, 0, 0, 0, "NPJH50867"}}, // 需要自行将自定义人名占位符替换成自定义人名
+    // 下天の華
+    {0x8915BB0, {0, 0, 0, ULJM05428, 0, "ULJM06234"}},
     // 下天の華 夢灯り
     {0x8841B70, {0, 0, 0, ULJM05428, 0, "NPJH50864"}},
     // 忍び、恋うつつ
@@ -1612,11 +1605,11 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Never7 -the end of infinity-
     {0x88196F0, {0, 0xe, 0, 0, ULJM05433, "ULJM05433"}},
     // 24時の鐘とシンデレラ～Halloween Wedding～
-    {0x8838304, {0, 0, 0, 0, ULJS00124, "ULJM06168"}},
+    {0x8838304, {0, 0, 0, 0, NewLineCharFilterA, "ULJM06168"}},
     // １２時の鐘とシンデレラ～Halloween Wedding～
-    {0x882A650, {0, 1, 0, 0, ULJS00124, "ULJM06023"}},
+    {0x882A650, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06023"}},
     // 0時の鐘とシンデレラ～Halloween Wedding～
-    {0x8855CA0, {0, 1, 0, 0, ULJS00124, "ULJM06272"}},
+    {0x8855CA0, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06272"}},
     // セブンスドラゴン２０２０
     {0x88847A0, {CODEC_UTF8, 1, 0, 0, FNPJH50459, "NPJH50459"}},
     // セブンスドラゴン２０２０-Ⅱ
@@ -1627,7 +1620,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x899a510, {0, 2, 0, 0, FNPJH50127, "NPJH50127"}},
     {0x88719dc, {0, 1, 0, 0, FNPJH50127, "NPJH50127"}},
     // ときめきメモリアル Girl's Side Premium 3
-    {0x88F09F4, {CODEC_UTF16, 0, 0, 0, ULJM05976, "ULJM05976"}},
+    {0x88F09F4, {CODEC_UTF16, 0, 0, 0, NewLineCharFilterW, "ULJM05976"}},
     // オメルタ～沈黙の掟～ THE LEGACY
     {0x88861C8, {0, 3, 0, 0, 0, "ULJM06393"}},
     {0x8885fd8, {0, 0, 0, 0, 0, "ULJM06393"}},
@@ -1787,7 +1780,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // CHAOS;HEAD らぶChu☆Chu!
     {0x88B5AD8, {0, 0xe, 0, 0, ULJM05821, "ULJM05821"}},
     // 涼宮ハルヒの約束
-    {0x882C6B4, {0, 6, 0, 0, ULJS00124, "ULJS00124"}},
+    {0x882C6B4, {0, 6, 0, 0, NewLineCharFilterA, "ULJS00124"}},
     // code_18
     {0x884B8B8, {0, 0, 0, 0, ULJM05821, "ULJM05936"}},
     // ユア・メモリーズオフ
@@ -1799,23 +1792,23 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 華ヤカ哉、我ガ一族 黄昏ポウラスタ
     {0x889DD34, {0, 3, 0, 0, ULJM05691, "ULJM06263"}},
     // マザーグースの秘密の館～Nursery Rhymes for you～
-    {0x8815B34, {0, 1, 0, 0, ULJS00124, "ULJM05892"}},
+    {0x8815B34, {0, 1, 0, 0, NewLineCharFilterA, "ULJM05892"}},
     // マザーグースの秘密の館～BLUE LABEL～
     {0x8831BB4, {0, 1, 0, 0, 0, "ULJM05950"}},
     // 百鬼夜行～怪談ロマンス～
     {0x884A634, {0, 1, 0, 0, 0, "ULJM06184"}},
     // 逢魔時～怪談ロマンス～
-    {0x8833C64, {0, 1, 0, 0, ULJS00124, "ULJM06039"}},
+    {0x8833C64, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06039"}},
     // 百物語～怪談ロマンス～
-    {0x8843458, {0, 1, 0, 0, ULJS00124, "ULJM06323"}},
+    {0x8843458, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06323"}},
     // 黄昏時～怪談ロマンス～
-    {0x8841A98, {0, 8, 0, 0, ULJS00124, "ULJM06235"}},
+    {0x8841A98, {0, 8, 0, 0, NewLineCharFilterA, "ULJM06235"}},
     // アブナイ★恋の捜査室
     {0x8842F84, {0, 1, 0, 0, 0, "ULJM06050"}},
     // ネオ アンジェリークSpecial
-    {0x8867018, {0, 1, 0, 0, ULJS00124, "ULJM05374"}},
+    {0x8867018, {0, 1, 0, 0, NewLineCharFilterA, "ULJM05374"}},
     // 遙かなる時空の中で～八葉抄～
-    {0x88C1290, {0, 2, 0, 0, ULJS00124, "ULJM06252"}}, // 必须按一下按钮，才能显示
+    {0x88C1290, {0, 2, 0, 0, NewLineCharFilterA, "ULJM06252"}}, // 必须按一下按钮，才能显示
     // 遙かなる時空の中で２
     {0x88C0410, {0, 2, 0, 0, ULJM05019, "ULJM05019"}},
     // 遙かなる時空の中で３ with 十六夜記 愛蔵版
@@ -1824,8 +1817,10 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x89081f4, {0, 0, 0, ULJM05441, 0, "ULJM05547"}},
     // 遙かなる時空の中で４ 愛蔵版
     {0x8955CE0, {0, 0, 0, ULJM05810, 0, "ULJM05810"}},
+    // 遙かなる時空の中で５
+    {0x8A13278, {0, 0, 0, ULJM05428, NewLineCharFilterA, "ULJM05843"}},
     // 遙かなる時空の中で５ 風花記
-    {0x8B0449C, {0, 1, 0, 0, ULJS00124, "ULJM06025"}},
+    {0x8B0449C, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06025"}},
     // 遙かなる時空の中で６
     {0x89FD41C, {0, 0xf, 0, 0, NPJH50901, "NPJH50901"}},
     // SNOW BOUND LAND
@@ -1843,19 +1838,19 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // アルカナ・ファミリア ２
     {0x887493C, {0, 0, 0, 0, ULJM06032, "ULJM06291"}},
     // 里見八犬伝　八珠之記
-    {0x887FF84, {0, 1, 0, 0, ULJS00124, "NPJH50858"}},
+    {0x887FF84, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50858"}},
     // 里見八犬伝～村雨丸之記～
     {0x88750C0, {0, 1, 0, 0, NPJH50899, "NPJH50899"}},
     // 里見八犬伝～浜路姫之記～
     {0x886C750, {0, 1, 0, 0, NPJH50899, "NPJH50885"}},
     // 大正鬼譚～言ノ葉櫻～
-    {0x88851E8, {0, 1, 0, 0, ULJS00124, "NPJH50886"}},
+    {0x88851E8, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50886"}},
     // 大正鬼譚
-    {0x88487A4, {0, 1, 0, 0, ULJS00124, "NPJH50833"}},
+    {0x88487A4, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50833"}},
     // 大正メビウスライン PORTABLE
     {0x887EA6C, {0, 1, 0, 0, ULJM06397, "NPJH50863"}},
     // 魔法使いとご主人様～New Ground～
-    {0x8844208, {0, 0, 0, 0, ULJS00124, "ULJM05951"}},
+    {0x8844208, {0, 0, 0, 0, NewLineCharFilterA, "ULJM05951"}},
     // 魔女王
     {0x88644D4, {0, 1, 0, 0, NPJH50899, "NPJH50879"}},
     // 白華の檻～緋色の欠片４～
@@ -1903,9 +1898,9 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x883131C, {0, 1, 0, 0, ULJM06220, "ULJM06220"}},
     {0x8831324, {0, 1, 0, 0, ULJM06266, "ULJM06220"}},
     // クロノスタシア
-    {0x8812600, {0, 1, 0, 0, ULJS00124, "ULJM06359"}},
+    {0x8812600, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06359"}},
     // フォトカノ
-    {0x88F2030, {0, 1, 0, 0, ULJS00124, "ULJS00378"}},
+    {0x88F2030, {0, 1, 0, 0, NewLineCharFilterA, "ULJS00378"}},
     // マーメイド・ゴシック
     {0x888557C, {0, 1, 0, 0, 0, "NPJH50892"}},
     // your diary+
@@ -1923,14 +1918,14 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // さかあがりハリケーン Portable
     {0x880AF50, {0, 0, 0, 0, ULJM05891, "ULJM05891"}},
     // 快盗天使ツインエンジェル～時とセカイの迷宮～
-    {0x880838C, {0, 1, 0, 0, ULJS00124, "ULJM05908"}},
+    {0x880838C, {0, 1, 0, 0, NewLineCharFilterA, "ULJM05908"}},
     // テガミバチ　こころ紡ぐ者へ
     {0x883172C, {CODEC_UTF16, 1, 0, 0, ULJM05587_1, "ULJM05587"}},
     {0x88316F8, {CODEC_UTF16, 1, 0, 0, ULJM05587_2, "ULJM05587"}},
     // 闇からのいざない TENEBRAE I
     {0x88143A0, {CODEC_UTF16, 2, 0, 0, ULJM06147, "ULJM06147"}},
     // ＧＡ 芸術科アートデザインクラス Slapstick WONDERLAND
-    {0x8858E44, {0, 0, 0, 0, ULJS00124, "ULJM05672"}},
+    {0x8858E44, {0, 0, 0, 0, NewLineCharFilterA, "ULJM05672"}},
     // この部室は帰宅しない部が占拠しました。ぽーたぶる　学園ドッグ・イヤー編
     {0x88F91DC, {0, 2, 0, 0, FNPJH50127, "ULJM06110"}},
     // 夏空のモノローグ portable
@@ -1955,7 +1950,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // さくらさくら-HARU URARA-
     {0x8817C98, {0, 1, 0, 0, ULJM05758, "ULJM05758"}},
     // どきどきすいこでん
-    {0x88A8FC8, {0, 1, 0, 0, ULJS00124, "ULJS00380"}},
+    {0x88A8FC8, {0, 1, 0, 0, NewLineCharFilterA, "ULJS00380"}},
     // Jewelic Nightmare
     {0x888BF24, {0, 0, 0, 0, ULJM06289, "ULJM06326"}},
     // 怪盗アプリコット ポータブル
@@ -1993,25 +1988,37 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 学☆王 -THE ROYAL SEVEN STARS- +METEOR
     {0x880E458, {0, 0, 0, 0, NPJH50754, "NPJH50754"}},
     // 黒雪姫～スノウ・マジック～
-    {0x8886480, {0, 1, 0, 0, ULJS00124, "NPJH50888"}},
+    {0x8886480, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50888"}},
     // 黒雪姫～スノウ・ブラック～
-    {0x887FBF0, {0, 1, 0, 0, ULJS00124, "NPJH50866"}},
+    {0x887FBF0, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50866"}},
     // ロミオVSジュリエット
-    {0x887B4A4, {0, 1, 0, 0, ULJS00124, "ULJM06318"}},
+    {0x887B4A4, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06318"}},
     // ロミオ＆ジュリエット
-    {0x88696AC, {0, 1, 0, 0, ULJS00124, "NPJH50862"}},
-    // うたの☆プリンスさまっ♪All Star After Secret
-    {0x885F3C0, {0, 3, 0, NPJH50902, 0, "NPJH50902"}},
+    {0x88696AC, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50862"}},
+    // うたの☆プリンスさまっ♪
+    {0x8854F28, {USING_CHAR, 0, 0, 0, NPJH50269, "NPJH50269"}},
     // うたの☆プリンスさまっ♪Repeat
-    {0x8853a34, {USING_CHAR, 0, 0, 0, 0, "NPJH50446"}},
+    {0x8853a34, {USING_CHAR, 0, 0, 0, NPJH50269, "NPJH50446"}},
+    // うたの☆プリンスさまっ♪All Star
+    {0x88789BC, {USING_CHAR, 2, 0, 0, NPJH50269, "NPJH50734"}},
+    // うたの☆プリンスさまっ♪All Star After Secret
+    {0x885DF08, {USING_CHAR, 0, 0, 0, NPJH50269, "NPJH50902"}},
+    // うたの☆プリンスさまっ♪-Amazing Aria-
+    {0x88545C4, {USING_CHAR, 0, 0, 0, NPJH50269, "NPJH50381"}},
+    // うたの☆プリンスさまっ♪Debut
+    {0x8851D20, {USING_CHAR, 0, 0, 0, NPJH50269, "NPJH50500"}},
+    // うたの☆プリンスさまっ♪-Sweet Serenade-
+    {0x8854694, {USING_CHAR, 0, 0, 0, NPJH50269, "NPJH50393"}},
     // スカーレッドライダーゼクス
     {0x8863104, {0, 1, 0, 0, ULJM06006, "ULJM06006"}},
     // スカーレッドライダーゼクス　スターダストラバーズ
     {0x8862D80, {0, 1, 0, 0, ULJM06006, "ULJM06007"}},
     // エルクローネのアトリエ ～Dear for Otomate～
     {0x8893418, {0, 0, 0, 0, ULJM05943F, "ULJM06046"}},
+    // 放課後colorful＊step～うんどうぶ！～
+    {0x882BDAC, {0, 1, 0, 0, ULJM06344, "ULJM06344"}},
     // 放課後colorful＊step～ぶんかぶ！～
-    {0x8817AD0, {0, 1, 0, 0, ULJS00124, "ULJM06363"}},
+    {0x8817AD0, {0, 1, 0, 0, ULJM06344, "ULJM06363"}},
     // お菓子な島のピーターパン～Sweet Never Land～
     {0x8883EE0, {CODEC_UTF16 | USING_CHAR | DATA_INDIRECT, 0, 0, 0, 0, "ULJM05949"}},
     // NORN9 ノルン＋ノネット
@@ -2028,7 +2035,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x887F2C0, {0, 0, 0, 0, ULJM05943F, "ULJM05783"}},
     {0x88D4844, {0, 0, 0, 0, ULJM05783, "ULJM05783"}},
     // グリム・ザ・バウンティハンター
-    {0x88385E0, {0, 1, 0, 0, ULJS00124, "ULJM06116"}},
+    {0x88385E0, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06116"}},
     // デザート・キングダム ポータブル
     {0x88274D0, {0, 1, 0, 0, ULJM05823_2, "ULJM06249"}},
     {0x88730AC, {0, 1, 0, 0, ULJM05943F, "ULJM06249"}},
@@ -2044,7 +2051,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Enkeltbillet
     {0x8922460, {0, 1, 0, 0, ULJM06378, "ULJM06375"}},
     // 乙女的恋革命★ラブレボ!!　100kgからはじまる→恋物語
-    {0x887FC28, {CODEC_UTF16, 7, 0, 0, ULJM05976, "ULJM06237"}},
+    {0x887FC28, {CODEC_UTF16, 7, 0, 0, NewLineCharFilterW, "ULJM06237"}},
     // 11eyes CrossOver
     {0x89A7C2C, {0, 0, 0, 0, ULJM05574, "ULJM05574"}},
     // 1/2summer+
@@ -2058,16 +2065,16 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 12Riven　-the Ψcliminal of integral-
     {0x8942AD4, {0, 0, 0, 0, FULJM05603, "ULJM05445"}},
     // リトルウィッチ パルフェ　黒猫魔法店物語
-    {0x8840D18, {0, 0, 0, 0, ULJS00124, "ULJM06019"}},
+    {0x8840D18, {0, 0, 0, 0, NewLineCharFilterA, "ULJM06019"}},
     // ＢＬＡＣＫ ＣＯＤＥ　ブラック・コード
-    {0x88733E4, {0, 1, 0, 0, ULJS00124, "NPJH50877"}},
+    {0x88733E4, {0, 1, 0, 0, NewLineCharFilterA, "NPJH50877"}},
     // 紫影のソナーニルRefrain
     {0x88126C4, {CODEC_UTF8, 1, 0, 0, ULJS00600, "ULJS00600"}},
     // スズノネセブン！ Portable
     {0x883002C, {0, 1, 0, 0, NPJH50796, "NPJH50796"}}, // 有人名，但要显示完才输出
     {0x8849710, {0, 3, 0, 0, 0, "NPJH50796"}},
     // シークレット オブ エヴァンゲリオン ポータブル
-    {0x883F774, {0, 0xd, 0, 0, ULJS00124, "ULJM05251"}},
+    {0x883F774, {0, 0xd, 0, 0, NewLineCharFilterA, "ULJM05251"}},
     // 学園ヘヴン BOY'S LOVE SCRAMBLE!
     {0x8811044, {CODEC_UTF16, 0, 0, 0, ULJM05203, std::vector<const char *>{"ULJM05562", "ULJM05563"}}},
     // 学園ヘヴン　おかわりっ！
@@ -2107,13 +2114,13 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 夜明け前より瑠璃色な PORTABLE
     {0x8864438, {0, 0, 0, 0, 0, "ULJM05625"}},
     // To LOVEる-とらぶる-　ドキドキ！臨海学校編
-    {0x8863424, {0, 0, 0, 0, ULJS00124, "ULJS00154"}},
+    {0x8863424, {0, 0, 0, 0, NewLineCharFilterA, "ULJS00154"}},
     // うみねこのなく頃に Portable 1
     {0x884B138, {0, 0, 0, 0, ULJM05968, "ULJM05968"}},
     // うみねこのなく頃に Portable 2
     {0x885DF94, {0, 0, 0, 0, ULJM05968, "ULJM05969"}},
     // 死神稼業～怪談ロマンス～
-    {0x8842490, {0, 1, 0, 0, ULJS00124, "ULJM06259"}},
+    {0x8842490, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06259"}},
     // Stellar☆Theater Portable
     {0x88817F4, {0, 0, 0, 0, 0, "ULJM06224"}},
     // 英国探偵ミステリア
@@ -2144,9 +2151,9 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // キサラギGOLD★STAR - NONSTOP GO GO!! -
     {0x897AFB0, {0, 0, 0, 0, 0, "ULJM06296"}},
     // スクール・ウォーズ
-    {0x883EE30, {0, 1, 0, 0, ULJS00124, "ULJM06191"}},
+    {0x883EE30, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06191"}},
     // スクール・ウォーズ～卒業戦線～
-    {0x885E3A0, {0, 1, 0, 0, ULJS00124, "ULJM06283"}},
+    {0x885E3A0, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06283"}},
     // BROTHERS CONFLICT  Brilliant Blue
     {0x88E7100, {0, 0, 0, 0, ULJM06316, "ULJM06316"}},
     {0x89781F4, {0, 0, 0, 0, ULJM06289, "ULJM06316"}},
@@ -2171,9 +2178,9 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 君が主で執事が俺で～お仕え日記～ぽーたぶる
     {0x882135C, {0, 1, 0, 0, ULJM06183, "ULJM06183"}},
     // 探偵オペラ ミルキィホームズ
-    {0x88AF23C, {CODEC_UTF8, 0xf, 0, 0, ULJS00124, "ULJS00343"}},
+    {0x88AF23C, {CODEC_UTF8, 0xf, 0, 0, NewLineCharFilterA, "ULJS00343"}},
     // 探偵オペラ　ミルキィホームズ　２
-    {0x88B3848, {CODEC_UTF8, 0xf, 0, 0, ULJS00124, "ULJS00520"}},
+    {0x88B3848, {CODEC_UTF8, 0xf, 0, 0, NewLineCharFilterA, "ULJS00520"}},
     // TOKYOヤマノテBOYS Portable DARK CHERRY DISC
     {0x8856FC8, {0, 0, 0, 0, ULJM06173, "ULJM06173"}},
     // TOKYOヤマノテBOYS Portable HONEY MILK DISC
@@ -2185,7 +2192,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Canvas3 ～七色の奇跡～
     {0x886000C, {0, 0, 0, 0, ULJM05659, "ULJM05659"}},
     // どこでもいっしょ
-    {0x8819C88, {0, 1, 0, 0, ULJS00124, "UCJS10002"}},
+    {0x8819C88, {0, 1, 0, 0, NewLineCharFilterA, "UCJS10002"}},
     // テイルズ オブ ファンタジア なりきりダンジョンX
     {0x88F45D0, {0, 5, 0, 0, ULJS00293, "ULJS00293"}},
 

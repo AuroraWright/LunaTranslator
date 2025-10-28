@@ -1,5 +1,6 @@
 import json, base64, re, string, random, codecs
 from urllib.parse import urlencode, urlsplit, quote, parse_qsl, urlunsplit
+from typing import Generator
 from functools import partial
 from myutils.config import globalconfig
 from network.structures import CaseInsensitiveDict
@@ -102,7 +103,7 @@ class Response:
 
         return chunks
 
-    def iter_content_impl(self, chunk_size=1):
+    def iter_content_impl(self, chunk_size=1) -> "Generator[bytes]":
         pass
 
     def iter_lines(
@@ -174,7 +175,7 @@ class Requester_common:
     def _parseurl(self, url: str, param):
         url = url.lstrip()
         scheme, server, path, query, frag = urlsplit(url)
-        path = quote(path, safe=":/")
+        path = quote(path, safe=":/=")
         if scheme not in ["https", "http"]:
             raise RequestException(
                 "unknown scheme {} for invalid url {}".format(scheme, url)
