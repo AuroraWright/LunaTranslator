@@ -77,7 +77,7 @@ namespace
 		ReadFile(hookPipe, &processId, sizeof(processId), &bytesRead, nullptr);
 		ReadFile(hookPipe, hookversion, sizeof(hookversion), &bytesRead, nullptr);
 		if (memcmp(hookversion, LUNA_VERSION, sizeof(hookversion)) != 0)
-			Host::InfoOutput(HOSTINFO::Warning, TR[UNMATCHABLEVERSION]);
+			Host::InfoOutput(HOSTINFO::EmuWarning, TR[UNMATCHABLEVERSION]);
 
 		processRecordsByIds->try_emplace(processId, processId, hostPipe);
 		processRecordsByIds->at(processId).Send(curr_lang);
@@ -368,7 +368,7 @@ namespace Host
 			{
 			case HOSTINFO::IsEmuNotify:
 				return;
-			case HOSTINFO::Warning:
+			case HOSTINFO::EmuWarning:
 				text = FormatString(L"[%s]", TR[T_WARNING]) + text;
 				break;
 			case HOSTINFO::EmuGameName:

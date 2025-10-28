@@ -1002,15 +1002,9 @@ namespace
     hp.split = hp.offset; // the same logic but diff value as KiriKiri1, use [ecx] as split
     hp.index = 0x14;      // the same as KiriKiri1
     hp.type = CODEC_UTF16 | DATA_INDIRECT | USING_SPLIT | SPLIT_INDIRECT;
-    auto __ = NewHook(hp, "KiriKiriZ");
-    if (!__)
-    {
-      // https://vndb.org/r67025
-      // drm保护导致inlinehook失效
-      hp.type |= BREAK_POINT;
-      __ |= NewHook(hp, "KiriKiriZ");
-    }
-    return __;
+    // https://vndb.org/r67025
+    // drm保护导致inlinehook失效
+    return NewHookRetry(hp, "KiriKiriZ");
   }
 
   bool InsertKiriKiriZHook1()
@@ -1084,6 +1078,9 @@ namespace
     last = ws;
     ws = re::sub(ws, L"%p.*?;%f.*?;");
     ws = re::sub(ws, LR"(\[.*?\])");
+    // 何度目かのはじめまして
+    //$_censorship("〇","死");ぬ……。
+    ws = re::sub(ws, LR"FUCK(\$_censorship\("(.*?)","(.*?)"\);)FUCK", L"$2");
     buffer->from(ws);
   };
   DWORD findtextrender(DWORD minAddress, DWORD maxAddress)
@@ -1219,9 +1216,11 @@ namespace
 
   void KiriKiri4Filter(TextBuffer *buffer, HookParam *)
   {
-    auto ws = buffer->strW();
     auto vw = buffer->viewW();
-    if ((!startWith(vw, L"[text]")) && (vw[0] == L'[' && vw[vw.size() - 1] == ']'))
+    // ExtKagparser
+    //[>>]对话[<<][c]
+    //[地]旁白[c]
+    if ((!startWith(vw, L"[text]")) && (!(endWith(vw, L"[c]") && (startWith(vw, L"[>>]") || startWith(vw, L"[地]")))) && (vw[0] == L'[' && vw[vw.size() - 1] == ']'))
       return buffer->clear();
     if (vw[0] == L' ' && vw.size() <= 2)
       return buffer->clear();
@@ -1231,32 +1230,41 @@ namespace
       return buffer->clear();
     if (vw == L" line offset ")
       return buffer->clear();
+    StringReplacer(buffer, TEXTANDLEN(L"[>>]"), TEXTANDLEN(L"「"));
+    StringReplacer(buffer, TEXTANDLEN(L"[<<]"), TEXTANDLEN(L"」"));
     StringFilterBetween(buffer, TEXTANDLEN(L"["), TEXTANDLEN(L"]"));
+    vw = buffer->viewW();
+    if (vw.size() <= 1)
+      return buffer->clear();
   }
 
   bool kagparser()
   {
-    auto hm = GetModuleHandle(L"KAGParser.dll");
-    if (!hm)
-      return false;
-    auto [s, e] = Util::QueryModuleLimits(hm, 0, PAGE_READONLY);
-    char tjs[] = "tTJSString tTJSString::operator +(const tjs_char *) const";
-    ULONG addr = MemDbg::findBytes(tjs, sizeof(tjs), s, e);
-    if (!addr)
-      return false;
-    addr = MemDbg::findBytes(&addr, sizeof(addr), s, e);
-    if (!addr)
-      return false;
-    addr = MemDbg::findEnclosingAlignedFunction(addr);
-    if (!addr)
-      return false;
-    auto succ = false;
-    HookParam hp;
-    hp.address = addr;
-    hp.offset = stackoffset(2);
-    hp.type = CODEC_UTF16 | USING_STRING;
-    hp.filter_fun = KiriKiri4Filter;
-    return NewHook(hp, "KAGParser");
+    bool succ = false;
+    for (auto dllname : {L"KAGParser.dll", L"ExtKAGParser.dll"})
+    {
+      auto hm = GetModuleHandle(dllname);
+      if (!hm)
+        continue;
+      auto [s, e] = Util::QueryModuleLimits(hm, 0, PAGE_READONLY);
+      char tjs[] = "tTJSString tTJSString::operator +(const tjs_char *) const";
+      ULONG addr = MemDbg::findBytes(tjs, sizeof(tjs), s, e);
+      if (!addr)
+        continue;
+      addr = MemDbg::findBytes(&addr, sizeof(addr), s, e);
+      if (!addr)
+        continue;
+      addr = MemDbg::findEnclosingAlignedFunction(addr);
+      if (!addr)
+        continue;
+      HookParam hp;
+      hp.address = addr;
+      hp.offset = stackoffset(2);
+      hp.type = CODEC_UTF16 | USING_STRING;
+      hp.filter_fun = KiriKiri4Filter;
+      succ |= NewHook(hp, wcasta(dllname).c_str());
+    }
+    return succ;
   }
   auto filterkrkrz(std::wstring &ws)
   {
@@ -1561,6 +1569,11 @@ dl 16
           s = re::sub(s, "#[0-9a-fA-F]*?;");
           s = re::sub(s, "%p.*?;%f.*?;");
           s = re::sub(s, R"(\[.*?\])");
+          // 何度目かのはじめまして
+          //$_censorship("〇","死");ぬ……。
+          //${_censorship("〇","死")}ぬ……。
+          s = re::sub(s, R"FUCK(\$_censorship\("(.*?)","(.*?)"\);)FUCK", "$2");
+          s = re::sub(s, R"FUCK(\$\{_censorship\("(.*?)","(.*?)"\)\})FUCK", "$2");
           buffer->from(s);
         };
         hp.lineSeparator = L"\\n";

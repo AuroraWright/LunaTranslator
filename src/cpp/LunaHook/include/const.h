@@ -41,7 +41,7 @@ enum HostNotificationType
 enum class HOSTINFO
 {
   Console,
-  Warning,
+  EmuWarning,
   EmuGameName,
   IsEmuNotify,
 };

@@ -17,7 +17,7 @@ else()
 		Xbangbang Anisetta Nijyuei Interheart LovaGame Giga Jisatu101 EntisGLS Ciel ACTGS TerraLunar
 		jukujojidai VanillawareGC cef V8 PONScripter Bishop sakanagl Lightvn KiriKiri SideB BGI
 		Bootup morning shyakunage Regista NNNConfig Eushully Majiro littlecheese Elf Silkys CMVS Wolf
-		Circus1 Circus2 Cotopha Artemis CatSystem Atelier Tenco QLIE Pal AIL NeXAS LunaSoft Unicorn
+		Circus Cotopha Artemis CatSystem Atelier Tenco QLIE Pal AIL NeXAS LunaSoft Unicorn
 		Rejet Interlude AdobeAir Retouch Malie Live Nexton Lucifen Waffle TinkerBell SystemAoi Yuris
 		Nitroplus2 Bruns EME RRE Candy Speed ApRicoT Triangle AB2Try MBLMED GameMaker DxLib CodeX
 		Minori Sprite RpgmXP Eagls Debonosu C4 WillPlus Tanuki GXP AOS Mink YukaSystem2 sakusesu Exp
@@ -26,7 +26,7 @@ else()
 		utawarerumono System4x Abalone Abel 5pb HorkEye XUSE Leaf Nekopack AXL AGS AdobeFlash10
 		FocasLens Tamamo Ages3ResT H_do_C RScript TYPEMOON TAKUYO MixwillSoft MerRouge GROOVER
 		SmartAdv Hug GJ Pinpai ADVSystem NUGSystem LizardFactory Nekotaro PixelGameMakerMVplayer
-		TamaSoft Broccoli Arcturus)
+		TamaSoft Broccoli Arcturus Yatagarasu R11 For AniSeed)
 	set(enginepath "engine32")
 	set(collector "enginecollection32.cpp")
 endif()

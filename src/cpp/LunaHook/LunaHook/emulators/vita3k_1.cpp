@@ -969,6 +969,14 @@ namespace
         s = re::sub(s, R"(<\w+?>)");
         buffer->from(s);
     }
+    void PCSG00062(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        s = re::sub(s, LR"(\[(.*?)/(.*?)\])", L"$1");
+        s = re::sub(s, LR"(<[#A-Za-z0-9\."_/]*>)");
+        strReplace(s, LR"(\n)", L"\n");
+        buffer->fromWA(s);
+    }
 }
 
 struct emfuncinfoX
@@ -977,6 +985,26 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 白と黒のアリス
+    {0x80039656, {CODEC_UTF8, 0, 0, 0, FPCSG01066, "PCSG00944"}},
+    {0x80012DFE, {CODEC_UTF8, 0, 0, 0, FPCSG01066, "PCSG00944"}},
+    // 白と黒のアリス -Twilight line-
+    {0x80013B9A, {CODEC_UTF8, 0, 0, 0, FPCSG01066, "PCSG01192"}},
+    {0x800381E6, {CODEC_UTF8, 0, 0, 0, FPCSG01066, "PCSG01192"}},
+    // ROOT∞REXX
+    {0x8009F048, {0, 1, 0, 0, FPCSG00477, "PCSG00458"}},
+    {0x8000F3E0, {0, 0XB, 0, 0, PCSG00826, "PCSG00458"}},
+    // Rear pheles
+    {0x80BB4F70, {CODEC_UTF16 | USING_CHAR | DATA_INDIRECT, 1, 0, 0, all_ascii_FilterW, "PCSG00663"}},
+    // TIME TRAVELERS
+    {0x8119ADDA, {0, 7, 0, 0, PCSG00062, "PCSG00062"}},
+    {0x811A6052, {0, 8, 0, 0, PCSG00062, "PCSG00062"}},
+    // ヴァルプルガの詩
+    {0x8003345A, {0, 1, 0, 0, 0, "PCSG00768"}},
+    // アブナイ☆恋の捜査室 ～Eternal Happiness～
+    {0x800151A4, {CODEC_UTF16, 4, 0, 0, 0, "PCSG00591"}},
+    // 絶対迷宮　秘密のおやゆび姫
+    {0x800B9DEA, {0, 3, 0, 0, 0, "PCSG00611"}},
     // フォトカノ Kiss
     {0x81161B0E, {0, 0, 0, 0, NewLineCharFilterA, "PCSG00139"}},
     // POSSESSION MAGENTA

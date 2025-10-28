@@ -40,7 +40,46 @@ namespace
             *split = s;
 #endif
     }
+    std::atomic<bool> usefonthook = false;
 
+    void hook_GetTextElement()
+    {
+        // internal TMP_TextElement GetTextElement(uint unicode, TMP_FontAsset fontAsset, FontStyles fontStyle, FontWeight fontWeight, out bool isUsingAlternativeTypeface)
+        auto addr = tryfindmonoil2cpp("Unity.TextMeshPro", "TMPro", "TMP_Text", "GetTextElement", -1);
+        // public static AssetBundle LoadFromFile(string path)
+        static auto LoadFromFile = tryfindmonoil2cppMethod("UnityEngine.AssetBundleModule", "UnityEngine", "AssetBundle", "LoadFromFile", 1);
+        // public Object[] LoadAllAssets(Type type)
+        static auto LoadAllAssets = tryfindmonoil2cpp("UnityEngine.AssetBundleModule", "UnityEngine", "AssetBundle", "LoadAllAssets", 0);
+        static auto TMP_FontAsset = tryfindmonoil2cppClass("Unity.TextMeshPro", "TMPro", "TMP_FontAsset");
+
+        // auto thread = AutoThread();
+        static auto asset = LR"(.\arialuni_sdf_u2021)";
+        auto assetpath = create_string_csharp(asset);
+        static auto AssetBundle = mono_runtime_invoke((MonoMethod *)LoadFromFile, nullptr, &assetpath, nullptr);
+        static auto assets = mono_runtime_invoke((MonoMethod *)LoadAllAssets, AssetBundle, nullptr, nullptr);
+        // 先存一下。不知道为什么，调用LoadAllAssets就会崩溃。
+    }
+
+    void tmpfilter(TextBuffer *buffer, HookParam *)
+    {
+        auto s = buffer->strW();
+        s = re::sub(s, LR"(<line-height=[^>]*?>)");
+        s = re::sub(s, LR"(<sprite anim=[^>]*?>)");
+        buffer->from(s);
+    }
+    template <int offset>
+    void tmpembed(hook_context *context, TextBuffer buffer)
+    {
+        auto s = buffer.strW();
+        if (auto sw = commonsolvemonostring(context->argof(offset)))
+        {
+            auto origin = std::wstring(sw.value());
+            std::wstring pre = re::match(origin, LR"(((<line-height=[^>]*?>|<sprite anim=[^>]*?>)*)(.*?))").value()[1];
+            std::wstring app = re::match(origin, LR"((.*?)((<line-height=[^>]*?>|<sprite anim=[^>]*?>)*))").value()[2];
+            s = pre + s + app;
+        }
+        buffer.from(s);
+    }
 }
 namespace
 {
@@ -82,13 +121,14 @@ namespace monocommon
         const char *namespaze;
         const char *klassName;
         const char *name;
-        int argsCount;
+        std::variant<int, std::vector<int>> argsCount;
         int offset;
         decltype(HookParam::text_fun) text_fun = nullptr;
         bool Embed = false;
         bool isstring = true;
         const wchar_t *lineSeparator = nullptr;
         decltype(HookParam::filter_fun) filter_fun = nullptr;
+        decltype(HookParam::embed_fun) embed_fun = nullptr;
         std::string hookname()
         {
             char tmp[1024];
@@ -98,13 +138,33 @@ namespace monocommon
         std::string info()
         {
             char tmp[1024];
-            sprintf(tmp, "%s:%s:%s:%s:%d", assemblyName, namespaze, klassName, name, argsCount);
+            sprintf(tmp, "%s:%s:%s:%s:%d", assemblyName, namespaze, klassName, name, _p_argsCount);
             return tmp;
         }
+        uintptr_t getaddr(bool _ = false)
+        {
+            if (auto *_argsCount = std::get_if<int>(&argsCount))
+            {
+                _p_argsCount = *_argsCount;
+                return tryfindmonoil2cpp(assemblyName, namespaze, klassName, name, *_argsCount, _);
+            }
+            else if (auto *_argsCounts = std::get_if<std::vector<int>>(&argsCount))
+            {
+                for (auto _argsCount1 : *_argsCounts)
+                {
+                    auto _1 = tryfindmonoil2cpp(assemblyName, namespaze, klassName, name, _argsCount1, _);
+                    _p_argsCount = _argsCount1;
+                    if (_1)
+                        return _1;
+                }
+            }
+            return 0;
+        }
+
+        int _p_argsCount = -1;
     };
     bool NewHook_check(uintptr_t addr, functioninfo &hook)
     {
-
         HookParam hp;
         hp.address = addr;
         hp.offset = hook.offset;
@@ -125,15 +185,11 @@ namespace monocommon
         }
         hp.jittype = JITTYPE::UNITY;
         strcpy(hp.function, hook.info().c_str());
-        auto succ = NewHook(hp, hook.hookname().c_str());
 #ifdef _WIN64
-        if (!succ)
-        {
-            hp.type |= BREAK_POINT;
-            succ |= NewHook(hp, hook.hookname().c_str());
-        }
+        return NewHookRetry(hp, hook.hookname().c_str());
+#else
+        return NewHook(hp, hook.hookname().c_str());
 #endif
-        return succ;
     }
     std::vector<functioninfo> commonhooks{
         {"mscorlib", "System", "String", "ToCharArray", 0, 1},
@@ -146,9 +202,9 @@ namespace monocommon
         {"mscorlib", "System", "String", "op_Inequality", 2, 1},
         {"mscorlib", "System", "String", "InternalSubString", 2, 1, mscorlib_system_string_InternalSubString_hook_fun},
 
-        {"Unity.TextMeshPro", "TMPro", "TMP_Text", "set_text", 1, 2, nullptr, true},
-        {"Unity.TextMeshPro", "TMPro", "TextMeshPro", "set_text", 1, 2, nullptr, true},
-        {"Unity.TextMeshPro", "TMPro", "TextMeshProUGUI", "SetText", 2, 2, nullptr, true},
+        {"Unity.TextMeshPro", "TMPro", "TMP_Text", "set_text", 1, 2, nullptr, true, true, nullptr, tmpfilter, tmpembed<2>},
+        {"Unity.TextMeshPro", "TMPro", "TextMeshPro", "set_text", 1, 2, nullptr, true, true, nullptr, tmpfilter, tmpembed<2>},
+        {"Unity.TextMeshPro", "TMPro", "TextMeshProUGUI", "SetText", 2, 2, nullptr, true, true, nullptr, tmpfilter, tmpembed<2>},
         {"UnityEngine.UI", "UnityEngine.UI", "Text", "set_text", 1, 2, nullptr, true},
         {"UnityEngine.UIElementsModule", "UnityEngine.UIElements", "TextElement", "set_text", 1, 2, nullptr, true},
         {"UnityEngine.UIElementsModule", "UnityEngine.UIElements", "TextField", "set_value", 1, 2, nullptr, true},
@@ -159,7 +215,8 @@ namespace monocommon
     std::vector<functioninfo> extrahooks{
         // https://vndb.org/r37234 && https://vndb.org/r37235
         // Higurashi When They Cry Hou - Ch.2 Watanagashi && Higurashi When They Cry Hou - Ch.3 Tatarigoroshi
-        {"Assembly-CSharp", "Assets.Scripts.Core.TextWindow", "TextController", "SetText", 4, 3, nullptr, true},
+        // Higurashi When They Cry Hou - Rei ひぐらしのなく頃に礼 // argscount=5
+        {"Assembly-CSharp", "Assets.Scripts.Core.TextWindow", "TextController", "SetText", std::vector<int>{4, 5}, 3, nullptr, true},
         // 逆転裁判123 成歩堂セレクション
         {"Assembly-CSharp", "", "MessageText", "Append", 1, 2, nullptr, false, false},
 #ifdef _WIN64
@@ -180,20 +237,28 @@ namespace monocommon
                 bool succ = false;
                 for (auto hook : commonhooks)
                 {
-                    auto addr = tryfindmonoil2cpp(hook.assemblyName, hook.namespaze, hook.klassName, hook.name, hook.argsCount);
+                    auto addr = hook.getaddr();
                     if (!addr)
                         continue;
                     succ |= NewHook_check(addr, hook);
                 }
                 for (auto hook : extrahooks)
                 {
-                    auto addr = tryfindmonoil2cpp(hook.assemblyName, hook.namespaze, hook.klassName, hook.name, hook.argsCount, true);
+                    auto addr = hook.getaddr(true);
                     if (!addr)
                         continue;
                     succ |= NewHook_check(addr, hook);
                 }
                 if (succ)
                 {
+                    if (0)
+                    {
+                        hook_GetTextElement();
+                        patch_fun = []()
+                        {
+                            usefonthook = true;
+                        };
+                    }
                     return true;
                 }
             }
