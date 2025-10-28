@@ -15,14 +15,16 @@ from myutils.config import (
     getdefaultsavehook,
     gamepath2uid_index,
     defaultglobalconfig,
+    dynamicapiname,
 )
 from myutils.keycode import vkcode_map, mod_map
-from language import Languages
+from language import Languages, TransLanguages
 import threading, winreg
 import re, heapq, NativeUtils
 from myutils.wrapper import tryprint, threader
 from html.parser import HTMLParser
 from myutils.audioplayer import bass_code_cast
+from urllib.parse import urlparse
 
 
 class localcachehelper:
@@ -87,16 +89,16 @@ def __internal__getlang(k1: str, k2: str) -> str:
             if savehook_new_data[gameuid].get("lang_follow_default", True):
                 break
 
-            return savehook_new_data[gameuid][k1]
+            return savehook_new_data[gameuid][k1], globalconfig[k2]
     except:
         pass
-    return globalconfig[k2]
+    return globalconfig[k2], globalconfig[k2]
 
 
 def __translate_exits(fanyi):
     _fs = [
         "Lunatranslator/translator/{}.py".format(fanyi),
-        "userconfig/copyed/{}.py".format(fanyi),
+        gobject.getconfig("copyed/{}.py".format(fanyi)),
     ]
     for i, _ in enumerate(_fs):
         if os.path.exists(_):
@@ -119,13 +121,41 @@ def translate_exits(fanyi, which=False):
         return _ is not None
 
 
+def all_langs(src=True):
+    vis = (["自动"] if src else []) + [_.zhsname for _ in TransLanguages]
+    internal = (["auto"] if src else []) + [_.code for _ in TransLanguages]
+    for extra in globalconfig["extraLangs"]:
+        internal.append(extra["code"])
+        vis.append("[[" + extra["name"] + "]]")
+    return vis, internal
+
+
+def __fucklang(src, _) -> Languages:
+    code, code2 = _
+    _ = Languages.fromcode(code)
+    if not _:
+        name = None
+        for extra in globalconfig["extraLangs"]:
+            if code == extra["code"]:
+                name = extra["name"]
+                break
+        if not name:
+            if code2 != code:
+                return __fucklang(code2, code2)
+            else:
+                return Languages.Auto if src else Languages.Chinese
+        name = name or code
+        _ = Languages(code, name, name, name)
+    return _
+
+
 def getlangsrc() -> Languages:
-    return Languages.fromcode(__internal__getlang("private_srclang_2", "srclang4"))
+    return __fucklang(True, __internal__getlang("private_srclang_2", "srclang4"))
 
 
 def getlangtgt() -> Languages:
 
-    return Languages.fromcode(__internal__getlang("private_tgtlang_2", "tgtlang4"))
+    return __fucklang(False, __internal__getlang("private_tgtlang_2", "tgtlang4"))
 
 
 def findenclose(text: str, tag: str) -> str:
@@ -373,6 +403,18 @@ def find_or_create_uid(targetlist, gamepath: str, title=None):
         return intarget
 
 
+def is_port_listening(host, port):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex((host, port))
+        sock.close()
+        return result == 0
+    except:
+        print_exc()
+        return False
+
+
 def stringfyerror(e: Exception):
     if e.args and isinstance(e.args[0], requests.Response):
         from myutils.commonbase import maybejson
@@ -385,6 +427,18 @@ def stringfyerror(e: Exception):
     error = str(type(e))[8:-2] + " " + str(e)
     if len(error.splitlines()) > 5:
         error = error.replace("\n", " ").replace("\r", "")
+
+    if isinstance(e, requests.RequestException):
+        error = _TR("网络错误") + ": " + error
+        if e.proxy:
+            try:
+                hostname, port = e.proxy.split(":")
+                if not is_port_listening(hostname, int(port)):
+                    error += "\n" + _TR(
+                        "使用的网络代理可能无效，请进行检查！({})"
+                    ).format(e.proxy)
+            except:
+                print_exc()
     return error
 
 
@@ -433,23 +487,18 @@ def splitocrtypes(dic):
 
 def selectdebugfile(path: str, ismypost=False, ishotkey=False, istts=False):
     if ismypost or istts:
-        path = "userconfig/posts/{}.py".format(path)
-    p = os.path.abspath((path))
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    print(path)
-    if os.path.exists(p) == False:
-        tgt = {
-            "userconfig/selfbuild.py": "selfbuild.py",
-            "userconfig/mypost.py": "mypost.py",
-            "userconfig/myprocess.py": "myprocess.py",
-            "userconfig/myanki_v2.py": "myanki_v2.py",
-        }.get(path)
+        p = gobject.getconfig("posts/{}.py".format(path))
+    else:
+        p = gobject.getconfig(path)
+    if not os.path.exists(p):
         if istts:
             tgt = "mypost_tts.py"
-        if ismypost:
+        elif ismypost:
             tgt = "mypost.py"
-        if ishotkey:
+        elif ishotkey:
             tgt = "hotkey.py"
+        else:
+            tgt = os.path.basename(path)
         shutil.copy(
             "LunaTranslator/myutils/template/" + tgt,
             p,
@@ -620,6 +669,8 @@ def loadpostsettingwindowmethod_maybe(name, parent):
             gameuid = gobject.base.gameuid
             if not gameuid:
                 break
+            if savehook_new_data[gameuid].get("transoptimi_followdefault", True):
+                break
             return loadpostsettingwindowmethod_private(name)(parent, gameuid)
         except:
             print_exc()
@@ -747,7 +798,7 @@ def checkmd5reloadmodule(filename: str, module: str):
     # -> isnew, option<module>
     if not os.path.exists(filename):
         # reload重新加载不存在的文件时不会报错。
-        return True, None
+        return None
     key = (filename, module)
     md5 = getfilemd5(filename)
     cachedmd5 = globalcachedmodule.get(key, {}).get("md5", None)
@@ -757,17 +808,17 @@ def checkmd5reloadmodule(filename: str, module: str):
             _ = importlib.reload(_)
         except ModuleNotFoundError:
             print_exc()
-            return True, None
+            return None
         # 不要捕获其他错误，缺少模块时直接跳过，只报实现错误
         # except:
         #     print_exc()
         #     return True, None
         globalcachedmodule[key] = {"md5": md5, "module": _}
 
-        return True, _
+        return _
     else:
 
-        return False, globalcachedmodule.get(key, {}).get("module", None)
+        return globalcachedmodule.get(key, {}).get("module", None)
 
 
 class loopbackrecorder:
@@ -935,17 +986,19 @@ def common_create_gpt_data(config: dict, message, extrabody):
     data = dict(
         model=config["model"],
         messages=message,
-        # optional
-        max_tokens=config["max_tokens"],
         # n=1,
         # stop=None,
-        top_p=config["top_p"],
         temperature=temperature,
     )
+    use_max_completion_tokens = config.get("use_max_completion_tokens", False)
+    key_tokens = ("max_tokens", "max_completion_tokens")[use_max_completion_tokens]
+    data.update({key_tokens: config["max_tokens"]})
     if config.get("流式输出", False):
         data.update(stream=True)
     if config.get("frequency_penalty_use", False):
         data.update(frequency_penalty=config["frequency_penalty"])
+    if config.get("top_p_use", True):
+        data.update(top_p=config["top_p"])
     if config.get("reasoning_effort_use", False):
         data.update(reasoning_effort=config["reasoning_effort"])
     if extrabody:
@@ -971,14 +1024,15 @@ def common_create_gemini_request(
     if config.get("frequency_penalty_use", False):
         gen_config.update(frequencyPenalty=config["frequency_penalty"])
     if config.get("reasoning_effort_use", False):
+        # https://ai.google.dev/gemini-api/docs/thinking?hl=zh-cn#set-budget
         gen_config.update(
             thinkingConfig=dict(
-                thinkingBudget={"low": 0, "medium": 1024, "high": 24576}[
+                thinkingBudget={"low": 512, "medium": -1, "high": 24576, "minimal": 0}[
                     config["reasoning_effort"]
                 ]
             )
         )
-    model = config["model"]
+    model: str = config["model"]
     safety = [
         {
             "category": "HARM_CATEGORY_HARASSMENT",
@@ -1009,7 +1063,8 @@ def common_create_gemini_request(
     payload = {}
     payload.update(contents=contents)
     payload.update(safety_settings=safety)
-    payload.update(sys_message)
+    if not model.startswith("gemma-3"):
+        payload.update(sys_message)
     payload.update(generationConfig=gen_config)
     payload.update(extrabody)
     res = proxysession.post(
@@ -1163,12 +1218,6 @@ def getimageformat():
 
 def getimagefilefilter():
     return " ".join(("*." + _ for _ in getimageformatlist()))
-
-
-def dynamicapiname(apiuid):
-    return globalconfig["fanyi"][apiuid].get(
-        "name_self_set", globalconfig["fanyi"][apiuid]["name"]
-    )
 
 
 def dynamiccishuname(apiuid):

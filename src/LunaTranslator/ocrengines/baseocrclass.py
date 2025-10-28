@@ -1,4 +1,4 @@
-from myutils.config import globalconfig, ocrsetting, ocrerrorfix, _TR, isascii
+from myutils.config import globalconfig, ocrsetting, ocrerrorfix, _TR
 from myutils.commonbase import commonbase
 from language import Languages
 from myutils.utils import qimage2binary
@@ -284,9 +284,7 @@ class OCRResultParsed:
         if self.result.isocrtranslate:
             gobject.base.displayinfomessage(self.textonly, "<notrans>")
         elif self.error:
-            gobject.base.displayinfomessage(
-                self.errorstring(), "<msg_error_Origin>"
-            )
+            gobject.base.displayinfomessage(self.errorstring(), "<msg_error_Origin>")
         else:
             return self.textonly
 
@@ -299,12 +297,12 @@ class OCRResultParsed:
     def _100_f(self, line):
         if ocrerrorfix["use"] == False:
             return line
-        filters = ocrerrorfix["args"]["替换内容"]
+        filters: "list[str]" = ocrerrorfix["args"]["替换内容"]
         for fil in filters:
             if fil == "":
                 continue
             else:
-                if isascii(fil):
+                if fil.isascii():
                     line = re.sub(r"\b{}\b".format(re.escape(fil)), fil, line)
                 else:
                     line = line.replace(fil, filters[fil])
@@ -366,6 +364,7 @@ class baseocr(commonbase):
 
     required_image_format = "PNG"
     required_mini_height = 0
+    required_mini_width = 0
     _globalconfig_key = "ocr"
     _setting_dict = ocrsetting
 
@@ -406,12 +405,24 @@ class baseocr(commonbase):
             self.level2init()
         try:
             scale = 1
-            if qimage.height() < self.required_mini_height:
-                scale = self.required_mini_height / qimage.height()
-                qimage = qimage.scaledToHeight(
-                    self.required_mini_height,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
+            if (
+                qimage.height() < self.required_mini_height
+                or qimage.width() < self.required_mini_width
+            ):
+                scaleH = self.required_mini_height / qimage.height()
+                scaleW = self.required_mini_width / qimage.width()
+                if scaleW > scaleH:
+                    qimage = qimage.scaledToWidth(
+                        self.required_mini_width,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    scale = scaleW
+                else:
+                    scale = scaleH
+                    qimage = qimage.scaledToHeight(
+                        self.required_mini_height,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
             required_image_format: str = self.required_image_format
             if required_image_format == QImage:
                 image = qimage

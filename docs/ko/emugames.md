@@ -1,19 +1,14 @@
 # 에뮬레이터 게임 지원
 
-LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 지원합니다.
+LunaTranslator는 에뮬레이터를 통해 많은 게임을 지원합니다. 지원되지 않는 게임의 경우 [issue](https://lunatranslator.org/Resource/game_support) 로 보내주십시오.
 
-지원되지 않는 게임의 경우 [issue](https://lunatranslator.org/Resource/game_support) 로 보내주십시오.
-
-::: details 지원되는 에뮬레이터
-| 플랫폼 | 에뮬레이터 |
-
+| 플랫폼 | 지원되는 에뮬레이터 |
 | - | - |
-| NS | yuzu(&ge;1616), [sudachi](https://github.com/emuplace/sudachi.emuplace.app), [Citron](https://git.citron-emu.org/citron/emu), [Eden](https://git.eden-emu.dev/eden-emu/eden) |
+| NS | ~~yuzu(&ge;1616)~~, ~~sudachi~~, [<s>Eden</s>](https://eden-emu.dev/), [Citron](https://citron-emu.org/)|
 | PSP | [PPSSPP](https://github.com/hrydgard/ppsspp) &ge;v1.15.0 |
 | PSV | [Vita3K](https://github.com/Vita3K/Vita3K) &ge;v0.1.9.3339 |
 | PS2 | [PCSX2](https://github.com/PCSX2/pcsx2) &ge;v1.7.4473 |
 <!-- | PS3 | [RPCS3](https://github.com/RPCS3/rpcs3) |-->
-:::
 
 ::: tabs
 
@@ -22,6 +17,20 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | 010015301DB94000 | オンエア！ |
+|  | 01005CF02300A000 | Blackish House sideA→ -Retour- |
+|  | 0100BEE01FE42000 | その日の獣には、 |
+|  | 0100B9701BD4E000 | DistortedCode －生者の残り香－ |
+|  | 010076902126E000 | DYNAMIC CHORD feat.[rēve parfait] |
+|  | 0100447021272000 | DYNAMIC CHORD feat.Liar-S Remaster edition |
+|  | 0100D4300EBF8000 | うたの☆プリンスさまっ♪Amazing Aria & Sweet Serenade LOVE |
+|  | 01007FD0211DA000 | 連呪 |
+|  | 010081D016E4E000 | DIG-ROCK -Documentary of Youthful Sounds- |
+|  | 010065402030A000 | 十鬼の絆 |
+|  | 010061701DB38000 | 岩倉アリア |
+|  | 01006A60216CA000 | 悠久のティアブレイド |
+|  | 0100AAD0210B6000 | 勿ノ怪契リ |
+|  | 010008702297A000 | アルカナ・ファミリア Rinato (Arcana Famiglia Rinato) |
 |  | 010087201EEA6000 | Side Kicks! beyond |
 |  | 0100C9C01E960000 | Romance MD: Always On Call |
 |  | 01003D9020854000 | ToHeart |
@@ -53,8 +62,10 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 0100E9801CAC2000 | OVER REQUIEMZ |
 |  | 0100978013276000 | Memories Off |
 |  | 0100B4A01326E000 | Memories Off ～それから～ |
+|  | 01004B3020BFE000 | メモリーズオフ それからagain |
 |  | 0100D31013274000 | Memories Off 2nd |
 |  | 010073901326C000 | Memories Off #5 とぎれたフィルム |
+|  | 010073A020C00000 | メモリーズオフ #5 encore |
 |  | 010079C012896000 | メモリーズオフ ゆびきりの記憶 |
 |  | 010047A013268000 | メモリーズオフ6 ～T-wave～ |
 |  | 0100FFA013272000 | 想い出にかわる君 ～メモリーズオフ～ |
@@ -83,7 +94,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 010054B01BE90000 | Death end re;Quest Code Z |
 |  | 01009A401C1B0000 | ――ッ違う!!! |
 |  | 0100F7801B5DC000 | あかやあかしやあやかしの 綴 |
-|  | 010045C014650000 | 13 Sentinels: Aegis Rim |
+|  | 010045C014650000 | 十三機兵防衛圏 |
 |  | 01008C0016544000 | Sea of Stars |
 |  | 01000EA014150000 | Final Fantasy I |
 |  | 01006B7014156000 | Final Fantasy II |
@@ -134,12 +145,13 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 0100CBA014014000 | 探偵撲滅 |
 |  | 0100CC401A16C000 | Ys X: Nordics |
 |  | 0100BDD01AAE4000 | 9 R.I.P |
+|  | 01001010232A2000 | 9 R.I.P. sequel |
 |  | 0100BD7015E6C000 | キスベル |
 |  | 0100C310110B4000 | ピオフィオーレの晩鐘 -Ricordo-  CN |
 |  | 01005F700DC56000 | ピオフィオーレの晩鐘 -Ricordo- |
 |  | 01009E30120F4000 | ピオフィオーレの晩鐘 -Episodio1926- |
 |  | 010003F003A34000 | Pokémon Let’s Go, Pikachu! |
-|  | 01008BE016CE2000 | イケメン戦国◆時をかける恋 新たなる出逢い |
+|  | 01008BE016CE2000 | イケメン戦国◆時をかける恋　新たなる出逢い |
 |  | 01006BD0095F4000 | Shin Megami Tensei V |
 |  | 01006BB00C6F0000 | The Legend of Zelda: Link's Awakening |
 |  | 01006B000A666000 | Cendrillon palikA |
@@ -149,12 +161,12 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 0100556015CCC000 | ANONYMOUS;CODE |
 |  | 0100325012B70000 | Sugar * Style |
 |  | 010042300C4F6000 | Nightshade／百花百狼 |
-|  | 010044800D2EC000 | 囚われのパルマ |
 |  | 010037400DAAE000 | Brothers Conflict: Precious Baby |
 |  | 010021300F69E000 | 絶対階級学園 ~Eden with roses and phantasm~ |
 |  | 010050000705E000 | Dragon Quest Builders 2 |
 |  | 010060800B7A8000 | BUSTAFELLOWS |
 |  | 0100874017BE2000 | BUSTAFELLOWS シーズン2 |
+|  | 0100F6F0207CC000 | BUSTAFELLOWS season2 |
 |  | 010094601D910000 | 5分後に意外な結末　モノクロームの図書館 |
 |  | 010024200E00A000 | うたの☆プリンスさまっ♪ Repeat LOVE |
 |  | 01000C7019E1C000 | ワンド オブ フォーチュン Ｒ～ |
@@ -162,7 +174,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 010051701A7BE000 | ワンド オブ フォーチュン Ｒ２ ＦＤ ～君に捧げるエピローグ～ |
 |  | 010086C00AF7C000 | Yo-kai Watch 4++ |
 |  | 010079C017B98000 | キューピット・パラサイト -Sweet & Spicy Darling.- |
-|  | 010061A01C1CE000 | DesperaDrops |
+|  | 010061A01C1CE000 | DesperaDrops／デスペラドロップス |
 |  | 010008F020CD8000 | Despera Drops |
 |  | 0100EF00134F4000 | Dragon Ball Z: Kakarot |
 |  | 0100EDD018032000 | Harvestella |
@@ -181,6 +193,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 01002B400E9DA000 | Collar x Malice |
 |  | 01003BD013E30000 | 神田アリスも推理スル。 |
 |  | 01001EF017BE6000 | Rune Factory 3 Special |
+|  | 010044800D2EC000 | 囚われのパルマ |
 |  | 01000EA00D2EE000 | 囚われのパルマ Refrain |
 |  | 01001CC017BB2000 | 穢翼のユースティア |
 |  | 010093800DB1C000 | 蛇香のライラ ～Allure of MUSK～ |
@@ -239,6 +252,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 0100815019488000 | ヤマノススメ Next Summit ～あの山に、もう一度～ |
 |  | 0100F4800F872000 | プリズンプリンセス |
 |  | 010027401A2A2000 | 泡沫のユークロニア |
+|  | 0100D2A02101C000 | 泡沫のユークロニア trail |
 |  | 0100943010310000 | リトルバスターズ！Converted Edition |
 |  | 01003F5017760000 | GrimGrimoire OnceMore |
 |  | 0100A62019078000 | テミラーナ国の強運姫と悲運騎士団 |
@@ -253,6 +267,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 01002C00177AE000 | 天獄ストラグル -strayside- |
 |  | 0100EA100DF92000 | 明治活劇 ハイカラ流星組 －成敗しませう、世直し稼業－ |
 |  | 0100FA001E160000 | 7'scarlet |
+|  | 01004B1020AFE000 | 7'scarlet - US |
 |  | 0100FA10185B0000 | SympathyKiss |
 |  | 010021D01474E000 | 君は雪間に希う |
 |  | 010061300DF48000 | DAIROKU：AYAKASHIMORI |
@@ -314,7 +329,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 0100FB50156E6000 | フルキス |
 |  | 0100BEE0156D8000 | フルキスS |
 |  | 010019C0155D8000 | アーキタイプ・アーカディア |
-|  | 0100B5801D7CE000 | 神凪ノ杜 |
+|  | 0100B5801D7CE000 | 神凪ノ杜 五月雨綴り |
 |  | 010053F0128DC000 | シェルノサージュ ～失われた星へ捧ぐ詩～ DX |
 |  | 0100D8B019FC0000 | フローラル・フローラブ |
 |  | 01001BB01E8E2000 | FANTASIAN Neo Dimension |
@@ -375,7 +390,6 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | 0100AC600EB4C000 | 幻想牢獄のカレイドスコープ |
 |  | 0100451020714000 | 幻想牢獄のカレイドスコープ２ |
 |  | 01002080191CE000 | 戦場の円舞曲 |
-|  | 010076902126E000 | DYNAMIC CHORD feat.[rēve parfait] |
 |  | 0100DC1021662000 | 夏目友人帳 ～葉月の記～ |
 
 == PSP
@@ -383,6 +397,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | ULJM05491 | サイファーPORTABLE |
 |  | ULJM05962 | 花と乙女に祝福を　～春風の贈り物～　portable |
 |  | ULJM05683 | Starry☆Sky ～in Spring～ Portable |
 |  | ULJM05740 | Starry☆Sky～in Summer～Portable |
@@ -401,6 +416,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | ULJM06192 | 黄昏のシンセミア portable |
 |  | NPJH50836 | 俺の彼女のウラオモテ ～Pure Sweet Heart～ |
 |  | NPJH50867 | 越えざるは紅い花　大河は未来を紡ぐ |
+|  | ULJM06234 | 下天の華 |
 |  | NPJH50864 | 下天の華 夢灯り |
 |  | ULJM06353 | 忍び、恋うつつ |
 |  | ULJM05387 | 蘭島物語 レアランドストーリー 少女の約定 |
@@ -542,6 +558,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | ULJM05441 | 遙かなる時空の中で３ with 十六夜記 愛蔵版 |
 |  | ULJM05547 | 遙かなる時空の中で３ 運命の迷宮 愛蔵版 |
 |  | ULJM05810 | 遙かなる時空の中で４ 愛蔵版 |
+|  | ULJM05843 | 遙かなる時空の中で５ |
 |  | ULJM06025 | 遙かなる時空の中で５ 風花記 |
 |  | NPJH50901 | 遙かなる時空の中で６ |
 |  | ULJM06328 | SNOW BOUND LAND |
@@ -617,11 +634,17 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | NPJH50866 | 黒雪姫～スノウ・ブラック～ |
 |  | ULJM06318 | ロミオVSジュリエット |
 |  | NPJH50862 | ロミオ＆ジュリエット |
-|  | NPJH50902 | うたの☆プリンスさまっ♪All Star After Secret |
+|  | NPJH50269 | うたの☆プリンスさまっ♪ |
 |  | NPJH50446 | うたの☆プリンスさまっ♪Repeat |
+|  | NPJH50734 | うたの☆プリンスさまっ♪All Star |
+|  | NPJH50902 | うたの☆プリンスさまっ♪All Star After Secret |
+|  | NPJH50381 | うたの☆プリンスさまっ♪-Amazing Aria- |
+|  | NPJH50500 | うたの☆プリンスさまっ♪Debut |
+|  | NPJH50393 | うたの☆プリンスさまっ♪-Sweet Serenade- |
 |  | ULJM06006 | スカーレッドライダーゼクス |
 |  | ULJM06007 | スカーレッドライダーゼクス　スターダストラバーズ |
 |  | ULJM06046 | エルクローネのアトリエ ～Dear for Otomate～ |
+|  | ULJM06344 | 放課後colorful＊step～うんどうぶ！～ |
 |  | ULJM06363 | 放課後colorful＊step～ぶんかぶ！～ |
 |  | ULJM05949 | お菓子な島のピーターパン～Sweet Never Land～ |
 |  | ULJM06276 | NORN9 ノルン＋ノネット |
@@ -711,6 +734,16 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | PCSG00944 | 白と黒のアリス |
+|  | PCSG01192 | 白と黒のアリス -Twilight line- |
+|  | PCSG00458 | ROOT∞REXX |
+|  | PCSG00663 | Rear pheles |
+|  | PCSG00062 | TIME TRAVELERS |
+|  | PCSG00768 | ヴァルプルガの詩 |
+|  | PCSG00591 | アブナイ☆恋の捜査室 ～Eternal Happiness～ |
+|  | PCSG00611 | 絶対迷宮　秘密のおやゆび姫 |
+|  | PCSG00139 | フォトカノ Kiss |
+|  | PCSG00509 | POSSESSION MAGENTA |
 |  | PCSG00020 | 極限脱出ＡＤＶ 善人シボウデス |
 |  | PCSG01063 | イケメン戦国◆時をかける恋　新たなる出逢い |
 |  | PCSG00766 | ニル・アドミラリの天秤 帝都幻惑綺譚 |
@@ -881,15 +914,74 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 
 |  | ID       | Game                |
 | ---- | ---------- | ------------------- |
+|  | SLPM-66980 | 銀のエクリプス |
+|  | SLPM-65910 | カフェ・リンドバーグ -summer season- |
+|  | SLPM-55274 | 裏切りは僕の名前を知っている ～黄昏に堕ちた祈り～ |
+|  | SLPM-66376 | きみスタ ～きみとスタディ～ |
+|  | SLPS-25766 | オレンジハニー 僕はキミに恋してる |
+|  | SLPM-55053 | 紫の焔 |
+|  | SLPM-62122 | ヘルミーナとクルス |
+|  | SLPM-65154 | 君が望む永遠 ～Rumbling hearts～ |
+|  | SLPM-65239 | エンジェリック・コンサート |
+|  | SLPS-25223 | Canvas～セピア色のモチーフ～ |
+|  | SLPS-25256 | Never7 ～the end of infinity～ |
+|  | SLPS-25219 | カナリア～この想いを歌に乗せて～ |
+|  | SLPM-65450 | 探偵学園Q ～奇翁館の殺意～ |
+|  | SLPM-65273 | トライアングルアゲイン2 |
+|  | SLPM-65320 | EVE burst error PLUS |
+|  | SLPS-25274 | あいかぎ ～ぬくもりとひだまりの中で～ |
+|  | SLPS-25238 | My Merry Maybe |
+|  | SLPM-65301 | とらかぷっ！だーっしゅ！！でらっくすぱっく |
+|  | SLPM-65295 | カフェ・リトルウィッシュ ～魔法のレシピ～ |
+|  | SLPS-25235 | ゆめりあ |
+|  | SLPM-65275 | 最終兵器彼女 |
+|  | SLPS-25292 | D→A:BLACK [通常版] |
+|  | SLPM-65255 | ビストロ・きゅーぴっと2 特別版 |
+|  | SLPS-25396 | ファンタスティックフォーチュン2 ☆☆☆ |
+|  | SLPM-65347 | ビストロ・きゅーぴっと2 特別版 |
+|  | SLPS-25245 | トゥルーラブストーリー サマーデイズ アンド イエット... |
+|  | SLPM-65306 | SAKURA～雪月華～ [初回限定版] |
+|  | SLPS-25248 | キノの旅 -the Beautiful World- |
+|  | SLPM-65281 & SLPM-65282 | グリーングリーン ～鐘の音ロマンティック～ |
+|  | SLPM-65448 | カンブリアンQTS ～化石になっても～ |
+|  | SLPM-66847 | アラビアンズ・ロスト ～The engagement on desert～ |
+|  | SLPS-25283 | INTERLUDE |
+|  | SLPS-25298 | てんたま -1st Sunny Side- |
+|  | SLPM-65520 | てんたま2wins [限定版] |
+|  | SLPM-65550 | Remember11 ～the age of infinity～ [通常版] |
+|  | SLPS-25294 | 宇宙のステルヴィア |
+|  | SLPM-65557 | ステディ×スタディ [限定版] |
+|  | SLPM-65592 | ロスト・アヤ・ソフィア |
+|  | SLPM-65676 | ふぁいなる・アプローチ [通常版] |
+|  | SLPM-65671 | W ～ウィッシュ～ [初回限定版] |
+|  | SLPS-25438 | D→A:WHITE [通常版] |
+|  | SLPM-65585 | Princess Holiday～転がるりんご亭千夜一夜～ |
+|  | SLPM-65535 | おしえて！ ぽぽたん |
+|  | SLPM-65764 | メンアットワーク！3 愛と青春のハンター学園 [初回限定版] |
+|  | SLPS-25392 | DESIRE |
+|  | SLPS-25807 | セイント・ビースト ～螺旋の章～ [限定版] |
+|  | SLPM-65559 | てのひらをたいように ～永久の絆～ [初回限定版] |
+|  | SLPM-65639 | パティシエなにゃんこ ～初恋はいちご味～ [限定版] |
+|  | SLPM-65751 | 水月 ～迷心～ |
+|  | SLPM-65634 | 夏少女 Promised Summer |
+|  | SLPM-65545 | 十六夜れんか ～かみふるさと～ |
+|  | SLPM-65524 | オレンジポケット -リュート- [初回限定版] |
+|  | SLPM-65607 | 3LDK ～幸せになろうよ～ [初回限定版] |
+|  | SLPS-25433 | 帝国千戦記 [初回限定版] |
+|  | SLPM-67003 | サクラ大戦 ～熱き血潮に～ |
 |  | SLPM-67009 | サクラ大戦Ⅴ ～さらば愛しき人よ～ |
 |  | SLPM-65717 | 月は東に日は西に -Operation Sanctuary- |
 |  | SLPM-65641 | うたう♪タンブリング・ダイス ～私たち3人、あ・げ・る～ |
 |  | SLPM-65546 | CROSS+CHANNEL ～To all people～ [限定版] |
+|  | SLPM-62343 | THE 恋愛ホラーアドベンチャー～漂流少女～ |
+|  | SLPM-62509 | THE 外科医 |
 |  | SLPM-62375 | THE 娘育成シミュレーション |
+|  | SLPM-62207 | THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～ |
+|  | SLPS-25581 | THE 呪いのゲーム |
 |  | SLPM-65555 | ドラゴンクエストⅤ 天空の花嫁 |
 |  | SLPM-66973 | プリンセスナイトメア |
 |  | SLPS-25727 | Routes PE |
-|  | SLPS-25870 | Drastic Killer (Excellent Box) |
+|  | SLPS-25870 & SLPS-25871 | Drastic Killer |
 |  | SLPM-65589 | カラフルBOX ～to LOVE～ [通常版] |
 |  | SLPM-65611 | PIZZICATO POLKA ～縁鎖現夜～ |
 |  | SLPM-65785 | なついろ ～星屑のメモリー～ [初回限定版] |
@@ -905,6 +997,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPM-66543 | Yo-Jin-Bo ～運命のフロイデ～ |
 |  | SLPS-25468 | 永遠のアセリア −この大地の果てで− |
 |  | SLPM-65832 | IZUMO コンプリート |
+|  | SLPM-65334 | 新世紀エヴァンゲリオン 綾波育成計画 with アスカ補完計画 |
 |  | SLPM-65867 | 新世紀エヴァンゲリオン 鋼鉄のガールフレンド2nd |
 |  | SLPM-65866 | 何処へ行くの、あの日 ～光る明日へ…～ |
 |  | SLPM-65895 | 月は切り裂く ～探偵 相楽恭一郎～ [限定版] |
@@ -925,7 +1018,6 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPS-25543 | 双恋島 恋と水着のサバイバル！ |
 |  | SLPM-66086 | 極上生徒会 |
 |  | SLPM-66150 | しろがねの鳥籠 [通常版] |
-|  | SLPM-66225 | D.C.F.S. ～ダ・カーポ～ フォーシーズンズ DXパック |
 |  | SLPM-65937 | 星界の戦旗 |
 |  | SLPM-66112 | ふしぎの海のナディア [通常版] |
 |  | SLPM-66157 | ルーンプリンセス 初回限定版 |
@@ -1014,9 +1106,12 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPM-55098 | 恋する乙女と守護の楯 [通常版] |
 |  | SLPM-66441 | 大奥記 |
 |  | SLPM-55102 | Piaキャロットへようこそ！！G.P. ～学園プリンセス～ |
+|  | SLPS-25221 | Piaキャロットへようこそ！！3 ～round summer～ |
 |  | SLPM-55136 | Clear ～新しい風の吹く丘で～ |
 |  | SLPM-55159 | ヒャッコ よろずや事件簿！ |
 |  | SLPM-55052 | トリガーハート エグゼリカ エンハンスド |
+|  | SLPS-25226 | Memories Off Duet ～1st & 2nd Stories～ |
+|  | SLPM-65610 | Memories Off ～それから～ [通常版] |
 |  | SLPM-66352 | Memories Off ～それから again～ [限定版] |
 |  | SLPM-65857 | Memories Off AfterRain vol.1 折鶴 [SPECIAL EDITION] |
 |  | SLPM-65903 | Memories Off AfterRain Vol.2 想演 |
@@ -1024,6 +1119,7 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPM-66791 | Memories Off #5 encore [通常版] |
 |  | SLPM-66988 | Memories Off 6 ～T-Wave～ [通常版] |
 |  | SLPM-55197 | Memories Off 6 Next Relation |
+|  | SLPS-25278 | メモオフみっくす |
 |  | SLPM-55184 | メルティブラッド アクトレスアゲイン [通常版] |
 |  | SLPM-55154 | つよきす2学期 ～Swift Love～ [通常版] |
 |  | SLPM-55185 | Sweet Honey Coming [DXパック] |
@@ -1045,20 +1141,18 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPM-55278 | 戦極姫2・炎 ～百華、戦乱辰風の如く～ |
 |  | SLPM-55263 | 花と乙女に祝福を ～春風の贈り物～ |
 |  | SLPM-65682 | Monochrome (モノクローム) |
-|  | SLPS-25051 | Missing Blue [通常版] |
+|  | SLPS-25039 & SLPS-25051 | Missing Blue |
 |  | SLPS-25759 | 四八 （仮） |
 |  | SLPS-25135 | かまいたちの夜2 ～監獄島のわらべ唄～ [通常版] |
 |  | SLPM-66452 | かまいたちの夜x3 三日月島事件の真相 |
 |  | SLPM-55200 | 桃華月憚 ～光風の陵王～ |
-|  | SLPS-25026 | 夏色の砂時計 |
+|  | SLPM-65136 & SLPM-65125 & SLPS-25026 | 夏色の砂時計 |
 |  | SLPM-65786 | なついろ ～星屑のメモリー～ |
-|  | SLPM-65355 | 夏色小町【一日千夏】 |
+|  | SLPM-65355 & SLPM-65356 | 夏色小町【一日千夏】 |
 |  | SLPS-25941 | SDガンダム - G GENERATION WARS |
 |  | SLPM-66458 | 風雨来記 |
 |  | SLPM-66163 | 風雨来記2 |
-|  | SLPM-62207 | THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～ |
 |  | SLPM-55006 | あかね色に染まる坂 ぱられる |
-|  | SLPS-25581 | SIMPLE 2000シリーズ Vol.92 THE 呪いのゲーム |
 |  | SLPS-20196 | 赤川次郎ミステリー月の光　 ～沈める鐘の殺人～ |
 |  | SLPS-25081 | 最終電車 |
 |  | SLPS-25276 | 夏夢夜話 |
@@ -1077,14 +1171,15 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPM-66399 | SAMURAI 7 |
 |  | SLPM-66332 | 高円寺女子サッカー |
 |  | SLPS-25809 | 銀魂 銀さんと一緒！ボクのかぶき町日記 |
-|  | SLPM-62343 | THE 恋愛ホラーアドベンチャー～漂流少女～ |
 |  | SLPS-20352 | 好きなものは好きだからしょうがない！！ -FIRST LIMIT & TARGET†NIGHTS- Sukisho！ Episode ＃01+＃02 |
 |  | SLPS-20394 | 好きなものは好きだからしょうがない！！ -RAIN- Sukisyo！ Episode #03 |
 |  | SLPS-25871 | ドラスティックキラー |
 |  | SLPS-25678 & SLPS-25679 | うたわれるもの 散りゆく者への子守唄 |
 |  | SLPS-25150 | Only you リベルクルス ドラマCD付き |
+|  | SLPM-65400 | D.C.P.S. ～ダ・カーポ～ プラスシチュエーション |
 |  | SLPM-66905 | D.C. ～ダ・カーポ～ the Origin |
 |  | SLPM-55156 | D.C.I.F. ～ダ・カーポ～イノセント・フィナーレ～ [通常版] |
+|  | SLPM-66225 | D.C.F.S. ～ダ・カーポ～ フォーシーズンズ DXパック |
 |  | SLPM-66437 | Soul Link EXTENSION |
 |  | SLPM-65396 | デ・ジ・キャラット ファンタジー エクセレント |
 |  | SLPM-66272 | I/O |
@@ -1121,7 +1216,9 @@ LunaTranslator는 에뮬레이터 HOOK NS/PSP/PSV/PS2에서 다양한 게임을 
 |  | SLPS-25902 | 純情ロマンチカ ～恋のドキドキ大作戦 |
 |  | SLPS-25662 | 今日からマ王！はじマりの旅 [プレミアムBOX] |
 |  | SLPS-25801 | 今日からマ王！ 眞マ国の休日 |
-|  | SLPM-66344 | 遙かなる時空の中で3 運命の迷宮 [Triple Pack] |
+|  | SLPM-66344 & SLPM-66347 & SLPM-66348 | 遙かなる時空の中で3 運命の迷宮 |
+|  | SLPM-66127 | 遙かなる時空の中で3 十六夜記 Harukanaru Toki no Naka de 3 - Izayoiki |
+|  | SLPM-66952 | 遙かなる時空の中で4 |
 |  | SLPM-65512 & SLPM-65513 | Angel's Feather |
 |  | SLPM-65848 | 空色の風琴 ～Remix～ |
 

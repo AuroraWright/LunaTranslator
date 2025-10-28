@@ -1,34 +1,39 @@
 from qtsymbols import *
 import functools, os
-import gobject, uuid, shutil, copy
-from myutils.config import globalconfig, translatorsetting, _TR
+import gobject
+from myutils.config import (
+    globalconfig,
+    translatorsetting,
+    _TR,
+    getcopyfrom,
+    copyllmapi,
+    dynamicapiname,
+)
 from myutils.utils import (
+    getlangtgt,
     selectdebugfile,
     splittranslatortypes,
     dynamiclink,
     translate_exits,
-    dynamicapiname,
-    autosql,
     getannotatedapiname,
 )
-import json
+import json, sqlite3
 from traceback import print_exc
 from gui.usefulwidget import SuperCombo
 from collections import Counter
 from myutils.wrapper import tryprint
 from gui.inputdialog import autoinitdialog, autoinitdialog_items
 from gui.usefulwidget import (
-    D_getspinbox,
     getIconButton,
     D_getcolorbutton,
     getcolorbutton,
     check_grid_append,
     getsimpleswitch,
     D_getIconButton,
+    MyInputDialog,
     D_getsimpleswitch,
     request_delete_ok,
     createfoldgrid,
-    makesubtab_lazy,
     getspinbox,
     ClickableLabel,
     automakegrid,
@@ -79,48 +84,6 @@ def loadvisinternal(copy):
         __vis.append(dynamicapiname(_))
         __uid.append(_)
     return __vis, __uid
-
-
-def getalistname(parent, copy, callback):
-    __d = {"k": 0, "n": ""}
-    __vis, __uid = loadvisinternal(copy)
-    if not __vis:
-        return
-
-    def __wrap(callback, __d, __uid):
-        if len(__uid) == 0:
-            return
-
-        uid = __uid[__d["k"]]
-        callback(uid, __d["n"])
-
-    __ = []
-    __.append(
-        {
-            "type": "combo",
-            "name": "复制自" if not copy else "删除",
-            "k": "k",
-            "list": __vis,
-        }
-    )
-    if not copy:
-        __.append(
-            {
-                "name": "命名为",
-                "type": "lineedit",
-                "k": "n",
-            }
-        )
-
-    __.append(
-        {
-            "type": "okcancel",
-            "callback": functools.partial(__wrap, callback, __d, __uid),
-        }
-    )
-    autoinitdialog(
-        parent, __d, ("删除" if copy else "复制") + "接口", 600, __, exec_=True
-    )
 
 
 class SpecialFont(PopupWidget):
@@ -231,8 +194,7 @@ def renameapi(qlabel: QLabel, apiuid, self, countnum, _=None):
     pos = QCursor.pos()
     action = menu.exec(pos)
     if action == delete:
-        if request_delete_ok(self, "99e3f96f-8659-457f-9e0b-52643f552889"):
-            selectllmcallback_2(self, countnum, apiuid, None)
+        selectllmcallback_2(self, countnum, apiuid, None)
     elif action == useproxy:
         globalconfig["fanyi"][apiuid]["useproxy"] = useproxy.isChecked()
     elif action == astoppest:
@@ -249,32 +211,14 @@ def renameapi(qlabel: QLabel, apiuid, self, countnum, _=None):
         globalconfig["fanyi"][apiuid]["use_trans_cache"] = usecache.isChecked()
     elif action == editname:
         before = dynamicapiname(apiuid)
-        __d = {"k": before}
+        newname = MyInputDialog(self, "重命名", "名称", before)
+        if not newname:
+            return
+        if newname == before:
+            return
+        globalconfig["fanyi"][apiuid]["name_self_set"] = newname
+        qlabel.setText(newname)
 
-        def cb(__d):
-            title = __d["k"]
-            if title not in ("", before):
-                globalconfig["fanyi"][apiuid]["name_self_set"] = title
-                qlabel.setText(title)
-
-        autoinitdialog(
-            self,
-            __d,
-            "重命名",
-            600,
-            [
-                {
-                    "type": "lineedit",
-                    "name": "名称",
-                    "k": "k",
-                },
-                {
-                    "type": "okcancel",
-                    "callback": functools.partial(cb, __d),
-                },
-            ],
-            exec_=True,
-        )
     elif action == specialfont:
         SpecialFont(apiuid, self).display(pos)
     elif action == copy:
@@ -310,7 +254,7 @@ def loadbutton(self, fanyi):
     if which == 0:
         aclass = "translator." + fanyi
     elif which == 1:
-        aclass = "userconfig.copyed." + fanyi
+        aclass = "copyed." + fanyi
     else:
         return
     return autoinitdialog(
@@ -324,37 +268,8 @@ def loadbutton(self, fanyi):
     )
 
 
-def getcopyfrom(uid):
-    xx = uid
-    while True:
-        cp = globalconfig["fanyi"][xx].get("copyfrom")
-        if not cp:
-            return xx
-        xx = cp
-
-
 def selectllmcallback(self, countnum: list, fanyi, newname=None):
-    uid = str(uuid.uuid4())
-    _f11 = "Lunatranslator/translator/{}.py".format(fanyi)
-    _f12 = "userconfig/copyed/{}.py".format(fanyi)
-    _f2 = "userconfig/copyed/{}.py".format(uid)
-    os.makedirs("userconfig/copyed", exist_ok=True)
-    try:
-        shutil.copy(_f11, _f2)
-    except:
-        shutil.copy(_f12, _f2)
-    copyfrom = getcopyfrom(fanyi)
-    globalconfig["fanyi"][uid] = copy.deepcopy(globalconfig["fanyi"][fanyi])
-    globalconfig["fanyi"][uid]["copyfrom"] = copyfrom
-    globalconfig["fanyi"][uid]["use"] = False
-    globalconfig["fanyi"][uid]["name"] = (
-        newname if newname else (dynamicapiname(fanyi) + "_copy")
-    )
-    if "name_self_set" in globalconfig["fanyi"][uid]:
-        globalconfig["fanyi"][uid].pop("name_self_set")
-    globalconfig["fanyi"][uid]["type"] = globalconfig["fanyi"][fanyi]["type"]
-    if fanyi in translatorsetting:
-        translatorsetting[uid] = copy.deepcopy(translatorsetting[fanyi])
+    uid = copyllmapi(fanyi, newname=newname)
 
     layout: QGridLayout = getattr(self, "damoxinggridinternal")
 
@@ -384,16 +299,10 @@ def selectllmcallback(self, countnum: list, fanyi, newname=None):
     self.__del_btn.show()
 
 
-def btnpluscallback(self, countnum):
-    getalistname(
-        self,
-        False,
-        functools.partial(selectllmcallback, self, countnum),
-    )
-
-
-def selectllmcallback_2(self, countnum: list, fanyi, name):
-    _f2 = "userconfig/copyed/{}.py".format(fanyi)
+def selectllmcallback_2(self, countnum: list, fanyi, _=None):
+    if not request_delete_ok(self, "99e3f96f-8659-457f-9e0b-52643f552889"):
+        return
+    _f2 = gobject.getconfig("copyed/{}.py".format(fanyi))
     try:
         os.remove(_f2)
     except:
@@ -405,6 +314,9 @@ def selectllmcallback_2(self, countnum: list, fanyi, name):
         pass
     layout: QGridLayout = getattr(self, "damoxinggridinternal")
     if not layout:
+        return
+    if fanyi not in countnum:
+        print(fanyi)
         return
     idx = countnum.index(fanyi)
     line = idx // 3
@@ -428,12 +340,40 @@ def selectllmcallback_2(self, countnum: list, fanyi, name):
         self.__del_btn.hide()
 
 
+def addordelete(delete, self, countnum):
+    menu = QMenu(self)
+
+    __vis, __uid = loadvisinternal(delete)
+    if not __vis:
+        return
+    lang = getlangtgt()
+    actions = {}
+    for i in range(len(__vis)):
+        if not delete:
+            langs = globalconfig["fanyi"][__uid[i]].get("langs")
+            if langs and (lang not in langs):
+                continue
+        _ = QAction(__vis[i], menu)
+        actions[_] = __uid[i]
+        menu.addAction(_)
+    action = menu.exec(QCursor.pos())
+    if action in actions:
+        name = None
+        if not delete:
+            name = MyInputDialog(self, "复制接口", "命名为", action.text() + "_copy")
+            if not name:
+                return
+        (selectllmcallback_2 if delete else selectllmcallback)(
+            self, countnum, actions[action], name
+        )
+
+
 def btndeccallback(self, countnum):
-    getalistname(
-        self,
-        True,
-        functools.partial(selectllmcallback_2, self, countnum),
-    )
+    addordelete(True, self, countnum)
+
+
+def btnpluscallback(self, countnum):
+    addordelete(False, self, countnum)
 
 
 def initsome11(self, l, save=False):
@@ -443,7 +383,11 @@ def initsome11(self, l, save=False):
     countnum = []
     if save:
         self.__countnum = countnum
+    lang = getlangtgt()
     for fanyi in l:
+        langs = globalconfig["fanyi"][fanyi].get("langs")
+        if langs and (lang not in langs):
+            continue
         which = translate_exits(fanyi, which=True)
         if which is None:
             continue
@@ -453,7 +397,7 @@ def initsome11(self, l, save=False):
             last = D_getIconButton(callback=functools.partial(loadbutton, self, fanyi))
         elif fanyi == "selfbuild":
             last = D_getIconButton(
-                callback=lambda: selectdebugfile("userconfig/selfbuild.py"),
+                callback=lambda: selectdebugfile("selfbuild.py"),
                 icon="fa.edit",
             )
         else:
@@ -490,6 +434,7 @@ def initsome11(self, l, save=False):
 
 def initsome21(self, not_is_gpt_like):
     not_is_gpt_like = initsome11(self, not_is_gpt_like)
+    not_is_gpt_like += [[(functools.partial(offlinelinks, "translate"), 0)]]
     grids = [
         [
             functools.partial(
@@ -578,26 +523,26 @@ def initsome2(self, mianfei, api):
 @tryprint
 def sqlite2json2(self, sqlitefile, targetjson=None, existsmerge=False):
     try:
-        sql = autosql(sqlitefile, check_same_thread=False)
-        ret = sql.execute("SELECT * FROM artificialtrans  ").fetchall()
-        js_format2: "dict[str, dict|str]" = {}
-        collect = []
-        for _aret in ret:
-            if len(_aret) == 4:
-                _id, source, mt, source_origin = _aret
-                if targetjson:
-                    source = source_origin
-                js_format2[source] = mt
-            elif len(_aret) == 3:
-                _id, source, mt = _aret
-                js_format2[source] = mt
-            try:
-                mtjs = json.loads(mt)
-            except:
-                mtjs = mt
-            js_format2[source] = mtjs
-            if isinstance(mtjs, dict):
-                collect.extend(list(mtjs.keys()))
+        with sqlite3.connect(sqlitefile, check_same_thread=False) as sql:
+            ret = sql.execute("SELECT * FROM artificialtrans  ").fetchall()
+            js_format2: "dict[str, dict|str]" = {}
+            collect = []
+            for _aret in ret:
+                if len(_aret) == 4:
+                    _id, source, mt, source_origin = _aret
+                    if targetjson:
+                        source = source_origin
+                    js_format2[source] = mt
+                elif len(_aret) == 3:
+                    _id, source, mt = _aret
+                    js_format2[source] = mt
+                try:
+                    mtjs = json.loads(mt)
+                except:
+                    mtjs = mt
+                js_format2[source] = mtjs
+                if isinstance(mtjs, dict):
+                    collect.extend(list(mtjs.keys()))
     except:
         print_exc()
         QMessageBox.critical(self, _TR("错误"), _TR("所选文件格式错误！"))
@@ -692,68 +637,26 @@ def setTabTwo_lazy(self, basel: QVBoxLayout):
 
     _, not_is_gpt_like = splitapillm(res.offline)
     offlinegrid = initsome21(self, not_is_gpt_like)
-    offlinegrid += [[functools.partial(offlinelinks, "translate")]]
     _, not_is_gpt_like = splitapillm(res.api)
     online_reg_grid = initsome2(self, res.free, not_is_gpt_like)
+    prets = initsome11(self, res.pre)
+    prets[-1] += ["", functools.partial(createbtnexport, self)]
     pretransgrid = [
-        [
-            dict(
-                type="grid",
-                title="其他设置",
-                grid=[
-                    [
-                        "最短翻译字数",
-                        D_getspinbox(0, 9999, globalconfig, "minlength"),
-                        "",
-                        "最长翻译字数",
-                        D_getspinbox(0, 9999, globalconfig, "maxlength"),
-                        "",
-                        "翻译请求间隔_(s)",
-                        D_getspinbox(
-                            0,
-                            9999,
-                            globalconfig,
-                            "requestinterval",
-                            step=0.1,
-                            double=True,
-                        ),
-                    ],
-                ],
-            ),
-        ],
-        [],
-        [
-            dict(
-                title="预翻译",
-                grid=[
-                    [
-                        dict(
-                            type="grid",
-                            grid=[
-                                [
-                                    "模糊匹配_相似度_%",
-                                    D_getspinbox(0, 100, globalconfig, "premtsimi2"),
-                                    "",
-                                    functools.partial(createbtnexport, self),
-                                ],
-                            ],
-                        ),
-                    ],
-                    [dict(type="grid", grid=initsome11(self, res.pre))],
-                ],
-            ),
-        ],
+        [dict(type="grid", title="预翻译", grid=prets)],
         [dict(type="grid", title="其他", grid=initsome11(self, res.other))],
     ]
     pretransgrid += offlinegrid
-    savelay = []
-    tab, dotab = makesubtab_lazy(
-        ["翻译接口", "其他"],
+    pretransgrid = [
         [
-            functools.partial(makescrollgrid, online_reg_grid, savelay=savelay),
-            functools.partial(makescrollgrid, pretransgrid),
+            functools.partial(
+                createfoldgrid,
+                pretransgrid,
+                "其他",
+                globalconfig["foldstatus"]["ts"],
+                "special",
+            )
         ],
-        delay=True,
-    )
-    basel.addWidget(tab)
-    dotab()
+    ]
+    online_reg_grid += pretransgrid
+    savelay = []
+    makescrollgrid(online_reg_grid, basel, savelay=savelay)

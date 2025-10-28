@@ -80,7 +80,7 @@ export const ko = defineConfig({
             {
                 text: '기본',
                 items: [
-                    { text: '다운로드 & 시작 & 업데이트', link: '/ko/README' },
+                    { text: '소프트웨어 다운로드 & 자주 묻는 질문', link: '/ko/README' },
                     { text: '기본 사용법', link: '/ko/basicuse' },
                     { text: '작가 지원', link: '/ko/support' }
                 ]
@@ -103,11 +103,10 @@ export const ko = defineConfig({
                         items: [
                             { text: 'OCR 인터페이스 설정', link: '/ko/useapis/ocrapi' },
                             { text: 'OCR 자동 실행 방법', link: '/ko/ocrparam' },
-                            { text: 'OCR 모드로 게임 창 연결', link: '/ko/gooduseocr' }
                         ]
                     },
                     {
-                        text: '번역 인터페이스 설정', link: '/ko/useapis/tsapi',
+                        text: '번역 인터페이스 설정', link: '/ko/guochandamoxing',
                         collapsed: true,
                         items: [
                             { text: '대형 모델 번역 인터페이스', link: '/ko/guochandamoxing' },
@@ -144,6 +143,15 @@ export const ko = defineConfig({
                     { text: '단축 키', link: '/ko/fastkeys' },
                     { text: '네트워크 서비스', link: '/ko/apiservice' },
                     { text: '음성 인식', link: '/ko/sr' },
+                    {
+                        text: '실용적인 팁', link: '/ko/gooduse/multiconfigs',
+                        collapsed: true,
+                        items: [
+                            { text: '여러 구성 파일 생성', link: '/ko/gooduse/multiconfigs' },
+                            { text: 'HOOK 모드에서 일시적으로 OCR 사용하기', link: '/ko/gooduse/useocrinhook' },
+                            { text: 'OCR 모드 게임 창 바인딩', link: '/ko/gooduse/gooduseocr' },
+                        ]
+                    },
                 ]
             }
         ]

@@ -1,13 +1,22 @@
-# 다운로드 & 실행 & 업데이트
+# 소프트웨어 다운로드 & 자주 묻는 질문
 
 ## 다운로드
 
-| 운영 체제 | 32비트 | 64비트 | 설명 |
-| - | - | - | - |
-| Windows 10 & 11 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10？doc=1"/> | 이 버전은 최신 운영 체제 버전만 지원하여 더 높은 성능, 최신 시스템 기능 및 낮은 바이러스 오탐률을 제공합니다.
-| Windows 7 이상 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7？doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7？doc=1"/> |
-| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp？doc=1"/> | | 이 버전은 XP 가상 머신에서만 실행되는 매우 오래된 게임의 텍스트 추출을 지원하기 위한 것으로, 기능이 불완전하고 불안정하며 느리게 실행됩니다. 일반적으로 사용하지 마십시오.
+| 운영 체제 | 64비트 |
+| - | - |
+| Windows 10 & 11 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> |
 
+::: details 구형 운영체제 호환 버전  
+
+>[!WARNING]  
+이러한 버전은 성능이 더 낮고, 실행이 더 불안정하며, 일부 기능과 특징이 부족하고, 바이러스 백신 소프트웨어에 의해 오탐지되기 쉽습니다. 특별한 필요가 없는 경우 사용하지 않는 것이 좋습니다.
+
+| 운영 체제 | 32비트 | 64비트 |
+| - | - | - |
+| Windows 7 이상 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> |
+| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | |
+
+:::
 
 ## 실행
 
@@ -31,15 +40,17 @@
 
 삭제 후 재다운로드하려면 userconfig 폴더를 삭제하지 마십시오. 그렇지 않으면 이전 설정이 모두 사라집니다!!!
 
-## 일반적인 오류
+## 일반적인 오류 {#anchor-commonerros}
 
-### 중요 구성 요소를 찾을 수 없음
+### 중요 구성 요소를 찾을 수 없음 / Missing embedded Python3
 
 ::: danger
 때때로 바이러스 백신 프로그램에 의해 삭제될 수 있으니, 신뢰할 수 있는 항목으로 추가 후 다시 다운로드하여 압축 해제하십시오
 :::
 
 ![img](https://image.lunatranslator.org/zh/cantstart/2.jpg) 
+
+![img](https://image.lunatranslator.org/zh/missingpython.png) 
 
 해결 방법: 바이러스 백신 프로그램을 종료하거나, 종료할 수 없는 경우(예: Windows Defender) 신뢰할 수 있는 항목에 추가한 후 다시 다운로드하십시오.
 

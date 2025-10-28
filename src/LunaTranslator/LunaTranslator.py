@@ -13,9 +13,11 @@ from myutils.config import (
     translatorsetting,
     getlanguse,
     _TR,
-    isascii,
+    saveallconfig,
+    dynamicapiname,
 )
-from ctypes import cast, c_void_p, c_wchar_p
+from ctypes import cast, c_wchar_p
+from ctypes.wintypes import UINT, WPARAM, LPARAM
 from myutils.keycode import mod_map_r
 from gobject import sys_le_xp
 from myutils.mecab import mecab, latin
@@ -24,7 +26,6 @@ from myutils.utils import (
     dynamiclink,
     find_or_create_uid,
     parsekeystringtomodvkcode,
-    checkisusingwine,
     checkpostusing,
     checkmd5reloadmodule,
     stringfyerror,
@@ -55,13 +56,12 @@ import windows
 import NativeUtils
 from gui.gamemanager.common import startgame
 from myutils.post import POSTSOLVE
-from myutils.utils import nowisdark, dynamicapiname
-from myutils.traceplaytime import playtimemanager
+from myutils.utils import nowisdark
+from myutils.somedatabase import somedatabase
 from myutils.audioplayer import series_audioplayer
 from gui.dynalang import LAction, LDialog
-from gui.usefulwidget import pixmapviewer
 from gui.setting.setting import Setting
-from gui.usefulwidget import PopupWidget
+from gui.usefulwidget import PopupWidget, RichMessageBox, pixmapviewer
 from gui.rendertext.texttype import TextType, SpecialColor, TranslateColor
 from network.server.servicecollection import registerall
 from network.server.tcpservice import TCPService
@@ -98,6 +98,9 @@ class BASEOBJECT(QObject):
     dispatch_translate = pyqtSignal(str, str)
     showupdatebtn = pyqtSignal()
     createimageviewsig = pyqtSignal(QWidget)
+    switchtotspage = pyqtSignal()
+    RichMessageBox = pyqtSignal(object)
+    starttranslatefiles = pyqtSignal(list)
 
     def connectsignal(self, signal: pyqtBoundSignal, callback):
         if signal in self.__cachesignal:
@@ -135,6 +138,21 @@ class BASEOBJECT(QObject):
         self.__connect_internal(self.showandsolvesig)
         self.__connect_internal(self.showupdatebtn)
         self.createimageviewsig.connect(self.createimageview)
+        self.RichMessageBox.connect(
+            lambda _: RichMessageBox(gobject.base.focusWindow, *_)
+        )
+
+    @property
+    def currentread(self):
+        context = (globalconfig["read_raw"], globalconfig["read_trans"])
+        if context == (False, False):
+            return None
+        elif context == (True, False):
+            return self.currenttext
+        elif context == (False, True):
+            return self.currenttranslate_1
+        elif context == (True, True):
+            return (self.currenttranslate_1, self.currenttext)[self.latest_is_origin]
 
     def __init__(self) -> None:
         super().__init__()
@@ -146,9 +164,10 @@ class BASEOBJECT(QObject):
         self.specialreaders: "dict[object, TTSbase]" = {}
         self.textsource_p: basetext = None
         self.currenttext = ""
+        self.statusok = True
         self.currenttranslate = ""
-        self.currentread = ""
-        self.currentread_from_origin = None
+        self.currenttranslate_1 = ""
+        self.latest_is_origin = True
         self.refresh_on_get_trans_signature = 0
         self.currentsignature = None
         self.isrunning = True
@@ -179,7 +198,7 @@ class BASEOBJECT(QObject):
         l.addWidget(lb)
         img = QPixmap.fromImage(QImage("files/static/zan.jpg"))
         lb.showpixmap(img)
-        m.resize(500, 500)
+        m.resize(350, 350)
         m.exec()
 
     @threader
@@ -306,13 +325,19 @@ class BASEOBJECT(QObject):
             try:
                 if method["object"].using:
                     if "process_before" in dir(method["object"]):
-                        content, context = method["object"].process_before(content)
+                        _ = method["object"].process_before(content)
+                        if isinstance(_, tuple):
+                            content, context = _
+                        else:
+                            content = _
             except:
                 print_exc()
             contexts.append(context)
         return content, contexts
 
     def solveaftertrans(self, res, mp):
+        if not res:
+            return res
         for i, method in enumerate(self.processmethods):
 
             context = mp[i]
@@ -324,7 +349,7 @@ class BASEOBJECT(QObject):
                 print_exc()
         return res
 
-    def parsehira(self, text):
+    def parsehira(self, text: str):
         need = (
             globalconfig["isshowhira"]
             or globalconfig["show_fenci"]
@@ -333,6 +358,8 @@ class BASEOBJECT(QObject):
         if not need:
             return []
         try:
+            if text.isascii():
+                raise Exception()
             if self.mecab_:
                 return self.mecab_.safeparse(text)
             else:
@@ -351,14 +378,10 @@ class BASEOBJECT(QObject):
                 )
             )
             self.currenttext = text
+            self.statusok = True
             self.currenttranslate = text
-            self.currentread = text
-            self.currentread_from_origin = False
+            self.latest_is_origin = False
             return
-        elif infotype == "<msg_info_append>":
-            self.translation_ui.displayres.emit(
-                dict(color=SpecialColor.RawTextColor, res=text, klass=str(uuid.uuid4()))
-            )
         else:
             msgs = [
                 ("<msg_info_refresh>", TextType.Info),
@@ -379,7 +402,9 @@ class BASEOBJECT(QObject):
             self.translation_ui.translate_text.showhidetranslate(False)
 
     def updaterawtext(self, text):
-        self.currentread = text
+        self.currenttext = text
+        self.statusok = False
+        self.latest_is_origin = True
         self.translation_ui.displayraw2.emit(text)
 
     def textgetmethod(
@@ -390,9 +415,9 @@ class BASEOBJECT(QObject):
         waitforresultcallbackengine=None,
         waitforresultcallbackengine_force=False,
         erroroutput=None,
-        donttrans=False,
         updateTranslate=False,
         isFromHook=False,
+        statusok=True,
     ):
         with self.solvegottextlock:
             succ = self.textgetmethod_1(
@@ -402,9 +427,9 @@ class BASEOBJECT(QObject):
                 waitforresultcallbackengine=waitforresultcallbackengine,
                 waitforresultcallbackengine_force=waitforresultcallbackengine_force,
                 erroroutput=erroroutput,
-                donttrans=donttrans,
                 updateTranslate=updateTranslate,
                 isFromHook=isFromHook,
+                statusok=statusok,
             )
             if waitforresultcallback and not succ:
                 waitforresultcallback(TranslateResult())
@@ -426,15 +451,15 @@ class BASEOBJECT(QObject):
         waitforresultcallbackengine=None,
         waitforresultcallbackengine_force=False,
         erroroutput=None,
-        donttrans=False,
         updateTranslate=False,
         isFromHook=False,
+        statusok=True,
     ):
         if not text:
             return
         if not text.strip():
             return
-        if is_auto_run and text == self.currenttext:
+        if is_auto_run and text == self.currenttext and statusok == self.statusok:
             return
         origin = text
         __erroroutput = functools.partial(self.__erroroutput, None, erroroutput, None)
@@ -450,7 +475,7 @@ class BASEOBJECT(QObject):
             __erroroutput(stringfyerror(e), TextType.Error_origin)
             return
 
-        if is_auto_run and text == self.currenttext:
+        if is_auto_run and text == self.currenttext and statusok == self.statusok:
             return
         self.currentsignature = currentsignature
         if is_auto_run and (
@@ -462,23 +487,19 @@ class BASEOBJECT(QObject):
                 text = text[: globalconfig["maxlength"]] + "……"
 
             self.translation_ui.displayraw1.emit(text, updateTranslate)
-            self.transhis.getnewsentencesignal.emit(text)
+            if statusok:
+                self.transhis.getnewsentencesignal.emit(text)
             self.maybesetedittext(text)
             return
 
-        try:
-            self.textsource.sqlqueueput((text, origin))
-        except:
-            pass
-        if donttrans:
-            return
         _showrawfunction_unsafe = None
         if not waitforresultcallback:
             self.currenttext = text
+            self.statusok = statusok
             self.currenttranslate = ""
+            self.currenttranslate_1 = ""
+            self.latest_is_origin = True
             if globalconfig["read_raw"]:
-                self.currentread = text
-                self.currentread_from_origin = True
                 self.readcurrent()
             self.dispatchoutputer(text, True)
 
@@ -489,13 +510,20 @@ class BASEOBJECT(QObject):
         _showrawfunction = lambda: (
             _showrawfunction_unsafe() if _showrawfunction_unsafe else None
         )
-        self.transhis.getnewsentencesignal.emit(text)
+        if statusok:
+            self.transhis.getnewsentencesignal.emit(text)
+            try:
+                self.textsource.sqlqueueput((text, origin))
+            except:
+                pass
         self.maybesetedittext(text)
 
         if not waitforresultcallback and not globalconfig["showfanyi"]:
             return _showrawfunction()
 
         text_solved, optimization_params = self.solvebeforetrans(text)
+        if not text_solved:
+            return _showrawfunction()
 
         maybehaspremt = {}
         skip_other_on_success = False
@@ -506,6 +534,7 @@ class BASEOBJECT(QObject):
             contentraw = self.analyzecontent(text_solved, optimization_params)
             try:
                 res = self.translators["rengong"].translate(contentraw)
+                res = self.solveaftertrans(res, optimization_params)
             except:
                 print_exc()
                 res = None
@@ -526,6 +555,10 @@ class BASEOBJECT(QObject):
             contentraw = self.analyzecontent(text_solved, optimization_params)
             try:
                 maybehaspremt = self.translators["premt"].translate(contentraw)
+                for k in maybehaspremt:
+                    maybehaspremt[k] = self.solveaftertrans(
+                        maybehaspremt[k], optimization_params
+                    )
             except:
                 print_exc()
             other = list(set(maybehaspremt.keys()) - set(fix_rank))
@@ -577,6 +610,7 @@ class BASEOBJECT(QObject):
                 result=maybehaspremt.get(engine),
                 read_trans_once_check=read_trans_once_check,
                 erroroutput=erroroutput,
+                statusok=statusok,
             )
         return True
 
@@ -617,6 +651,7 @@ class BASEOBJECT(QObject):
         result,
         read_trans_once_check: list,
         erroroutput,
+        statusok=True,
     ):
         callback = partial(
             self.GetTranslationCallback,
@@ -629,6 +664,7 @@ class BASEOBJECT(QObject):
             text,
             read_trans_once_check,
             erroroutput,
+            statusok=statusok,
         )
         task = (
             callback,
@@ -672,6 +708,7 @@ class BASEOBJECT(QObject):
         res: str,
         iter_res_status,
         iserror=False,
+        statusok=True,
     ):
         with self.gettranslatelock:
             if classname in usefultranslators:
@@ -716,9 +753,21 @@ class BASEOBJECT(QObject):
                 self.translation_ui.displayres.emit(displayreskwargs)
             if iter_res_status in (0, 2):  # 0为普通，1为iter，2为iter终止
 
-                self.transhis.getnewtranssignal.emit(
-                    _TR(dynamicapiname(classname)), res
-                )
+                if statusok:
+                    self.transhis.getnewtranssignal.emit(
+                        _TR(dynamicapiname(classname)), res
+                    )
+                    try:
+                        self.textsource.sqlqueueput((contentraw, classname, res))
+                    except:
+                        pass
+                gobject.base.dispatch_translate.emit(classname, res)
+                if len(self.currenttranslate):
+                    self.currenttranslate += "\n"
+                self.currenttranslate += res
+                self.currenttranslate_1 = res
+                safe_callback(res)
+                self.latest_is_origin = False
                 if not waitforresultcallback:
                     if (
                         globalconfig["read_trans"]
@@ -728,21 +777,10 @@ class BASEOBJECT(QObject):
                             or ((not globalconfig["toppest_translator"]))
                         )
                     ):
-                        self.currentread = res
-                        self.currentread_from_origin = False
                         self.readcurrent()
                         read_trans_once_check.append(classname)
 
                     self.dispatchoutputer(res, False)
-                try:
-                    self.textsource.sqlqueueput((contentraw, classname, res))
-                except:
-                    pass
-                gobject.base.dispatch_translate.emit(classname, res)
-                if len(self.currenttranslate):
-                    self.currenttranslate += "\n"
-                self.currenttranslate += res
-                safe_callback(res)
 
     def __usewhich(self):
 
@@ -773,10 +811,10 @@ class BASEOBJECT(QObject):
         return globalconfig["ttscommon"]
 
     def ttsprocess(self, path, text):
-        path1 = "userconfig/posts/{}.py".format(path)
+        path1 = gobject.getconfig("posts/{}.py".format(path))
         if not os.path.exists(path1):
             return text
-        return checkmd5reloadmodule(path1, "posts." + path)[1].POSTSOLVE(text)
+        return checkmd5reloadmodule(path1, "posts." + path).POSTSOLVE(text)
 
     def ttsrepair(self, text, usedict: dict):
         if usedict.get("tts_repair", False):
@@ -788,7 +826,7 @@ class BASEOBJECT(QObject):
             text = parsemayberegexreplace(usedict.get("tts_repair_regex", []), text)
         return text
 
-    def matchwhich(self, dic: "dict[dict]", res: str, isorigin: bool):
+    def matchwhich(self, dic: "dict[str, dict[str, str]]", res: str, isorigin: bool):
 
         for item in dic:
             range_ = item.get("range", 0)
@@ -806,8 +844,8 @@ class BASEOBJECT(QObject):
             else:
                 if item["condition"] == 1:
                     if (
-                        isascii(res)
-                        and isascii(item["key"])
+                        res.isascii()
+                        and item["key"].isascii()
                         and (" " not in item["key"])
                     ):  # 目标可能有空格
                         resx = res.split(" ")
@@ -834,7 +872,9 @@ class BASEOBJECT(QObject):
         if (not force) and (not globalconfig["autoread"]):
             return
         text1 = self.currentread
-        matchitme = self.ttsskip(text1, self.__usewhich(), self.currentread_from_origin)
+        if not text1:
+            return
+        matchitme = self.ttsskip(text1, self.__usewhich(), self.latest_is_origin)
         reader = None
         if matchitme is None:
             reader = self.reader
@@ -990,7 +1030,7 @@ class BASEOBJECT(QObject):
             if which == 0:
                 aclass = importlib.import_module("translator." + classname).TS
             elif which == 1:
-                aclass = importlib.import_module("userconfig.copyed." + classname).TS
+                aclass = importlib.import_module("copyed." + classname).TS
             return aclass(classname)
         except Exception as e:
             self.displayinfomessage(
@@ -1262,7 +1302,7 @@ class BASEOBJECT(QObject):
                 lambda: os.startfile(dynamiclink(docs=True)),
             )
             self.settin_ui.show()
-        elif version != tuple(globalconfig["load_doc_or_log"]):
+        elif 0:  # version != tuple(globalconfig["load_doc_or_log"]):
             vs = ".".join(str(_) for _ in version)
             if vs.endswith(".0"):
                 vs = vs[:-2]
@@ -1322,7 +1362,7 @@ class BASEOBJECT(QObject):
         darklight = ["light", "dark"][dark]
 
         self.currentisdark = dark
-
+        qtawesome.isdark = dark
         for widget in QApplication.topLevelWidgets():
             self.setdarkandbackdrop(widget, dark)
         style = ""
@@ -1368,32 +1408,26 @@ class BASEOBJECT(QObject):
         QApplication.instance().setFont(font)
 
     def get_font_default(self, lang: Languages, issetting: bool) -> str:
-        # global font_default_used
-        # if lang in font_default_used.keys():
-        #     return font_default_used[lang]
 
         t = "setting_font_type_default" if issetting else "font_type_default"
         l = lang if lang in static_data[t].keys() else "default"
 
-        font_default = ""
-
+        font_default = None
+        fontlist = []
         if isinstance(static_data[t][l], list):
             fontlist = static_data[t][l]
         elif isinstance(static_data[t][l], dict):
             fontlist = static_data[t][l].get(("normal", "xp")[sys_le_xp], [])
-        else:
-            fontlist = []
         is_font_installed = lambda font: QFont(font).exactMatch()
         for font in fontlist:
             if is_font_installed(font):
                 font_default = font
                 break
-        if font_default == "":
+        if not font_default:
             font_default = QFontDatabase.systemFont(
                 QFontDatabase.SystemFont.GeneralFont
             ).family()
 
-        # font_default_used["lang"] = font_default
         return font_default
 
     def set_font_default(self, lang: Languages, fonttype: str) -> None:
@@ -1457,7 +1491,7 @@ class BASEOBJECT(QObject):
         self.WordViewTooltip = WordViewTooltip(self.commonstylebase)
         self.starttextsource()
         self.inittray()
-        self.playtimemanager = playtimemanager()
+        self.somedatabase = somedatabase()
         self.urlprotocol()
         self.serviceinit()
         versioncheckthread()
@@ -1487,12 +1521,12 @@ class BASEOBJECT(QObject):
         self.translation_ui.processismuteed = mute
         self.translation_ui.refreshtooliconsignal.emit()
 
-    def WindowMessageCallback(self, msg: int, value1: c_void_p, value2: c_void_p):
+    def WindowMessageCallback(self, msg: UINT, value1: WPARAM, value2: LPARAM):
         if msg == 0:
             if globalconfig["darklight2"] == 0:
                 self.setstylesheetsignal.emit()
         elif msg == 1:
-            running = not (value1 == None and value2 == None)
+            running = value1 or value2
             self.translation_ui.checksettop()
             self.translation_ui.magpiecallback.emit(running)
         elif msg == 2:
@@ -1505,6 +1539,8 @@ class BASEOBJECT(QObject):
             self.showtraymessage("Magpie", cast(value2, c_wchar_p).value, lambda: 1)
         elif msg == 5:
             magpie_config.update(json.loads(cast(value2, c_wchar_p).value))
+        elif msg == -1:
+            saveallconfig()
 
     def _dowhenwndcreate(self, obj):
         if not isinstance(obj, QWidget):

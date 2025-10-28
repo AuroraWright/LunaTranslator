@@ -5,6 +5,29 @@
 		}
 	},
 	"google": {},
+	"chromeai": {
+		"args": {
+			"chromepath": "",
+			"debugport": 9222
+		},
+		"argstype": {
+			"chromepath": {
+				"name": "Chromium_路径",
+				"refcombo": "usewhich",
+				"refcombo_i": 1,
+				"type": "file",
+				"dir": false
+			},
+			"debugport": {
+				"name": "端口号",
+				"refcombo": "usewhich",
+				"refcombo_i": 1,
+				"type": "intspin",
+				"min": 0,
+				"max": 1000000
+			}
+		}
+	},
 	"deepl_1": {
 		"args": {
 			"usewhich": 1,
@@ -32,8 +55,7 @@
 				"refcombo_i": 1,
 				"type": "intspin",
 				"min": 0,
-				"max": 1000000,
-				"step": 1
+				"max": 1000000
 			},
 			"usewhich": {
 				"rank": 0,
@@ -75,8 +97,7 @@
 				"name": "端口号",
 				"type": "intspin",
 				"min": 0,
-				"max": 1000000,
-				"step": 1
+				"max": 1000000
 			},
 			"usewhich": {
 				"rank": 1,
@@ -353,11 +374,12 @@
 	},
 	"chatgpt-3rd-party": {
 		"args": {
-			"model": "gpt-4o-mini",
+			"model": "",
 			"modellistcache": [],
 			"附带上下文个数": 0,
 			"cachecontext": false,
-			"API接口地址": "https://api.openai.com",
+			"use_max_completion_tokens": false,
+			"API接口地址": "",
 			"SECRET_KEY": "",
 			"使用自定义promt": false,
 			"自定义promt": "",
@@ -365,11 +387,12 @@
 			"Temperature": 0.3,
 			"max_tokens": 1024,
 			"top_p": 0.3,
+			"top_p_use": true,
 			"frequency_penalty": 0,
 			"frequency_penalty_use": false,
 			"reasoning_effort": "medium",
 			"reasoning_effort_use": false,
-			"user_user_prompt": "{sentence}",
+			"user_user_prompt": "",
 			"use_user_user_prompt": false,
 			"s": "",
 			"s2": "",
@@ -410,7 +433,9 @@
 			"user_user_prompt": {
 				"name": "自定义_user message",
 				"refswitch": "use_user_user_prompt",
-				"rank": 5.1
+				"rank": 5.1,
+				"placeholder": "{DictWithPrompt[When translating, please ensure to translate the specified nouns into the translations I have designated: ]}\n{sentence}",
+				"type": "multiline"
 			},
 			"s": {
 				"type": "split",
@@ -439,6 +464,7 @@
 				"type": "list_cache"
 			},
 			"top_p": {
+				"refswitch": "top_p_use",
 				"type": "spin",
 				"min": 0,
 				"max": 1,
@@ -455,21 +481,29 @@
 				"type": "combo",
 				"refswitch": "reasoning_effort_use",
 				"internal": [
+					"minimal",
 					"low",
 					"medium",
 					"high"
 				],
 				"list": [
+					"minimal",
 					"low",
 					"medium",
 					"high"
 				]
 			},
+			"use_max_completion_tokens": {
+				"name": "使用_max_completion_tokens",
+				"type": "switch"
+			},
 			"max_tokens": {
 				"type": "intspin",
 				"min": 1,
 				"max": 1000000,
-				"step": 1
+				"appends": [
+					"use_max_completion_tokens"
+				]
 			},
 			"流式输出": {
 				"type": "switch",
@@ -479,7 +513,8 @@
 				"type": "multiline",
 				"refswitch": "使用自定义promt",
 				"name": "自定义_system prompt",
-				"rank": 5
+				"rank": 5,
+				"placeholder": "You are a translator. Please help me translate the following {srclang} text into {tgtlang}. You should only tell me the translation result without any additional explanations."
 			},
 			"附带上下文个数": {
 				"appends": [
@@ -488,7 +523,6 @@
 				"type": "intspin",
 				"min": 0,
 				"max": 99999,
-				"step": 1,
 				"rank": 4.9
 			},
 			"Temperature": {
@@ -551,7 +585,8 @@
 	"rengong": {
 		"args": {
 			"jsonfile": [],
-			"skip_other_on_success": false
+			"skip_other_on_success": false,
+			"premtsimi2": 50
 		},
 		"argstype": {
 			"jsonfile": {
@@ -564,13 +599,20 @@
 			"skip_other_on_success": {
 				"type": "switch",
 				"name": "成功时跳过其他翻译"
+			},
+			"premtsimi2": {
+				"type": "intspin",
+				"name": "模糊匹配_相似度_%",
+				"min": 0,
+				"max": 100
 			}
 		}
 	},
 	"premt": {
 		"args": {
 			"sqlitefile": "",
-			"仅使用激活的翻译": false
+			"仅使用激活的翻译": false,
+			"premtsimi2": 50
 		},
 		"argstype": {
 			"sqlitefile": {
@@ -581,6 +623,12 @@
 			},
 			"仅使用激活的翻译": {
 				"type": "switch"
+			},
+			"premtsimi2": {
+				"type": "intspin",
+				"name": "模糊匹配_相似度_%",
+				"min": 0,
+				"max": 100
 			}
 		}
 	},
@@ -680,7 +728,6 @@
 				"type": "intspin",
 				"min": 1,
 				"max": 99999,
-				"step": 1,
 				"refswitch": "use_context",
 				"name": "利用上文信息翻译（通常会有一定的效果提升，但会导致变慢）"
 			},
@@ -699,8 +746,7 @@
 			"num_beams": {
 				"type": "intspin",
 				"min": 1,
-				"max": 16,
-				"step": 1
+				"max": 16
 			},
 			"do_sample": {
 				"type": "switch"
@@ -711,14 +757,12 @@
 			"max_new_token": {
 				"type": "intspin",
 				"min": 1,
-				"max": 1000000,
-				"step": 1
+				"max": 1000000
 			},
 			"repetition_penalty": {
 				"type": "spin",
 				"min": 0,
-				"max": 2,
-				"step": 0.1
+				"max": 2
 			},
 			"frequency_penalty": {
 				"type": "spin",

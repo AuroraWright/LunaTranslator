@@ -51,7 +51,7 @@ def grabwindow(app="PNG", callback_origin=None, tocliponly=False, usewgc=False):
             fname = os.path.join(dirname, tmsp)
         except:
             fname = mayberelpath(
-                gobject.getcachedir("screenshot/{}/{}".format(exename, tmsp))
+                gobject.getcachedir(r"screenshot\{}\{}".format(exename, tmsp))
             )
 
     def callback_1(callback_origin, uid, tocliponly, p: QPixmap, fn):
@@ -88,7 +88,9 @@ def grabwindow(app="PNG", callback_origin=None, tocliponly=False, usewgc=False):
         _()
 
     if usewgc or isshit:
-        gobject.base.displayinfomessage("saved to " + fname, "<msg_info_refresh>")
+        gobject.base.displayinfomessage(
+            "saved to " + os.path.dirname(fname), "<msg_info_refresh>"
+        )
 
         hwnd = windows.FindWindow(
             "Window_Magpie_967EB565-6F73-4E94-AE53-00CC42592A22", None

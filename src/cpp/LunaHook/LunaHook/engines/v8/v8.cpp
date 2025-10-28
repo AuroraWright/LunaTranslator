@@ -322,12 +322,12 @@ namespace
 		hp.text_fun =
 			[](hook_context *context, HookParam *hp, auto *buffer, uintptr_t *split)
 		{
-			auto length = ((size_t(THISCALL *)(void *))Utf8Length)((void *)context->argof_thiscall(0));
+			auto length = ((size_t(THISCALL *)(void *))Utf8Length)((void *)context->argof_thiscall());
 			if (!length)
 				return;
 			auto u8str = new char[length + 1];
 			int writen;
-			((size_t(THISCALL *)(void *, char *, int, int *, int))WriteUtf8)((void *)context->argof_thiscall(0), u8str, length, &writen, 0);
+			((size_t(THISCALL *)(void *, char *, int, int *, int))WriteUtf8)((void *)context->argof_thiscall(), u8str, length, &writen, 0);
 			buffer->from(u8str, length);
 		};
 		hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
@@ -382,7 +382,7 @@ bool tryhookv8()
 		auto succ = stringsucc;
 		if (funcsucc)
 		{
-			// useclipboard = !std::filesystem::exists(std::filesystem::path(getModuleFilename().value()).replace_filename("disable.clipboard"));
+			useclipboard = !std::filesystem::exists(std::filesystem::path(getModuleFilename().value()).replace_filename("disable.clipboard"));
 			// usehttp = !(GetOSVersion().IsleWinXP() || std::filesystem::exists(std::filesystem::path(getModuleFilename().value()).replace_filename("disable.http")));
 			// if (usehttp)
 			{
@@ -391,10 +391,12 @@ bool tryhookv8()
 				hook_LUNA_CONTENTBYPASS();
 				dont_detach = true;
 			}
-			// if (useclipboard)
-			//{
-			//	hookClipboard();
-			// }
+			if (useclipboard)
+			{
+				// 某些电脑上会谜之fetch失败，也有可能和游戏有关
+				// 故开启剪贴板支持，但默认不使用。当js侧fetch失败时，回退到剪贴板
+				hookClipboard();
+			}
 			// if (useclipboard || usehttp)
 			{
 				succ |= v8script::v8runscript(hm);

@@ -11,11 +11,14 @@ hero:
   #   alt: LunaTranslator
   actions:
     - theme: brand
-      text: Скачать & Запустить & Обновить
+      text: Загрузка программного обеспечения & Часто задаваемые вопросы
       link: ./README
     - theme: alt
       text: Основное использование
       link: ./basicuse
+    - theme: alt
+      text: Поддержка автора
+      link: ./support
     - theme: alt
       text: Github
       link: https://github.com/HIllya51/LunaTranslator
@@ -35,7 +38,7 @@ features:
     link: ./useapis/ocrapi
   - title: Богатые интерфейсы перевода
     details: Поддержка практически всех движков перевода, включая LLM-перевод, оффлайн-перевод и другие
-    link: ./useapis/tsapi
+    link: ./guochandamoxing
   - title: Изучение языков
     details: Поддерживает японскую сегментацию слов и аннотацию каной, поддерживает AnkiConnect, поддерживает плагин Yomitan
     link: ./qa1

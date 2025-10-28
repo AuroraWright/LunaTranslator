@@ -1,7 +1,8 @@
 import json
-import os, time, uuid, re
+import os, time, uuid, re, gobject
 from traceback import print_exc
-from language import TransLanguages, Languages
+from language import Languages
+import shutil, copy
 
 
 def __mayberelpath(path):
@@ -22,19 +23,8 @@ def mayberelpath(path):
     return path
 
 
-def isascii(s: str):
-    try:
-        return s.isascii()
-    except:
-        try:
-            s.encode("ascii")
-            return True
-        except:
-            return False
-
-
 def tryreadconfig(path, default=None):
-    path = os.path.join("userconfig", path)
+    path = gobject.getconfig(path)
     try:
         with open(path, "r", encoding="utf-8") as ff:
             return json.load(ff)
@@ -46,7 +36,7 @@ def tryreadconfig_1(path, default=None, pathold=None):
     try:
         if not pathold:
             raise Exception()
-        pathold = os.path.join("userconfig", pathold)
+        pathold = gobject.getconfig(pathold)
         with open(pathold, "r", encoding="utf-8") as ff:
             old = json.load(ff)
         os.remove(pathold)
@@ -62,7 +52,9 @@ def tryreadconfig2(path):
     return x
 
 
-static_data: "dict[str, dict[str, str|dict|list] | list[str|dict] | str]" = tryreadconfig2("static_data.json")
+static_data: "dict[str, dict[str, str|dict|list] | list[str|dict] | str]" = (
+    tryreadconfig2("static_data.json")
+)
 defaultpost = tryreadconfig2("postprocessconfig.json")
 defaultglobalconfig = tryreadconfig2("config.json")
 defaulterrorfix = tryreadconfig2("transerrorfixdictconfig.json")
@@ -72,8 +64,8 @@ ocrdfsetting = tryreadconfig2("ocrsetting.json")
 ocrerrorfixdefault = tryreadconfig2("ocrerrorfix.json")
 
 ocrerrorfix = tryreadconfig("ocrerrorfix.json")
-globalconfig: "dict[str, dict[str, str|dict|list] | list[str|dict] | str]" = tryreadconfig(
-    "config.json"
+globalconfig: "dict[str, dict[str, str|dict|list] | list[str|dict] | str]" = (
+    tryreadconfig("config.json")
 )
 magpie_config = tryreadconfig_1("Magpie/config.json", pathold="magpie_config.json")
 postprocessconfig = tryreadconfig("postprocessconfig.json")
@@ -405,7 +397,7 @@ def ___TR(k: str) -> str:
     if "_" in k:
         fnd = k.find("_")
         return ___TR(k[:fnd]) + " " + ___TR(k[fnd + 1 :])
-    if isascii(k):
+    if k.isascii():
         return k
     loadlanguage()
     __ = languageshow.get(k)
@@ -423,7 +415,6 @@ def _TR(k: "str | list[str]") -> "str | list[str]":
 
 def unsafesave(fname: str, js, beatiful=True):
     # 有时保存时意外退出，会导致config文件被清空
-    os.makedirs(os.path.dirname(fname), exist_ok=True)
 
     js = json.dumps(
         js, ensure_ascii=False, sort_keys=False, indent=4 if beatiful else None
@@ -441,23 +432,84 @@ def safesave(errorcollect: list, *argc, **kw):
         print_exc()
 
 
+_is_config_saving = False
+
+
 def saveallconfig(test=False):
+    # 保存过程中直接忽略其他保存请求
+    global _is_config_saving
+    if _is_config_saving:
+        return
+    _is_config_saving = True
     errorcollect = []
-    safesave(errorcollect, "userconfig/config.json", globalconfig)
-    safesave(errorcollect, "userconfig/postprocessconfig.json", postprocessconfig)
+    safesave(errorcollect, gobject.getconfig("config.json"), globalconfig)
     safesave(
-        errorcollect, "userconfig/transerrorfixdictconfig.json", transerrorfixdictconfig
+        errorcollect, gobject.getconfig("postprocessconfig.json"), postprocessconfig
     )
-    safesave(errorcollect, "userconfig/translatorsetting.json", translatorsetting)
-    safesave(errorcollect, "userconfig/ocrerrorfix.json", ocrerrorfix)
-    safesave(errorcollect, "userconfig/ocrsetting.json", ocrsetting)
     safesave(
         errorcollect,
-        "userconfig/savegamedata_5.3.1.json",
+        gobject.getconfig("transerrorfixdictconfig.json"),
+        transerrorfixdictconfig,
+    )
+    safesave(
+        errorcollect, gobject.getconfig("translatorsetting.json"), translatorsetting
+    )
+    safesave(errorcollect, gobject.getconfig("ocrerrorfix.json"), ocrerrorfix)
+    safesave(errorcollect, gobject.getconfig("ocrsetting.json"), ocrsetting)
+    safesave(
+        errorcollect,
+        gobject.getconfig("savegamedata_5.3.1.json"),
         [savehook_new_list, savehook_new_data, savegametaged, None, extradatas],
         beatiful=False,
     )
-    safesave(errorcollect, "userconfig/Magpie/config.json", magpie_config)
+    safesave(errorcollect, gobject.getconfig("Magpie/config.json"), magpie_config)
     if not test:
         safesave(errorcollect, "files/lang/{}.json".format(getlanguse()), languageshow)
+    _is_config_saving = False
     return errorcollect
+
+
+def dynamicapiname(apiuid):
+    return globalconfig["fanyi"][apiuid].get(
+        "name_self_set", globalconfig["fanyi"][apiuid]["name"]
+    )
+
+
+def getcopyfrom(uid):
+    xx = uid
+    while True:
+        cp = globalconfig["fanyi"][xx].get("copyfrom")
+        if not cp:
+            return xx
+        xx = cp
+
+
+def copyllmapi(fanyi, newname=None, uid=None, args: dict = None, use=False):
+    if not uid:
+        uid = str(uuid.uuid4())
+    if not (uid in globalconfig["fanyi"]):
+        _f11 = "Lunatranslator/translator/{}.py".format(fanyi)
+        _f12 = gobject.getconfig("copyed/{}.py".format(fanyi))
+        _f2 = gobject.getconfig("copyed/{}.py".format(uid))
+        try:
+            shutil.copy(_f11, _f2)
+        except:
+            shutil.copy(_f12, _f2)
+        copyfrom = getcopyfrom(fanyi)
+        globalconfig["fanyi"][uid] = copy.deepcopy(globalconfig["fanyi"][fanyi])
+        globalconfig["fanyi"][uid]["copyfrom"] = copyfrom
+        globalconfig["fanyi"][uid]["use"] = use
+        globalconfig["fanyi"][uid]["type"] = globalconfig["fanyi"][fanyi]["type"]
+        if fanyi in translatorsetting:
+            translatorsetting[uid] = copy.deepcopy(translatorsetting[fanyi])
+    globalconfig["fanyi"][uid]["name"] = (
+        newname if newname else (dynamicapiname(fanyi) + "_copy")
+    )
+    if "name_self_set" in globalconfig["fanyi"][uid]:
+        globalconfig["fanyi"][uid].pop("name_self_set")
+    if args:
+        for k in translatorsetting[uid]["args"]:
+            if not (k in args):
+                continue
+            translatorsetting[uid]["args"][k] = args[k]
+    return uid

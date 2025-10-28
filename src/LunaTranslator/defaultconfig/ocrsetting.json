@@ -185,12 +185,14 @@
             "Temperature": 0.3,
             "max_tokens": 1024,
             "top_p": 0.3,
+            "top_p_use": true,
             "frequency_penalty": 0,
             "frequency_penalty_use": false,
             "reasoning_effort": "medium",
             "reasoning_effort_use": false,
             "modellistcache": [],
             "s": "",
+            "use_max_completion_tokens": false,
             "customparams": []
         },
         "argstype": {
@@ -198,11 +200,13 @@
                 "type": "combo",
                 "refswitch": "reasoning_effort_use",
                 "internal": [
+                    "minimal",
                     "low",
                     "medium",
                     "high"
                 ],
                 "list": [
+                    "minimal",
                     "low",
                     "medium",
                     "high"
@@ -238,6 +242,7 @@
                 "type": "list_cache"
             },
             "top_p": {
+                "refswitch": "top_p_use",
                 "type": "spin",
                 "min": 0,
                 "max": 1,
@@ -250,16 +255,23 @@
                 "max": 2,
                 "step": 0.01
             },
+            "use_max_completion_tokens": {
+                "name": "使用_max_completion_tokens",
+                "type": "switch"
+            },
             "max_tokens": {
                 "type": "intspin",
                 "min": 1,
                 "max": 1000000,
-                "step": 1
+                "appends": [
+                    "use_max_completion_tokens"
+                ]
             },
             "custom_prompt": {
                 "name": "自定义_prompt",
                 "type": "multiline",
-                "refswitch": "use_custom_prompt"
+                "refswitch": "use_custom_prompt",
+                "placeholder": "Recognize the {srclang} text in the picture."
             },
             "use_custom_prompt": {
                 "type": "switch_ref",
@@ -313,8 +325,7 @@
             "Port": {
                 "type": "intspin",
                 "min": 1,
-                "max": 65535,
-                "step": 1
+                "max": 65535
             }
         }
     }

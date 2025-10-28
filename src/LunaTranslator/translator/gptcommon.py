@@ -1,5 +1,5 @@
-from translator.basetranslator import basetrans
-import json, requests, hmac, hashlib, NativeUtils
+from translator.basetranslator import basetrans, GptTextWithDict, GptDict
+import json, requests, hmac, hashlib, NativeUtils, re, functools
 from datetime import datetime, timezone
 from myutils.utils import (
     createurl,
@@ -51,7 +51,7 @@ def commonparseresponse_good(
         try:
             if len(json_data["choices"]) == 0:
                 continue
-            delta = json_data["choices"][0].get("delta", {})
+            delta: dict = json_data["choices"][0].get("delta", {})
             msg: str = delta.get("content", None)
             reasoning_content: str = delta.get("reasoning_content", None)
             if reasoning_content:
@@ -234,12 +234,14 @@ class gptcommon(basetrans):
         self.maybeuse = {}
         super().__init__(typename)
 
-    def translate(self, query_1: str):
+    def translate(self, query_2: GptTextWithDict):
+        if isinstance(query_2, str):
+            query_2 = GptTextWithDict(query_2)
         extrabody, extraheader = getcustombodyheaders(
             self.config.get("customparams"), **locals()
         )
         usingstream = self.config["流式输出"]
-        messages, query = self.commoncreatemessages(query_1)
+        messages, query, query_1 = self.commoncreatemessages(query_2)
         if self.apiurl.startswith("https://generativelanguage.googleapis.com"):
             response = self.request_gemini(messages, extrabody, extraheader)
         elif self.apiurl.startswith("https://api.anthropic.com/v1/messages"):
@@ -280,11 +282,65 @@ class gptcommon(basetrans):
     def createurl(self):
         return createurl(self.apiurl)
 
-    def commoncreatemessages(self, query_1):
-        query = self._gptlike_createquery(
-            query_1, "use_user_user_prompt", "user_user_prompt"
+    def __replace_history(self, which, match: re.Match):
+        n = int(match.group(1))
+        __message: "list[dict]" = []
+        self._gpt_common_parse_context(__message, self.context, n)
+        check = lambda k: (which == 2) or (k == ("user", "assistant")[which])
+        __message = [_.get("content") for _ in __message if (check(_.get("role")))]
+        return "\n".join(__message)
+
+    def __parsecontextN(self, query):
+        for k, b in (
+            (r"\{contextOriginal\[(\d+)\]\}", 0),
+            (r"\{contextTranslation\[(\d+)\]\}", 1),
+            (r"\{contextBoth\[(\d+)\]\}", 2),
+        ):
+            query = re.sub(k, functools.partial(self.__replace_history, b), query)
+        return query
+
+    def __if_has_dwp(self, dictionary: GptDict, prompt):
+        _has = re.search(r"\{DictWithPrompt\[(.*?)\]\}", prompt)
+        if _has:
+
+            def __rep(m: re.Match):
+                nextc = m.groups()[1]
+                if not dictionary:
+                    if nextc == "\n":
+                        return ""
+                    return nextc
+                __ = []
+                for _ in dictionary:
+                    info = ("", " #{}", format(_.info))[bool(_.info)]
+                    single = "\t{}->{}".format(_.src, _.dst) + info
+                    __.append(single)
+                if nextc != "\n":
+                    nextc = "\n" + nextc
+                pro: str = m.groups()[0]
+                if not pro.endswith("\n"):
+                    pro += "\n"
+                return pro + "\n".join(__) + nextc
+
+            prompt = re.sub(r"\{DictWithPrompt\[(.*?)\]\}([\s\S]?)", __rep, prompt)
+        return prompt, bool(_has)
+
+    def __gpt_create_query_maybe_with_dict(self, query_2: GptTextWithDict, _has_1):
+
+        user_prompt = self._gptlike_get_user_prompt(
+            "use_user_user_prompt", "user_user_prompt"
         )
+        user_prompt, _has = self.__if_has_dwp(query_2.dictionary, user_prompt)
+        _has = _has or _has_1
+        query_1 = (query_2.parsedtext, query_2.rawtext)[_has]
+        query = user_prompt.replace("{sentence}", query_1)
+        query = self.__parsecontextN(query)
+        return query, query_1
+
+    def commoncreatemessages(self, query_2: GptTextWithDict):
         sysprompt = self._gptlike_createsys("使用自定义promt", "自定义promt")
+        sysprompt, _has = self.__if_has_dwp(query_2.dictionary, sysprompt)
+        query, query_1 = self.__gpt_create_query_maybe_with_dict(query_2, _has)
+        sysprompt = self.__parsecontextN(sysprompt)
         message = [{"role": "system", "content": sysprompt}]
         checknum = self.config["附带上下文个数"]
         __message = []
@@ -300,21 +356,16 @@ class gptcommon(basetrans):
                 __message,
                 self.context_for_cache[self.context_for_cache_skipinter :],
                 checknum,
-                query=query_1,
-                cachecontext=True,
             )
         else:
-            self._gpt_common_parse_context(
-                __message, self.context, checknum, query=query_1
-            )
+            self._gpt_common_parse_context(__message, self.context, checknum)
         self.context_for_cache_skipinter_shouldmove = len(__message) == checknum * 2
-
         message.extend(__message)
         message.append({"role": "user", "content": query})
         prefill = self._gptlike_create_prefill("prefill_use", "prefill")
         if prefill:
             message.append({"role": "assistant", "content": prefill})
-        return message, query
+        return message, query, query_1
 
     def request_gemini(self, messages: list, extrabody, extraheader):
 

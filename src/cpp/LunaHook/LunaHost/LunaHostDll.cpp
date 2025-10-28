@@ -22,6 +22,7 @@ typedef void (*OutputCallback)(const wchar_t *hookcode, const char *hookname, Th
 typedef void (*HostInfoHandler)(HOSTINFO type, const wchar_t *log);
 typedef void (*HookInsertHandler)(DWORD pid, uint64_t address, const wchar_t *hookcode);
 typedef void (*EmbedCallback)(const wchar_t *text, ThreadParam);
+typedef wchar_t *(*I18NQueryCallback)(const wchar_t *text);
 typedef void (*findhookcallback_t)(wchar_t *hookcode, const wchar_t *text);
 template <typename T>
 std::optional<T> checkoption(bool check, T &&t)
@@ -31,7 +32,7 @@ std::optional<T> checkoption(bool check, T &&t)
     return {};
 }
 
-C_LUNA_API void Luna_Start(ProcessEvent Connect, ProcessEvent Disconnect, ThreadEvent_maybe_embed Create, ThreadEvent Destroy, OutputCallback Output, HostInfoHandler hostinfo, HookInsertHandler hookinsert, EmbedCallback embed)
+C_LUNA_API void Luna_Start(ProcessEvent Connect, ProcessEvent Disconnect, ThreadEvent_maybe_embed Create, ThreadEvent Destroy, OutputCallback Output, HostInfoHandler hostinfo, HookInsertHandler hookinsert, EmbedCallback embed, I18NQueryCallback i18nQueryCallback)
 {
     Host::Start(
         checkoption(Connect, std::function<void(DWORD)>(Connect)),
@@ -47,7 +48,17 @@ C_LUNA_API void Luna_Start(ProcessEvent Connect, ProcessEvent Disconnect, Thread
         checkoption(hookinsert, [=](DWORD pid, uint64_t addr, const std::wstring &hookcode)
                     { hookinsert(pid, addr, hookcode.c_str()); }),
         checkoption(embed, [=](const std::wstring &output, const ThreadParam &tp)
-                    { embed(output.c_str(), tp); }));
+                    { embed(output.c_str(), tp); }),
+        checkoption(i18nQueryCallback,
+                    [=](const std::wstring &str) -> std::optional<std::wstring>
+                    {
+                        auto s = i18nQueryCallback(str.c_str());
+                        if (!s)
+                            return std::nullopt;
+                        std::wstring ret = s;
+                        delete s;
+                        return ret;
+                    }));
 }
 #if 0
 C_LUNA_API void Luna_ConnectAndInjectProcess(DWORD pid)
@@ -67,7 +78,14 @@ C_LUNA_API void Luna_DetachProcess(DWORD pid)
 {
     Host::DetachProcess(pid);
 }
-
+C_LUNA_API void *Luna_AllocString(const wchar_t *str)
+{
+    if (!str)
+        return nullptr;
+    auto _ = new WCHAR[wcslen(str) + 1];
+    wcscpy(_, str);
+    return _;
+}
 C_LUNA_API void Luna_Settings(int flushDelay, bool filterRepetition, int defaultCodepage, int maxBufferSize, int maxHistorySize)
 {
     TextThread::flushDelay = flushDelay;
@@ -76,9 +94,9 @@ C_LUNA_API void Luna_Settings(int flushDelay, bool filterRepetition, int default
     TextThread::maxBufferSize = maxBufferSize;
     TextThread::maxHistorySize = maxHistorySize;
 }
-C_LUNA_API void Luna_SetLanguage(const char *lang)
+C_LUNA_API void Luna_ResetLang()
 {
-    Host::SetLanguage(lang);
+    Host::ResetLanguage();
 }
 C_LUNA_API void Luna_InsertPCHooks(DWORD pid, int which)
 {

@@ -5,11 +5,11 @@
 
 ## Chung
 
-1. #### Dịch thủ công {#anchor-_1}
+1. #### Thực hiện thủ công {#anchor-_1}
     Đọc đầu vào một lần từ nguồn đầu vào văn bản hiện tại và thực hiện dịch.
     Ví dụ: nếu chế độ hiện tại là OCR, nó sẽ thực hiện OCR lại.
 
-1. #### Dịch tự động {#anchor-_2}
+1. #### Chế độ tự động {#anchor-_2}
     Tạm dừng/tiếp tục đọc văn bản tự động từ nguồn đầu vào văn bản hiện tại.
     Ví dụ: nếu chế độ hiện tại là HOOK, nó sẽ tạm dừng đọc văn bản trò chơi; nếu chế độ hiện tại là OCR, nó sẽ tạm dừng nhận diện hình ảnh tự động; nếu chế độ hiện tại là clipboard, nó sẽ tạm dừng đọc tự động từ clipboard.
 
@@ -45,6 +45,15 @@
 
 1. #### Thoát {#anchor-_17}
     Không áp dụng.
+
+1. #### Trình nhấp chuột tự động {#anchor-44}
+    Không áp dụng.
+
+1. #### Thiết lập lại trạng thái dịch thuật. {#anchor-45}
+    Đặt lại trạng thái dịch, chủ yếu nhằm đáp ứng nhu cầu dịch bằng mô hình lớn ngày càng tăng, có thể xóa ngữ cảnh đã lưu và các thông tin khác.
+    
+1. #### Lưu cấu hình ngay lập tức {#anchor-50}
+    Lưu ngay cấu hình người dùng hiện tại thay vì đợi đến khi thoát.
 
 ## HOOK
 
@@ -82,6 +91,26 @@
 1. #### OCR lần nữa {#anchor-_26_1}
     Sau khi sử dụng `Thực Hiện OCR Một Lần`, sử dụng phím tắt này sẽ thực hiện OCR lại tại vị trí ban đầu mà không cần chọn lại khu vực nhận diện.
 
+1. #### Chế độ đa vùng Chuyển sang khu vực trước đó {#anchor-46}
+    **Chỉ khả dụng trong chế độ OCR**
+
+    Sau khi kích hoạt chế độ đa vùng, bạn có thể sử dụng phím tắt này để chuyển vùng đang được tập trung sang vùng trước đó và ngay lập tức thực hiện lại OCR.
+
+1. #### Chế độ đa vùng Chuyển sang khu vực tiếp theo {#anchor-47}
+    **Chỉ khả dụng trong chế độ OCR**
+
+    Sau khi kích hoạt chế độ đa vùng, bạn có thể sử dụng phím tắt này để chuyển vùng đang được tập trung sang vùng tiếp theo và ngay lập tức thực hiện lại OCR.
+
+1. #### Chế độ đa vùng Chuyển sang khu vực gần chuột {#anchor-48}
+    **Chỉ khả dụng trong chế độ OCR**
+
+    Sau khi kích hoạt chế độ đa vùng, bạn có thể sử dụng phím tắt này để chuyển vùng đang được tập trung sang vùng gần con trỏ chuột và ngay lập tức thực hiện lại OCR.
+
+1. #### Chế độ đa vùng Hủy tập trung khu vực {#anchor-49}
+    **Chỉ khả dụng trong chế độ OCR**
+
+    Sau khi kích hoạt chế độ đa vùng, bạn có thể sử dụng phím tắt này để hủy tập trung vùng.
+
 ## Clipboard
 
 1. #### Đọc bảng nháp {#anchor-36}
@@ -107,6 +136,9 @@
 
 ## Game
 
+1. #### Quản lý trò chơi {#anchor-_10}
+    Không áp dụng.
+
 1. #### Cửa sổ bị ràng buộc (Click vào tự hủy) {#anchor-_15}
     Sau khi gắn cửa sổ trò chơi, các tính năng như `Tỷ Lệ Cửa Sổ`, `Chụp Màn Hình Cửa Sổ`, `Tắt Âm Trò Chơi`, `Theo Dõi Cửa Sổ Trò Chơi` -> `Hủy Luôn Trên Cùng Khi Trò Chơi Mất Tiêu Điểm` và `Di Chuyển Đồng Bộ Khi Cửa Sổ Trò Chơi Di Chuyển`, cũng như ghi lại thời gian chơi trò chơi, sẽ khả dụng.
     Phím tắt này khả dụng bất kể chế độ HOOK/OCR/clipboard.
@@ -115,16 +147,19 @@
     Trong chế độ OCR/clipboard, sau khi gắn cửa sổ, nó cũng có thể được liên kết với cài đặt trò chơi hiện tại trong chế độ HOOK, do đó sử dụng từ điển tối ưu hóa dịch thuật riêng của trò chơi, v.v.
 
 1. #### Ảnh chụp cửa sổ {#anchor-_21}
-    Có thể chụp màn hình cửa sổ đã gắn (mặc định chụp hai ảnh, GDI và Winrt, cả hai đều có thể thất bại). Điểm tốt nhất là nếu Magpie hiện đang được sử dụng để tỷ lệ, nó cũng sẽ chụp màn hình cửa sổ đã tỷ lệ.
+    Sau khi liên kết cửa sổ game, bạn có thể chụp ảnh cửa sổ đã liên kết (mặc định sẽ chụp hai ảnh: GDI và Winrt, cả hai đều có thể thất bại). Nếu đang sử dụng Magpie để phóng to, nó cũng sẽ chụp ảnh cửa sổ đã phóng to.
 
 1. #### Im lặng trò chơi {#anchor-_22}
-    Sau khi gắn cửa sổ trò chơi (không chỉ trong chế độ HOOK, mà còn trong chế độ OCR hoặc clipboard, miễn là cửa sổ trò chơi được gắn), bạn có thể tắt âm trò chơi chỉ với một lần nhấn, tiết kiệm công việc tắt âm trò chơi trong bộ trộn âm lượng hệ thống.
+    Sau khi liên kết cửa sổ game, bạn có thể tắt tiếng game bằng một cú nhấp chuột, tiết kiệm thời gian so với việc tắt tiếng trong bộ trộn âm lượng hệ thống.
+
+1. #### Tạm dừng trò chơi {#anchor-43}
+    Sau khi liên kết cửa sổ game, bạn có thể tạm dừng hoặc tiếp tục quá trình game bằng một cú nhấp chuột.
 
 1. #### Magpie Phóng to {#anchor-41}
-    Cho phép tỷ lệ toàn màn hình cửa sổ trò chơi chỉ với một lần nhấn bằng cách sử dụng Magpie tích hợp.
+    Sau khi liên kết cửa sổ game, bạn có thể sử dụng Magpie tích hợp để phóng to cửa sổ game toàn màn hình bằng một cú nhấp chuột.
 
 1. #### Magpie Thu phóng cửa sổ {#anchor-42}
-    Cho phép tỷ lệ cửa sổ trò chơi chỉ với một lần nhấn bằng cách sử dụng Magpie tích hợp.
+    Sau khi liên kết cửa sổ game, bạn có thể sử dụng Magpie tích hợp để phóng to cửa sổ game dạng cửa sổ bằng một cú nhấp chuột.
 
 ## Tra Từ Điển
 

@@ -7,23 +7,70 @@ If you only have multiple different keys and want to poll them, simply separate 
 
 However, sometimes you may want to use multiple different API interface addresses, prompts, models, or parameters simultaneously to compare translation results. Here's how:
 
-1. Click the "+" button above.
-   ![img](https://image.lunatranslator.org/zh/damoxing/extraapi1.png)
-1. A window will pop up. Select the general large model interface and give it a name. This will duplicate the current settings and API of the general large model interface.
-   ![img](https://image.lunatranslator.org/zh/damoxing/extraapi2.png)
+1. Click the "+" button above and select the General Large Model Interface
+   ![img](https://image.lunatranslator.org/zh/damoxing/plus.png)
+1. A window will pop up - give it a name. This will duplicate the current settings and API of the General Large Model Interface
+   ![img](https://image.lunatranslator.org/zh/damoxing/name.png)
 1. Activate the duplicated interface and configure it separately. The duplicated interface can run alongside the original one, allowing you to use multiple different settings simultaneously.
    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi3.png)
 :::
 
-::: info
-Most **API interface addresses** can be selected from the dropdown list, but some may be missing. For other interfaces not listed, please refer to their documentation to fill in the details.
-:::
+### Parameter Description  
 
-::: tip
-**model** can be selected from the dropdown list, and some interfaces can dynamically fetch the model list based on the **API interface address** and **API Key**. After filling in these two fields, click the refresh button next to **model** to get the available model list.
+1. #### API Endpoint  
 
-If the platform does not support fetching models via an API and the default list does not include the model you need, please refer to the official documentation of the interface to manually fill in the model.
-:::
+    The `API endpoint` for most common large model platforms can be selected from the dropdown list, but some may be missing. For other endpoints not listed, please refer to the platform's documentation and fill them in manually.  
+
+1. #### API Key  
+
+    The `API Key` can be obtained from the platform. For multiple added keys, they will be automatically rotated, and their weights will be adjusted based on error feedback.  
+
+1. #### Model  
+
+    For most platforms, after filling in the `API endpoint` and `API Key`, clicking the refresh button next to `Model` will fetch the list of available models.  
+
+    If the platform does not support pulling the model list, and the default list does not include the desired model, please manually enter the model name according to the official API documentation.  
+
+1. #### Streaming Output  
+
+    When enabled, the model's output will be displayed incrementally in a streaming manner. Otherwise, the entire output will be displayed at once after completion.  
+
+1. #### Hide Thought Process  
+
+    When enabled, content wrapped in `<think>` tags will not be displayed. If the thought process is hidden, the current thinking progress will still be shown.  
+
+1. #### Number of Contextual Messages  
+
+    A specified number of historical original and translated messages will be provided to the large model to improve translation. Setting this to 0 will disable this optimization.  
+
+    - **Optimize Cache Hits** – For platforms like DeepSeek, the platform charges a lower price for cache-hit inputs. Enabling this will optimize the format of contextual messages to increase cache hit rates.  
+
+1. #### Custom System Prompt / Custom User Message / Prefill  
+
+    Different methods to control output content. You can configure them as preferred or use the defaults.  
+
+    Custom system prompts and user messages can use fields to reference some information:
+    - `{sentence}`: The text to be translated
+    - `{srclang}` and `{tgtlang}`: Source language and target language. If only English is used in the prompt, they will be replaced with the English translation of the language names. Otherwise, they will be replaced with the translation of the language names in the current UI language.
+    - `{contextOriginal[N]}` and `{contextTranslation[N]}` and `{contextTranslation[N]}`: N pieces of historical original text, translations, and both. N is unrelated to the "number of accompanying contexts" and should be replaced with an integer when input.
+    - `{DictWithPrompt[XXXXX]}`: This field can reference entries from the "Proper Noun Translation" list. **If no matching entry is found, this field will be cleared to avoid disrupting the translation content**. Here, `XXXXX` is a prompt that guides the LLM to use the given entries for optimizing the translation. It can be customized, or you can disable custom user messages to use the default prompt.
+
+
+1. #### Temperature / max tokens / top p / frequency penalty
+
+    For certain models on some platforms, parameters like `top p` and `frequency penalty` may not be accepted by the interface, or the `max tokens` parameter may have been deprecated and replaced with `max completion tokens`. Activating or deactivating the switch can resolve these issues.
+
+1. #### Reasoning Effort  
+
+    For the Gemini platform, this option will automatically map to Gemini's `thinkingBudget`. The mapping rules are as follows:  
+    
+    minimal -> 0 (disable thinking, but not applicable to the Gemini-2.5-Pro model), low -> 512, medium -> -1 (enable dynamic thinking), high -> 24576.
+
+1. #### Other Parameters  
+
+    Only some common parameters are provided above. If the platform you are using offers other useful parameters not listed here, you can manually add key-value pairs.  
+
+## Common Large Model Platforms
 
 ### Large-scale model platforms in Europe and America  
 
@@ -146,9 +193,13 @@ Replace `{endpoint}` and `{deployName}` with your endpoint and deployName.
 
 :::
 
-## General Large Model Interface - Offline Translation
+### API Aggregation Manager
 
+You can also use API relay tools such as [new-api](https://github.com/QuantumNous/new-api) to more conveniently aggregate and manage multiple large model platform models and multiple keys.
 
-You can also use tools like [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama), [one-api](https://github.com/songquanpeng/one-api) to deploy models, and then fill in the address and model.
+For usage methods, you can refer to [this article](https://www.newapi.ai/apps/luna-translator/).
 
-You can also use platforms like Kaggle to deploy models to the cloud, in which case you may need to use SECRET_KEY; otherwise, you can ignore the SECRET_KEY parameter.
+### Offline Deployment Model
+
+You can also use tools like [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama) to deploy models, and then fill in the address and model.
+

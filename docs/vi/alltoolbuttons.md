@@ -5,7 +5,9 @@
 
 Tất cả các nút có thể được điều chỉnh vị trí tự do. Các nút có thể được đặt vào các nhóm căn chỉnh `Trái` `Giữa` `Phải`, và việc điều chỉnh vị trí tương đối sẽ bị giới hạn trong nhóm căn chỉnh.
 
-Màu sắc của các nút có thể được tùy chỉnh trong `Cài đặt hiển thị` -> `Cài đặt giao diện` -> `Thanh công cụ` -> `Màu nút`.
+Màu nút có thể tùy chỉnh bằng cách nhấp vào "Màu".
+
+Biểu tượng nút có thể tùy chỉnh bằng cách nhấp vào "Biểu tượng".
 
 Một số nút có hai biểu tượng để biểu thị hai trạng thái khác nhau. Một số nút chỉ có một biểu tượng, nhưng chúng sử dụng các màu khác nhau để biểu thị các trạng thái khác nhau.
 :::
@@ -25,12 +27,12 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
 }
 </style>
 
-1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> Dịch thủ công {#anchor-retrans}
+1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> Thực hiện thủ công {#anchor-retrans}
     Ý nghĩa thực tế là đọc đầu vào một lần từ nguồn đầu vào văn bản hiện tại và thực hiện dịch thuật.
     
     Ví dụ, nếu chế độ hiện tại là OCR, nó sẽ thực hiện OCR lại.
 
-1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> Dịch tự động {#anchor-automodebutton}
+1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> Chế độ tự động {#anchor-automodebutton}
     Ý nghĩa thực tế là tạm dừng/tiếp tục tự động đọc văn bản từ nguồn đầu vào văn bản hiện tại.
 
     Ví dụ, nếu chế độ hiện tại là HOOK, nó sẽ tạm dừng đọc văn bản trò chơi; nếu chế độ hiện tại là OCR, nó sẽ tạm dừng nhận diện hình ảnh tự động; nếu chế độ hiện tại là chế độ clipboard, nó sẽ tạm dừng đọc tự động từ clipboard.
@@ -91,7 +93,7 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
 1. #### <i class="fa fa-spinner"></i> <i class="fa fa-icon fa-rotate-right"></i> OCR lần nữa {#anchor-ocr_once_follow}
     Sau khi sử dụng `Thực hiện OCR một lần`, sử dụng nút này để thực hiện OCR lại tại vị trí ban đầu mà không cần phải chọn lại khu vực nhận diện.
     
-1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Bản dịch của proprietary noun Thay thế trước bản dịch {#anchor-noundict_direct}
+1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Thay thế trước bản dịch {#anchor-noundict_direct}
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Bản dịch của proprietary noun {#anchor-noundict}
 1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> Sửa kết quả dịch {#anchor-fix}
     Ba nút trên có tác dụng tương tự và được sử dụng để nhanh chóng mở cửa sổ cài đặt tối ưu hóa dịch thuật để thêm các thuật ngữ mới được chỉ định.
@@ -113,12 +115,12 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
     Nhấp chuột trái để thay đổi tỷ lệ cửa sổ, và nhấp chuột phải để thay đổi tỷ lệ toàn màn hình.
 
 1. #### <i class="fa fa-camera"></i> <i class="fa fa-icon fa-rotate-right"></i> Ảnh chụp cửa sổ {#anchor-grabwindow}
-    Bạn có thể chụp ảnh màn hình của cửa sổ được liên kết (nó sẽ chụp hai ảnh màn hình theo mặc định, GDI và Winrt, cả hai đều có một xác suất nhất định để thất bại). Điều tuyệt vời nhất là nếu bạn đang sử dụng Magpie để thay đổi tỷ lệ, nó cũng sẽ chụp ảnh màn hình của cửa sổ đã được phóng to.
+    Có thể chụp màn hình cửa sổ đã gắn (mặc định chụp hai ảnh, GDI và Winrt, cả hai đều có thể thất bại). Điểm tốt nhất là nếu Magpie hiện đang được sử dụng để tỷ lệ, nó cũng sẽ chụp màn hình cửa sổ đã tỷ lệ.
 
     Khi nhấp chuột trái, ảnh chụp màn hình sẽ được lưu vào tệp, và khi nhấp chuột phải, ảnh chụp màn hình sẽ được lưu vào clipboard. Nút giữa mở lớp phủ trong trò chơi.
 
 1. #### <i class="fa fa-volume-off"></i> <i class="btnstatus2 fa fa-volume-up"></i> Im lặng trò chơi {#anchor-muteprocess}
-    Sau khi liên kết cửa sổ trò chơi (không chỉ trong chế độ HOOK, chế độ OCR hoặc clipboard cũng có thể, miễn là cửa sổ trò chơi được liên kết), bạn có thể tắt tiếng trò chơi chỉ với một lần nhấp, tiết kiệm rắc rối của việc tắt tiếng trò chơi trong bộ trộn âm lượng hệ thống.
+    Sau khi liên kết cửa sổ trò chơi, bạn có thể tắt tiếng trò chơi chỉ với một lần nhấp, tiết kiệm rắc rối của việc tắt tiếng trò chơi trong bộ trộn âm lượng hệ thống.
 1. #### <i class="fa fa-eye"></i> <i class="btnstatus2 fa fa-eye-slash"></i> Hiển thị/ẩn văn bản gốc {#anchor-showraw}
     Chuyển đổi việc hiển thị văn bản gốc, sẽ có hiệu lực ngay lập tức.
 
@@ -175,3 +177,6 @@ Một số nút có hai biểu tượng để biểu thị hai trạng thái kh�
 
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> Tra từ {#anchor-searchwordW}
     Nếu hiện tại có văn bản được chọn, văn bản đã chọn sẽ được truy vấn và một cửa sổ tìm kiếm từ khóa sẽ được mở. Nếu không, nó sẽ chỉ mở hoặc đóng cửa sổ tìm kiếm từ khóa.
+
+1. #### <i class="fa fa-refresh"></i> Thiết lập lại trạng thái dịch thuật. {#anchor-reset_TS_status}
+    Đặt lại trạng thái dịch, chủ yếu nhằm đáp ứng nhu cầu dịch bằng mô hình lớn ngày càng tăng, có thể xóa ngữ cảnh đã lưu và các thông tin khác.

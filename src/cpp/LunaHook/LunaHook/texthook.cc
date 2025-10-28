@@ -225,20 +225,12 @@ bool checklengthembedable(const HookParam &hp, size_t size)
 }
 void commonfilter(TextBuffer *buffer, HookParam *hp)
 {
-
-	if (hp->type & CODEC_UTF16)
-		;
-	else if (hp->type & CODEC_UTF32)
-		;
-	else if (hp->type & CODEC_UTF8)
-		;
-	else
+	if (hp->type & (CODEC_UTF16 | CODEC_UTF32 | CODEC_UTF8)) 
+		return;
+	if (buffer->size == 2)
 	{
-		if (buffer->size == 2)
-		{
-			StringFilter(buffer, TEXTANDLEN("\x81\xa4"));
-			StringFilter(buffer, TEXTANDLEN("\x81\xa5"));
-		}
+		StringFilter(buffer, TEXTANDLEN("\x81\xa4"));
+		StringFilter(buffer, TEXTANDLEN("\x81\xa5"));
 	}
 }
 void TextHook::Send(uintptr_t lpDataBase)
@@ -252,7 +244,6 @@ void TextHook::Send(hook_context *context)
 	_InterlockedIncrement((long *)&useCount);
 	__try
 	{
-
 		if (auto current_trigger_fun = trigger_fun.exchange(nullptr))
 			if (!current_trigger_fun(location, context))
 				trigger_fun = current_trigger_fun;
@@ -280,7 +271,13 @@ void TextHook::Send(hook_context *context)
 				  lpRetn = context->retaddr,
 				  *plpdatain = (uintptr_t *)(context->base + hp.offset),
 				  lpDataIn = *plpdatain;
-
+#ifndef _WIN64
+		if ((hp.type & BREAK_POINT) && (hp.offset > 0))
+		{
+			plpdatain = (uintptr_t *)(context->esp + hp.offset);
+			lpDataIn = *plpdatain;
+		}
+#endif
 		if (hp.jittype != JITTYPE::PC && hp.jittype != JITTYPE::UNITY)
 		{
 			lpDataIn = jitgetaddr(context, &hp, true);

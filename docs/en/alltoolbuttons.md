@@ -5,7 +5,9 @@
 
 All buttons can be freely adjusted in position. Buttons can be set to alignment groups `Left` `Center` `Right`, and adjustments to relative positions will be limited within the alignment group.
 
-Button colors can be customized in `Display Settings` -> `Interface Settings` -> `Toolbar` -> `Button Colors`.
+Button color can be customized by clicking on "Color".
+
+Button icon can be customized by clicking on "Icon".
 
 Some buttons have two icons to indicate two different states. Some buttons only have one icon, but they use different colors to represent different states.
 :::
@@ -25,12 +27,12 @@ Some buttons have two icons to indicate two different states. Some buttons only 
 }
 </style>
 
-1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> Retranslate {#anchor-retrans}
+1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> Manual execution {#anchor-retrans}
     The actual meaning is to read the input once from the current text input source and perform translation.
     
     For example, if the current mode is OCR, it will perform OCR again.
 
-1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> Auto Translation {#anchor-automodebutton}
+1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> Auto mode {#anchor-automodebutton}
     The actual meaning is to pause/continue automatically reading text from the current text input source.
 
     For example, if the current mode is HOOK, it will pause reading game text; if the current mode is OCR, it will pause automatic image recognition; if the current mode is clipboard mode, it will pause automatic reading of the clipboard.
@@ -91,7 +93,7 @@ Some buttons have two icons to indicate two different states. Some buttons only 
 1. #### <i class="fa fa-spinner"></i> <i class="fa fa-icon fa-rotate-right"></i> Perform OCR Again {#anchor-ocr_once_follow}
     After using `Perform OCR Once`, use this button to perform OCR again at the original location without having to re-select the recognition area.
     
-1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Proper Noun Translation Pre-translation substitution {#anchor-noundict_direct}
+1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Pre-translation substitution {#anchor-noundict_direct}
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Proper Noun Translation {#anchor-noundict}
 1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> Translation Result Correction {#anchor-fix}
     The above three buttons have similar effects and are used to quickly open the translation optimization settings window to add new specified terms.
@@ -113,12 +115,12 @@ Some buttons have two icons to indicate two different states. Some buttons only 
     Left-click for windowed scaling, and right-click for full-screen scaling.
 
 1. #### <i class="fa fa-camera"></i> <i class="fa fa-icon fa-rotate-right"></i> Window Screenshot {#anchor-grabwindow}
-    You can take a screenshot of the bound window (it will take two screenshots by default, GDI and Winrt, both of which have a certain probability of failure). The best part is that if you are currently using Magpie for scaling, it will also take a screenshot of the enlarged window.
+    After binding the game window, you can take screenshots of the bound window (by default, two screenshots will be taken: GDI and Winrt, both of which may fail). If Magpie scaling is currently in use, it will also capture the magnified window.
 
     When left clicked, the screenshot will be saved to a file, and when right clicked, the screenshot will be saved to the clipboard. The middle key opens the in-game overlay.
 
 1. #### <i class="fa fa-volume-off"></i> <i class="btnstatus2 fa fa-volume-up"></i> Mute Game {#anchor-muteprocess}
-    After binding the game window (not just in HOOK mode, OCR or clipboard mode can also, as long as the game window is bound), you can mute the game with one click, saving the trouble of muting the game in the system volume mixer.
+    After binding the game window, you can mute the game with one click, saving the trouble of muting the game in the system volume mixer.
 1. #### <i class="fa fa-eye"></i> <i class="btnstatus2 fa fa-eye-slash"></i> Show/Hide Original Text {#anchor-showraw}
     Toggle whether to display the original text, which will take effect immediately.
 
@@ -175,3 +177,6 @@ Some buttons have two icons to indicate two different states. Some buttons only 
 
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> Look Up Word {#anchor-searchwordW}
     If there is currently text selected, the selected text will be queried and a word search window will be opened. Otherwise, it will only open or close the keyword search window.
+
+1. #### <i class="fa fa-refresh"></i> Reset translation state {#anchor-reset_TS_status}
+    Resets the translation status, primarily addressing the growing demand for large model translations, and clears saved context and other information.

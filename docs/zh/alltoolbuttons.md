@@ -5,7 +5,9 @@
 
 所有按钮均可以随意调整位置。按钮可以设置对齐组`居左` `居中` `居右`，对相对位置的调整都会被限定在对齐组中。
 
-按钮颜色可以在`显示设置`->`界面设置`->`工具栏`->`按钮颜色`中进行自定义。
+按钮颜色可以点击`颜色`进行自定义。
+
+按钮图标可以点击`图标`进行自定义。
 
 部分按钮有两个图标，用来指示两种不同的状态。部分按钮仅有一个图标，不过会用不同的颜色来表示不同的状态
 :::
@@ -26,12 +28,12 @@
 }
 </style>
 
-1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> 手动翻译 {#anchor-retrans}
+1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> 手动执行 {#anchor-retrans}
     实际意义是，从当前的文本输入源，读取一次输入，并执行翻译。
     
     例如如果当前是OCR模式，会再执行一次OCR。
 
-1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> 自动翻译 {#anchor-automodebutton}
+1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> 自动模式 {#anchor-automodebutton}
     实际意义是，暂停/继续自动从当前的文本输入源读取文本。
 
     例如如果当前是HOOK模式，会暂停读取游戏文本；当前是OCR模式，暂停自动识别图像；如果当前是剪贴板模式，会暂停自动读取剪贴板。
@@ -52,7 +54,7 @@
     当把鼠标移动到**鼠标穿透窗口按钮及其左右一个按钮的区域**时，会自动退出穿透以使用工具按钮；移出区域时自动恢复穿透。
 
 1. #### <i class="fa fa-lightbulb"></i> <i class="btnstatus2 fa fa-lightbulb"></i> 背景窗口透明 {#anchor-backtransbutton}
-    该按钮作用仅是一键使得翻译窗口的不透明度切换到0。这个切换不会使得原版的不透明度设置被遗忘。
+    该按钮作用仅是一键使得翻译窗口的不透明度切换到0。这个切换不会使得原本的不透明度设置被遗忘。
     
 1. #### <i class="fa fa-lock"></i> <i class="btnstatus2 fa fa-unlock"></i> 锁定工具栏 {#anchor-locktoolsbutton}
     激活后工具栏将始终显示。
@@ -88,12 +90,12 @@
 1. #### <i class="fa fa-crop"></i> <i class="fa fa-icon fa-rotate-right"></i> 进行一次OCR {#anchor-ocr_once}
     该按钮和`读取剪贴板`类似，不管当前的默认文本输入源是什么，都会先进行OCR范围选择，然后进行一次OCR，然后进行翻译流程。
 
-    该按钮一般用于，在HOOK模式下，遇到选择支时，临时使用一次OCR进行翻译选择支。或者在OCR模式下，临时去识别一次其他偶尔出现的新的位置。
+    该按钮一般用于，在HOOK模式下，遇到选择肢时，临时使用一次OCR进行翻译选择肢。或者在OCR模式下，临时去识别一次其他偶尔出现的新的位置。
 
 1. #### <i class="fa fa-spinner"></i> <i class="fa fa-icon fa-rotate-right"></i> 再次进行OCR {#anchor-ocr_once_follow}
     当使用过一次`进行一次OCR`后，使用这个按钮，可以在原来的位置上再次进行一次OCR而无需重新选择识别区域。
     
-1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 专有名词翻译 翻译前替换 {#anchor-noundict_direct}
+1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 翻译前替换 {#anchor-noundict_direct}
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 专有名词翻译 {#anchor-noundict}
 1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> 翻译结果修正 {#anchor-fix}
     以上三个按钮，效果类似，是用来快捷打开翻译优化的设置窗口，增加新的指定词条的。
@@ -110,23 +112,23 @@
 
     实际上当按钮栏有没有按钮存在的额外空白区域时，都可以随意拖动。该按钮仅用来预留一个拖动位置。
 1. #### <i class="fa fa-compress"></i> <i class="fa fa-expand"></i> 窗口缩放 {#anchor-fullscreen}
-    可以一键对游戏窗口使用内置的Magpie进行缩放。
+    当绑定游戏窗口后，可以一键对游戏窗口使用内置的Magpie进行缩放。
 
     左键为窗口化缩放，右键为全屏缩放。
 
 1. #### <i class="fa fa-camera"></i> <i class="fa fa-icon fa-rotate-right"></i> 窗口截图 {#anchor-grabwindow}
-    可以对绑定的窗口进行截图，（默认会截两张图，GDI和Winrt，两者均有一定概率会失败）。最好的地方是，如果当前正在使用Magpie进行缩放，还会对放大的窗口进行截图。
+    当绑定游戏窗口后，可以对绑定的窗口进行截图，（默认会截两张图，GDI和Winrt，两者均有一定概率会失败）。如果当前正在使用Magpie进行缩放，还会对放大的窗口进行截图。
 
     左键点击时会把截图保存到文件，右键点击时截图会保存到剪贴板。
 1. #### <i class="fa fa-volume-off"></i> <i class="btnstatus2 fa fa-volume-up"></i> 游戏静音 {#anchor-muteprocess}
-    当绑定游戏窗口后（不只是hook模式，ocr或剪贴板模式都可以，只要绑定了游戏窗口），可以一键对游戏进行静音，省去了在系统音量合成器进行游戏静音的麻烦。
+    当绑定游戏窗口后，可以一键对游戏进行静音，省去了在系统音量合成器进行游戏静音的麻烦。
 1. #### <i class="fa fa-eye"></i> <i class="btnstatus2 fa fa-eye-slash"></i> 显示/隐藏原文 {#anchor-showraw}
     切换是否显示原文，会立即生效。
 
 1. #### <i class="fa fa-toggle-on"></i> <i class="btnstatus2 fa fa-toggle-off"></i> 显示/隐藏翻译 {#anchor-showtrans}
     切换是否使用翻译，系翻译的总开关，关闭后将不会进行任何翻译。
 
-    如果已经进行过了翻译，则关闭后将会隐藏翻译结果，并再重新打开时重新显示本次的翻译结果。
+    如果已经进行过了翻译，则关闭后将会隐藏翻译结果，并在重新打开时重新显示本次的翻译结果。
 
     如果未进行过翻译，并从隐藏切换到显示，则会触发对当前句子的翻译。
 
@@ -161,10 +163,10 @@
     在绑定了游戏窗口后，`窗口缩放` `窗口截图` `游戏静音`，`跟随游戏窗口`->`游戏失去焦点时取消置顶`和`游戏窗口移动时同步移动`，以及记录游戏时间等，才可用。
     不论HOOK/OCR/剪贴板模式，该按钮都可用。
 
-    在HOOK模式下，会自动根据连接的游戏，自动绑定游戏窗口。但也可以在用该按钮重新选择其他窗口。
+    在HOOK模式下，会自动根据连接的游戏，自动绑定游戏窗口。但也可以再用该按钮重新选择其他窗口。
 
     在OCR模式下，绑定窗口后，还额外允许游戏窗口移动时，同步自动移动OCR区域和范围框。
-    在OCR/剪贴板模型下，绑定窗口后，也可以和HOOK模式下一样，关联到当前游戏到游戏设置，从而使用当前游戏的专有翻译优化词典等。
+    在OCR/剪贴板模式下，绑定窗口后，也可以和HOOK模式下一样，关联到当前游戏到游戏设置，从而使用当前游戏的专用翻译优化词典等。
 
 1. #### <i class="fa fa-neuter"></i> <i class="btnstatus2 fa fa-neuter"></i> 窗口置顶 {#anchor-keepontop}
     取消/置顶翻译窗口
@@ -176,4 +178,7 @@
 
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> 查词 {#anchor-searchwordW}
     如果当前有文本被选取，则会查询选取的文本并打开查词窗口。否则只是打开或关闭查词窗口。
+  
+1. #### <i class="fa fa-refresh"></i> 重置翻译状态 {#anchor-reset_TS_status}
+    重置翻译状态，主要针对用于现在日益增长的大模型翻译需求，可以清除保存的上下文和其他信息。
   

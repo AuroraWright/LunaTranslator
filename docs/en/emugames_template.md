@@ -1,8 +1,5 @@
 # Emulator Game Support
 
-LunaTranslator supports a wide range of games on NS/PSP/PSV/PS2 through HOOK emulator. 
+LunaTranslator supports a large number of games through emulators. For games that are not supported, please send an [issue](https://lunatranslator.org/Resource/game_support)
 
-For games that are not supported, please send an [issue](https://lunatranslator.org/Resource/game_support)
-
-::: details Supported emulators
-| Platform | Emulator |
+| Platform | Supported emulators |

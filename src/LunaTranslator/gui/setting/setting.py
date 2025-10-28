@@ -88,7 +88,7 @@ class Setting(closeashidewindow):
     def firstshow(self):
 
         self.setMinimumSize(100, 100)
-        self.setWindowTitleWithVersion("设置")
+        self.setWindowTitleWithVersionWithUserconfig("设置")
 
         self.tab_widget, do = makesubtab_lazy(
             [
@@ -118,9 +118,10 @@ class Setting(closeashidewindow):
         do()
         self.tab_widget.adjust_list_widget_width()
         index = 0
-        if time.time() - globalconfig.get("lasttime", 0) > 3600:
+        if time.time() - globalconfig.get("lasttime", 0) > 3600 * 12 * 1:
             if globalconfig.get("lasttime", 0):
                 index = self.tab_widget.tab_widget.count() - 1
             globalconfig["lasttime"] = time.time()
         globalconfig["lasttime"] = min(time.time(), globalconfig["lasttime"])
         self.tab_widget.setCurrentIndex(index)
+        gobject.base.switchtotspage.connect(lambda: self.tab_widget.setCurrentIndex(1))

@@ -77,8 +77,8 @@ export const ja = defineConfig({
             {
                 text: '基本的な',
                 items: [
-                    { text: 'ダウンロード ＆ 起動 ＆ 更新', link: '/ja/README' },
-                    { text: '基本的な使用方法', link: '/ja/basicuse' },
+                    { text: 'ソフトウェアダウンロード & よくある質問', link: '/ja/README' },
+                    { text: '基本の使い方', link: '/ja/basicuse' },
                     { text: '作者を支援する', link: '/ja/support' }
                 ]
             },
@@ -100,11 +100,10 @@ export const ja = defineConfig({
                         items: [
                             { text: 'OCRインターフェース設定', link: '/ja/useapis/ocrapi' },
                             { text: 'OCR自動化実行方法', link: '/ja/ocrparam' },
-                            { text: 'OCRモードでゲームウィンドウをバインドする', link: '/ja/gooduseocr' }
                         ]
                     },
                     {
-                        text: '翻訳インターフェース設定', link: '/ja/useapis/tsapi',
+                        text: '翻訳インターフェース設定', link: '/ja/guochandamoxing',
                         collapsed: true,
                         items: [
                             { text: '大規模モデル翻訳インターフェース', link: '/ja/guochandamoxing' },
@@ -141,7 +140,15 @@ export const ja = defineConfig({
                     { text: 'ショートカットキー', link: '/ja/fastkeys' },
                     { text: 'ネットワークサービス', link: '/ja/apiservice' },
                     { text: '音声認識', link: '/ja/sr' },
-
+                    {
+                        text: '実用テクニック', link: '/ja/gooduse/multiconfigs',
+                        collapsed: true,
+                        items: [
+                            { text: '複数設定ファイルの作成', link: '/ja/gooduse/multiconfigs' },
+                            { text: 'HOOKモードで一時的にOCRを使用する', link: '/ja/gooduse/useocrinhook' },
+                            { text: 'OCRモードでゲームウィンドウをバインドする', link: '/ja/gooduse/gooduseocr' },
+                        ]
+                    },
                 ]
             }
         ]

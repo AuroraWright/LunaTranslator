@@ -1,6 +1,34 @@
 import json
 import os
 from qtsymbols import *
+import functools
+
+isdark = False
+
+
+def disablecolor(__: QColor):
+    if __.rgb() == 0xFF000000:
+        return Qt.GlobalColor.gray
+    __ = QColor(
+        max(0, (__.red() - 64)),
+        max(
+            0,
+            (__.green() - 64),
+        ),
+        max(0, (__.blue() - 64)),
+    )
+    return __
+
+
+def _defaultcolor():
+    return QColor(("#000000", "#ffffff")[isdark])
+
+
+def _colorgen(color, disabled):
+    color = QColor(color) if color else _defaultcolor()
+    if disabled:
+        color = disablecolor(color)
+    return color
 
 
 class CharIconEngine(QIconEngine):
@@ -9,11 +37,11 @@ class CharIconEngine(QIconEngine):
         super().__init__()
         self.iconic = iconic
         self.char = char
-        self.color = QColor(color)
+        self.color = functools.partial(_colorgen, color)
 
-    def paint(self, painter: QPainter, rect: QRect, mode, state):
+    def paint(self, painter: QPainter, rect: QRect, mode: QIcon.Mode, state):
         painter.save()
-        painter.setPen(self.color)
+        painter.setPen(self.color(mode == QIcon.Mode.Disabled))
         draw_size = round(0.875 * rect.height())
         painter.setFont(self.iconic.font(draw_size))
         painter.drawText(
@@ -35,7 +63,7 @@ class IconicFont(QObject):
 
         super().__init__()
         self.charmap = {}
-        self.icon_cache = {}
+        self.icon_cache: "dict[str, QIcon]" = {}
         self.load_font(ttf_filename, charmap_filename)
 
     def load_font(self, ttf_filename, charmap_filename):
@@ -56,7 +84,6 @@ class IconicFont(QObject):
             cache_key = "{}{}".format(name, color.name())
         else:
             cache_key = "{}{}".format(name, color)
-
 
         if cache_key not in self.icon_cache:
 
@@ -89,5 +116,5 @@ def _instance():
     return _resource["iconic"]
 
 
-def icon(name, color="#000000"):
+def icon(name, color=None):
     return _instance().icon(name, color)

@@ -16,12 +16,13 @@ from myutils.config import (
     static_data,
 )
 from myutils.wrapper import tryprint
-from myutils.utils import autosql
+import sqlite3
 from gui.dialog_memory import dialog_memory
 from myutils.localetools import getgamecamptools, maycreatesettings
 from myutils.hwnd import getExeIcon
 from myutils.wrapper import Singleton
 from myutils.utils import (
+    all_langs,
     gamdidchangedtask,
     checkpostlangmatch,
     loadpostsettingwindowmethod_private,
@@ -496,13 +497,15 @@ class dialog_setting_game_internal(QWidget):
         )
         if not os.path.exists(sqlitef):
             return
-        sql = autosql(sqlitef, check_same_thread=False, isolation_level=None)
-        cnt = 0
-        for (_,) in sql.execute("SELECT source FROM artificialtrans").fetchall():
-            cnt += len(_)
-        savehook_new_data[self.gameuid]["statistic_wordcount"] = max(
-            cnt, savehook_new_data[self.gameuid]["statistic_wordcount"]
-        )
+        with sqlite3.connect(
+            sqlitef, check_same_thread=False, isolation_level=None
+        ) as sql:
+            cnt = 0
+            for (_,) in sql.execute("SELECT source FROM artificialtrans").fetchall():
+                cnt += len(_)
+            savehook_new_data[self.gameuid]["statistic_wordcount"] = max(
+                cnt, savehook_new_data[self.gameuid]["statistic_wordcount"]
+            )
 
     def getstatistic(self, formLayout: QVBoxLayout, gameuid):
         chart = chartwidget()
@@ -590,7 +593,7 @@ class dialog_setting_game_internal(QWidget):
         return lists
 
     def refresh(self):
-        __ = gobject.base.playtimemanager.querytraceplaytime(self.gameuid)
+        __ = gobject.base.somedatabase.querytraceplaytime(self.gameuid)
         _cnt = sum([_[1] - _[0] for _ in __])
         self._timelabel.setText(self.formattime(_cnt))
         self._wordlabel.setText(
@@ -610,9 +613,9 @@ class dialog_setting_game_internal(QWidget):
             string += str(h) + _TR("时")
         if m:
             string += str(m) + _TR("分")
-        if s:
+        if s and (not (not usingnotstart and h)):
             string += str(s) + _TR("秒")
-        if string == "":
+        if not string:
             if usingnotstart:
                 string = _TR("未开始")
             else:
@@ -891,43 +894,43 @@ class dialog_setting_game_internal(QWidget):
         for i, item in enumerate(static_data["transoptimi"]):
             name = item["name"]
             visname = item["visname"]
-            if checkpostlangmatch(name):
-                setting = loadpostsettingwindowmethod_private(name)
-                if not setting:
-                    continue
+            if not checkpostlangmatch(name):
+                continue
 
-                def __(_f, _1, gameuid):
-                    return _f(_1, gameuid)
+            setting = loadpostsettingwindowmethod_private(name)
+            if not setting:
+                continue
 
-                vbox.addWidget(LLabel(visname), i + 1, 0)
-                vbox.addWidget(
+            def __(_f, _1, gameuid):
+                return _f(_1, gameuid)
+
+            vbox.addWidget(LLabel(visname), i + 1, 0)
+            vbox.addWidget(
+                getsimpleswitch(
+                    savehook_new_data[gameuid],
+                    name + "_use",
+                    default=False,
+                ),
+                i + 1,
+                1,
+            )
+            vbox.addWidget(
+                getIconButton(callback=functools.partial(__, setting, self, gameuid)),
+                i + 1,
+                2,
+            )
+            vbox.addWidget(QLabel(), i + 1, 3)
+            vbox.addLayout(
+                getcenterX(
                     getsimpleswitch(
                         savehook_new_data[gameuid],
-                        name + "_use",
+                        name + "_merge",
                         default=False,
-                    ),
-                    i + 1,
-                    1,
-                )
-                vbox.addWidget(
-                    getIconButton(
-                        callback=functools.partial(__, setting, self, gameuid)
-                    ),
-                    i + 1,
-                    2,
-                )
-                vbox.addWidget(QLabel(), i + 1, 3)
-                vbox.addLayout(
-                    getcenterX(
-                        getsimpleswitch(
-                            savehook_new_data[gameuid],
-                            name + "_merge",
-                            default=False,
-                        )
-                    )(),
-                    i + 1,
-                    4,
-                )
+                    )
+                )(),
+                i + 1,
+                4,
+            )
 
     def gettextproc(self, formLayout: LFormLayout, gameuid):
 
@@ -1119,20 +1122,20 @@ class dialog_setting_game_internal(QWidget):
         formLayout2.addRow(
             "源语言",
             getsimplecombobox(
-                ["自动"] + [_.zhsname for _ in TransLanguages],
+                all_langs()[0],
                 savehook_new_data[gameuid],
                 "private_srclang_2",
-                internal=["auto"] + [_.code for _ in TransLanguages],
+                internal=all_langs()[1],
                 default=globalconfig["srclang4"],
             ),
         )
         formLayout2.addRow(
             "目标语言",
             getsimplecombobox(
-                [_.zhsname for _ in TransLanguages],
+                all_langs(False)[0],
                 savehook_new_data[gameuid],
                 "private_tgtlang_2",
-                internal=[_.code for _ in TransLanguages],
+                internal=all_langs(False)[1],
                 default=globalconfig["tgtlang4"],
             ),
         )

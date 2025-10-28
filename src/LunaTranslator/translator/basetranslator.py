@@ -6,18 +6,56 @@ import gobject
 import json
 import functools
 from myutils.wrapper import threader
-from myutils.config import globalconfig, translatorsetting
-from myutils.utils import (
-    stringfyerror,
-    autosql,
-    PriorityQueue,
-    dynamicapiname,
-)
+from myutils.config import globalconfig, translatorsetting, dynamicapiname
+from myutils.utils import stringfyerror, autosql, PriorityQueue
 from myutils.commonbase import ArgsEmptyExc, commonbase
 
 
 class Interrupted(Exception):
     pass
+
+
+class GptDictItem:
+    def __init__(self, d: dict = None):
+        d = d if d else {}
+        self.src = d.get("src")
+        self.dst = d.get("dst")
+        self.info = d.get("info")
+
+
+class GptDict:
+    def __bool__(self):
+        return bool(self.__)
+
+    def __iter__(self):
+        for _ in self.L:
+            yield _
+
+    def __init__(self, d: "list[dict[str, str]]" = None):
+        self.L = [GptDictItem(_) for _ in d] if d else []
+        self.__ = d
+
+    def __str__(self):
+        return json.dumps(self.__, ensure_ascii=False)
+
+
+class GptTextWithDict:
+    def __init__(self, rawtext: str = None, parsedtext: str = None, dictionary=None):
+        if rawtext and not parsedtext:
+            parsedtext = rawtext
+        self.parsedtext = parsedtext
+        self.dictionary = GptDict(dictionary)
+        self.rawtext = rawtext
+
+    def __str__(self):
+        return json.dumps(
+            {
+                "text": self.parsedtext,
+                "gpt_dict": str(self.dictionary),
+                "contentraw": self.rawtext,
+            },
+            ensure_ascii=False,
+        )
 
 
 class Threadwithresult(Thread):
@@ -63,19 +101,17 @@ class basetrans(commonbase):
     def init(self):
         pass
 
-    def translate(self, content):
+    def translate(self, content: "str|GptTextWithDict"):
         return ""
 
     ############################################################
     _globalconfig_key = "fanyi"
     _setting_dict = translatorsetting
-    using_gpt_dict = False
-    _compatible_flag_is_sakura_less_than_5_52_3 = True
 
     def __init__(self, typename):
         super().__init__(typename)
         if (self.transtype == "offline") and (not self.is_gpt_like):
-            globalconfig["fanyi"][self.typename]["useproxy"] = False
+            self.gconfig["useproxy"] = False
         self.queue = PriorityQueue()
         self.sqlqueue = None
         self.sqlwrite2 = None
@@ -95,7 +131,7 @@ class basetrans(commonbase):
 
         self.newline = None
 
-        if self.transtype != "pre":
+        if not self.never_use_trans_cache:
             try:
 
                 self.sqlwrite2 = autosql(
@@ -146,21 +182,32 @@ class basetrans(commonbase):
                 print_exc()
 
     @property
+    def using_gpt_dict(self):
+        # 决定translator接口传入GptTextWithDict还是str
+        return self.gconfig.get("is_gpt_like", False)
+
+    @property
+    def never_use_trans_cache(self):
+        return self.transtype in ("pre", "other")
+
+    @property
     def use_trans_cache(self):
-        return globalconfig["fanyi"][self.typename].get("use_trans_cache", True)
+        return (self.gconfig.get("use_trans_cache", True)) and (
+            not self.never_use_trans_cache
+        )
 
     @property
     def is_gpt_like(self):
-        return globalconfig["fanyi"][self.typename].get("is_gpt_like", False)
+        return self.gconfig.get("is_gpt_like", False)
 
     @property
     def onlymanual(self):
         # Only used during manual translation, not used during automatic translation
-        return globalconfig["fanyi"][self.typename].get("manual", False)
+        return self.gconfig.get("manual", False)
 
     @property
     def using(self):
-        return globalconfig["fanyi"][self.typename]["use"]
+        return self.gconfig["use"]
 
     @property
     def transtype(self):
@@ -168,7 +215,7 @@ class basetrans(commonbase):
         # dev/offline 无视请求间隔
         # pre全都有额外的处理，不走该pipeline，不使用翻译缓存
         # offline不被新的请求打断
-        return globalconfig["fanyi"][self.typename].get("type", "free")
+        return self.gconfig.get("type", "free")
 
     def gettask(self, content):
         # fmt: off
@@ -234,6 +281,13 @@ class basetrans(commonbase):
             return res
         return None
 
+    def __cap_trans(self, t):
+        if isinstance(t, GptTextWithDict) and (
+            "_compatible_flag_is_sakura_less_than_5_52_3" in dir(self)
+        ):
+            t = str(t)
+        return self.translate(t)
+
     def intervaledtranslate(self, content):
         interval = globalconfig["requestinterval"]
         current = time.time()
@@ -246,24 +300,27 @@ class basetrans(commonbase):
         if (current != self.current) or (self.using == False):
             raise Exception()
 
-        return self.multiapikeywrapper(self.translate)(content)
+        return self.multiapikeywrapper(self.__cap_trans)(content)
 
     def _gptlike_createquery(self, query, usekey, tempk):
+        return self._gptlike_get_user_prompt(usekey, tempk).replace("{sentence}", query)
+
+    def _gptlike_get_user_prompt(self, usekey, tempk):
         user_prompt = (
             self.config.get(tempk, "") if self.config.get(usekey, False) else ""
         )
+        default = "{DictWithPrompt[When translating, please ensure to translate the specified nouns into the translations I have designated: ]}\n{sentence}"
+        user_prompt = user_prompt if user_prompt else default
         if "{sentence}" not in user_prompt:
             user_prompt += "{sentence}"
-        return user_prompt.replace("{sentence}", query)
+        return user_prompt
 
     def _gptlike_createsys(self, usekey, tempk):
 
-        if self.config[usekey]:
-            template = self.config[tempk]
-        else:
-            template = "You are a translator. Please help me translate the following {srclang} text into {tgtlang}. You should only tell me the translation result without any additional explanations."
-        template = template.replace("{srclang}", self.srclang)
-        template = template.replace("{tgtlang}", self.tgtlang)
+        default = "You are a translator. Please help me translate the following {srclang} text into {tgtlang}. You should only tell me the translation result without any additional explanations."
+        template = self.config[tempk] if self.config[usekey] else None
+        template = template if template else default
+        template = self.smartparselangprompt(template)
         return template
 
     def _gptlike_create_prefill(self, usekey, tempk):
@@ -273,27 +330,13 @@ class basetrans(commonbase):
         return user_prompt
 
     def _gpt_common_parse_context(
-        self,
-        messages: list,
-        context: "list[dict]",
-        num: int,
-        query=None,
-        cachecontext=False,
+        self, messages: list, context: "list[dict]", num: int
     ):
         offset = 0
         _i = 0
         msgs = []
-        dedump = set([query])
         while (_i + offset < (len(context) // 2)) and (_i < num):
             i = len(context) // 2 - _i - offset - 1
-            if isinstance(context[i * 2], dict):
-                c_q: str = context[i * 2].get("content")
-            else:
-                c_q: str = context[i * 2]
-            if (not cachecontext) and c_q and isinstance(c_q, str) and c_q in dedump:
-                offset += 1
-                continue
-            dedump.add(c_q)
             msgs.append(context[i * 2 + 1])
             msgs.append(context[i * 2])
             _i += 1
@@ -317,20 +360,20 @@ class basetrans(commonbase):
 
         return functools.partial(__maybeshow, callback, tgtlang_1)
 
-    def translate_and_collect(self, tgtlang_1, contentsolved, is_auto_run, callback):
-        if isinstance(contentsolved, dict):
-            if self._compatible_flag_is_sakura_less_than_5_52_3:
-                query_use = json.dumps(contentsolved)
-                cache_use = contentsolved["text"]
-            else:
-                query_use = contentsolved
-                cache_use = contentsolved["contentraw"]
+    def translate_and_collect(
+        self, tgtlang_1, contentsolved: "GptTextWithDict|str", is_auto_run, callback
+    ):
+        if isinstance(contentsolved, GptTextWithDict):
+            cache_use = contentsolved.rawtext
+            if contentsolved.dictionary:
+                cache_use = str((contentsolved, contentsolved.dictionary))
+            TS_use = contentsolved
         else:
-            cache_use = query_use = contentsolved
+            cache_use = TS_use = contentsolved
 
         res = self.shortorlongcacheget(cache_use, is_auto_run)
         if not res:
-            res = self.intervaledtranslate(query_use)
+            res = self.intervaledtranslate(TS_use)
         # 不能因为被打断而放弃后面的操作，发出的请求不会因为不再处理而无效，所以与其浪费不如存下来
         # gettranslationcallback里已经有了是否为当前请求的校验，这里无脑输出就行了
 
@@ -371,11 +414,9 @@ class basetrans(commonbase):
                 contentraw = _.get("gpt_dict_origin")
                 break
 
-        return {
-            "text": contentsolved,
-            "gpt_dict": gpt_dict,
-            "contentraw": contentraw,
-        }
+        return GptTextWithDict(
+            parsedtext=contentsolved, dictionary=gpt_dict, rawtext=contentraw
+        )
 
     def _fythread(self):
         self.needreinit = False

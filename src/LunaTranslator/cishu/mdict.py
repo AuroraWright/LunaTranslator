@@ -1,6 +1,5 @@
 import base64, uuid, gobject
 from cishu.cishubase import DictTree
-from myutils.config import isascii
 from traceback import print_exc
 from myutils.audioplayer import bass_code_cast
 import json, os, re
@@ -213,9 +212,9 @@ class mdict(cishubase):
             t: str = os.path.basename(f)[:-4]
             if index._mdict._title != "":
                 t1 = index._mdict._title
-                if (isascii(t1)) and (isascii(t)):
+                if t1.isascii() and t.isascii():
                     t = t1
-                elif not isascii(t1):
+                elif not t1.isascii():
                     t = t1
             title = t
         return title
@@ -273,14 +272,16 @@ class mdict(cishubase):
 
     def init(self):
         try:
-            with open("userconfig/mdict_config.json", "r", encoding="utf8") as ff:
+            with open(
+                gobject.getconfig("mdict_config.json"), "r", encoding="utf8"
+            ) as ff:
                 self.extraconf = json.loads(ff.read())
         except:
             self.extraconf = {}
         self.checkpath()
         try:
             with open(
-                gobject.getuserconfigdir("mdict_config.json"), "w", encoding="utf8"
+                gobject.getconfig("mdict_config.json"), "w", encoding="utf8"
             ) as ff:
                 ff.write(json.dumps(self.extraconf, ensure_ascii=False, indent=4))
         except:
@@ -442,12 +443,58 @@ class mdict(cishubase):
                 allres.append(content)
         return allres
 
+    def expand_repetition_marks(self, text):
+        """
+        展开日语中的叠字符号（々、ゝ、ヽ、〱等）为完整重复形式。
+
+        Args:
+            text (str): 输入的日语文本，可能包含叠字符号。
+
+        Returns:
+            str: 展开叠字符号后的文本。
+        """
+        # 正则表达式匹配叠字符号及其前一个字符
+        pattern = re.compile(
+            r"([\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff])(々|ゝ|ヽ|〱)"
+        )
+
+        def replace_match(match):
+            char, repetition_mark = match.group(1), match.group(2)
+            # 根据不同的叠字符号处理
+            if repetition_mark == "々":
+                # 々：重复前一个汉字
+                return char * 2
+            elif repetition_mark == "ゝ":
+                # ゝ：重复前一个平假名
+                return char * 2
+            elif repetition_mark == "ヽ":
+                # ヽ：重复前一个片假名
+                return char * 2
+            elif repetition_mark == "〱":
+                # 〱：重复前一个字符（通用）
+                return char * 2
+            else:
+                return char + repetition_mark
+
+        # 使用正则替换
+        expanded_text = pattern.sub(replace_match, text)
+        return expanded_text
+
     def searchthread(self, allres, i, word, audiob64vals, hrefsrcvals):
         f, index = self.builders[i]
         results = []
         __safe = []
         try:
             keys = self.querycomplex(word, self.getdistance(f), index)
+            if not keys:
+                # 只有正常查不到时，才尝试展开
+                word1 = self.expand_repetition_marks(word)
+                if word1 != word:
+                    keys2 = self.querycomplex(word1, self.getdistance(f), index)
+                    for _ in keys2:
+                        if _ in keys:
+                            continue
+                        keys.append(_)
             for k in keys:
                 for content in sorted(
                     set(self.searchthread_internal(index, k, __safe))

@@ -15,7 +15,8 @@ from ctypes import (
     c_float,
     c_double,
     c_char,
-    c_ushort,
+    c_uint64,
+    c_int32,
     CFUNCTYPE,
 )
 from ctypes.wintypes import (
@@ -23,6 +24,8 @@ from ctypes.wintypes import (
     HWND,
     DWORD,
     RECT,
+    WPARAM,
+    LPARAM,
     HANDLE,
     UINT,
     BOOL,
@@ -32,8 +35,9 @@ from ctypes.wintypes import (
 )
 from windows import AutoHandle
 from xml.sax.saxutils import escape
-import gobject
+import gobject, os, json
 import windows, functools, re, csv
+from traceback import print_exc
 
 utilsdll = CDLL(gobject.GetDllpath("NativeUtils.dll"))
 
@@ -46,6 +50,9 @@ MonitorPidVolume.argtypes = (DWORD,)
 MonitorPidVolume_callback_t = CFUNCTYPE(None, BOOL)
 StartMonitorVolume = utilsdll.StartMonitorVolume
 StartMonitorVolume.argtypes = (MonitorPidVolume_callback_t,)
+
+SuspendResumeProcess = utilsdll.SuspendResumeProcess
+SuspendResumeProcess.argtypes = (DWORD,)
 
 _SAPI_List = utilsdll.SAPI_List
 _SAPI_List.argtypes = (c_uint, c_void_p)
@@ -251,7 +258,7 @@ def QueryVersion(exe):
 
 ClipBoardListenerStart = utilsdll.ClipBoardListenerStart
 ClipBoardListenerStop = utilsdll.ClipBoardListenerStop
-WindowMessageCallback_t = CFUNCTYPE(None, c_int, c_void_p, c_void_p)
+WindowMessageCallback_t = CFUNCTYPE(None, UINT, WPARAM, LPARAM)
 WinEventHookCALLBACK_t = CFUNCTYPE(None, DWORD, HWND, LONG)
 globalmessagelistener = utilsdll.globalmessagelistener
 globalmessagelistener.argtypes = (
@@ -315,6 +322,7 @@ _GdiGrabWindow.argtypes = HWND, c_void_p
 
 _GdiCropImage = utilsdll.GdiCropImage
 _GdiCropImage.argtypes = HWND, RECT, c_void_p
+_GdiCropImage.restype = c_bool
 
 
 def GdiGrabWindow(hwnd):
@@ -344,14 +352,12 @@ def GdiCropImage(x1, y1, x2, y2, hwnd=None):
 
     if windows.GetClassName(hwnd) == "UnityWndClass":
         hwnd = None
-    _GdiCropImage(hwnd, rect, CFUNCTYPE(None, POINTER(c_char), c_size_t)(cb))
-    if len(ret) == 0:
-        return None
-    return ret[0]
+    succ = _GdiCropImage(hwnd, rect, CFUNCTYPE(None, POINTER(c_char), c_size_t)(cb))
+    if not ret:
+        return False, None
+    return succ, ret[0]
 
 
-MaximumWindow = utilsdll.MaximumWindow
-MaximumWindow.argtypes = (HWND,)
 setAeroEffect = utilsdll.setAeroEffect
 setAeroEffect.argtypes = (HWND, c_bool)
 setAcrylicEffect = utilsdll.setAcrylicEffect
@@ -378,12 +384,13 @@ html_get_current_url.argtypes = (MSHTMLptr, c_void_p)
 html_set_html = utilsdll.html_set_html
 html_set_html.argtypes = (MSHTMLptr, c_wchar_p)
 html_add_menu_gettext = CFUNCTYPE(c_wchar_p)
+html_contextmenu_getuse = CFUNCTYPE(c_bool)
 html_add_menu = utilsdll.html_add_menu
 html_add_menu_cb = CFUNCTYPE(c_void_p, c_wchar_p)
-html_add_menu.argtypes = (MSHTMLptr, c_int, c_void_p, c_void_p)
+html_add_menu.argtypes = (MSHTMLptr, c_int, c_void_p, c_void_p, c_void_p)
 html_add_menu_noselect = utilsdll.html_add_menu_noselect
 html_add_menu_cb2 = CFUNCTYPE(c_void_p)
-html_add_menu_noselect.argtypes = (MSHTMLptr, c_int, c_void_p, c_void_p)
+html_add_menu_noselect.argtypes = (MSHTMLptr, c_int, c_void_p, c_void_p, c_void_p)
 html_get_select_text = utilsdll.html_get_select_text
 html_get_select_text_cb = CFUNCTYPE(None, c_wchar_p)
 html_get_select_text.argtypes = (MSHTMLptr, c_void_p)
@@ -413,27 +420,20 @@ webview2_destroy = utilsdll.webview2_destroy
 webview2_destroy.argtypes = (WebView2PTR,)
 webview2_resize = utilsdll.webview2_resize
 webview2_resize.argtypes = WebView2PTR, c_int, c_int
-webview2_add_menu_noselect = utilsdll.webview2_add_menu_noselect
+webview2_add_menu = utilsdll.webview2_add_menu
 webview2_add_menu_noselect_CALLBACK = CFUNCTYPE(None)
+webview2_add_menu_CALLBACK = CFUNCTYPE(None, c_wchar_p)
 webview2_add_menu_noselect_getchecked = CFUNCTYPE(c_bool)
 webview2_add_menu_noselect_getuse = CFUNCTYPE(c_bool)
 webview2_contextmenu_gettext = CFUNCTYPE(c_wchar_p)
-webview2_add_menu_noselect.argtypes = (
-    WebView2PTR,
-    c_int,
-    c_void_p,
-    c_void_p,
-    c_bool,
-    c_void_p,
-    c_void_p,
-)
-webview2_add_menu = utilsdll.webview2_add_menu
-webview2_add_menu_CALLBACK = CFUNCTYPE(None, c_wchar_p)
 webview2_add_menu.argtypes = (
     WebView2PTR,
     c_int,
     c_void_p,
     c_void_p,
+    c_void_p,
+    c_void_p,
+    c_bool,
 )
 webview2_set_transparent = utilsdll.webview2_set_transparent
 webview2_set_transparent.argtypes = WebView2PTR, c_bool
@@ -474,23 +474,6 @@ _webview2_detect_version = utilsdll.webview2_detect_version
 _webview2_detect_version.argtypes = c_wchar_p, c_void_p
 
 
-def safe_int(s):
-    match = re.search(r"\d+", s)
-    if match:
-        return int(match.group())
-    else:
-        return 0
-
-
-def detect_webview2_version(directory=None):
-    _ = []
-    _f = CFUNCTYPE(c_void_p, c_wchar_p)(_.append)
-    _webview2_detect_version(directory, _f)
-    if _:
-        # X.X.X.X beta
-        return tuple(safe_int(_) for _ in _[0].split("."))
-
-
 webview2_ext_add = utilsdll.webview2_ext_add
 webview2_ext_add.argtypes = (c_wchar_p,)
 webview2_ext_add.restype = LONG
@@ -507,6 +490,249 @@ webview2_ext_rm.restype = LONG
 webview2_get_userdir = utilsdll.webview2_get_userdir
 webview2_get_userdir_callback = CFUNCTYPE(None, c_wchar_p)
 webview2_get_userdir.argtypes = (webview2_get_userdir_callback,)
+
+
+def wrapgetlabel(getlabel):
+    if not getlabel:
+        return
+
+    def __(f):
+        _ = f()
+        return str_alloc(_)
+
+    return functools.partial(__, getlabel)
+
+
+class WebView2:
+    @staticmethod
+    def DetectVersion(directory=None):
+
+        def safe_int(s):
+            match = re.search(r"\d+", s)
+            if match:
+                return int(match.group())
+            else:
+                return 0
+
+        _ = []
+        _f = CFUNCTYPE(c_void_p, c_wchar_p)(_.append)
+        _webview2_detect_version(directory, _f)
+        if _:
+            # X.X.X.X beta
+            return tuple(safe_int(_) for _ in _[0].split("."))
+
+    @staticmethod
+    def FindFixedRuntime():
+        hasset = os.environ.get("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER")
+        if hasset:
+            # 已设置的环境变量会影响检测。直接返回就行了
+            return hasset
+        maxversion = (0, 0, 0, 0)
+        maxvf = None
+
+        for f in os.listdir("."):
+            f = os.path.abspath(f)
+            version = WebView2.DetectVersion(f)
+            # 这个API似乎可以检测runtime是否是有效的，比自己查询版本更好
+            if not version:
+                continue
+            if (version[0] > 109) and gobject.sys_le_win81:
+                continue
+            if version > maxversion:
+                maxversion = version
+                maxvf = f
+                print(maxversion, f)
+        return maxvf
+
+    def __del__(self):
+        self.destroy()
+
+    def destroy(self):
+        _ = self.webview
+        self.webview = None
+        webview2_destroy(_)
+
+    def __init__(self, parent: HWND = None, transp=False, loadext=False, darklight=0):
+        self.binds = {}
+        self.callbacks = []
+        self.monitorptrs = []
+        FixedRuntime = self.FindFixedRuntime()
+        if FixedRuntime:
+            os.environ["WEBVIEW2_BROWSER_EXECUTABLE_FOLDER"] = FixedRuntime
+            # 在共享路径上无法运行
+            os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = "--no-sandbox"
+        self.webview = WebView2PTR()
+        _ = windows.CO_INIT()
+        windows.CHECK_FAILURE(
+            webview2_create(windows.pointer(self.webview), parent, transp, loadext)
+        )
+        webview2_put_PreferredColorScheme(self.webview, darklight)
+
+    def eval(self, js, callback=None):
+        cb = webview2_evaljs_CALLBACK(callback) if callback else None
+        webview2_evaljs(self.webview, js, cb)
+
+    def bind(self, fname, func):
+        self.binds[fname] = func
+        webview2_bind(self.webview, fname)
+
+    def put_PreferredColorScheme(self, darklight):
+        webview2_put_PreferredColorScheme(self.webview, darklight)
+
+    def set_transparent(self, b):
+        webview2_set_transparent(self.webview, b)
+
+    def get_zoom(self):
+        return webview2_get_ZoomFactor(self.webview)
+
+    def set_zoom(self, zoom):
+        webview2_put_ZoomFactor(self.webview, zoom)
+        self.cachezoom = webview2_get_ZoomFactor(self.webview)
+
+    def navigate(self, url):
+        webview2_navigate(self.webview, url)
+
+    def resize(self, w, h):
+        webview2_resize(self.webview, int(w), int(h))
+
+    def setHtml(self, html):
+        webview2_sethtml(self.webview, html)
+
+    def add_menu(
+        self, index=0, getlabel=None, callback=None, getchecked=None, getuse=None
+    ):
+        __ = webview2_add_menu_CALLBACK(callback) if callback else None
+        self.callbacks.append(__)
+        __1 = webview2_add_menu_noselect_getchecked(getchecked) if getchecked else None
+        self.callbacks.append(__1)
+        __2 = webview2_add_menu_noselect_getuse(getuse) if getuse else None
+        self.callbacks.append(__2)
+        getlabel = wrapgetlabel(getlabel)
+        __3 = webview2_contextmenu_gettext(getlabel) if getlabel else None
+        self.callbacks.append(__3)
+        webview2_add_menu(self.webview, index, __3, __, __1, __2, True)
+        return index + 1
+
+    def add_menu_noselect(
+        self, index=0, getlabel=None, callback=None, getchecked=None, getuse=None
+    ):
+        __ = webview2_add_menu_noselect_CALLBACK(callback) if callback else None
+        self.callbacks.append(__)
+        __1 = webview2_add_menu_noselect_getchecked(getchecked) if getchecked else None
+        self.callbacks.append(__1)
+        __2 = webview2_add_menu_noselect_getuse(getuse) if getuse else None
+        self.callbacks.append(__2)
+        getlabel = wrapgetlabel(getlabel)
+        __3 = webview2_contextmenu_gettext(getlabel) if getlabel else None
+        self.callbacks.append(__3)
+        webview2_add_menu(self.webview, index, __3, __, __1, __2, False)
+        return index + 1
+
+    def __webmessage_callback_f(self, js: str):
+        # 其实不应该在这里处理回调，否则例如如果在这里用getHTML，会卡死。
+        # 应该用PostMessageW(m_message_window, WM_APP, 0, (LPARAM) func)传出去再处理才对。
+        # 但是暂时没问题，就先这样吧。
+        try:
+            js: dict = json.loads(js)
+            method = js.get("method")
+            args = js.get("args")
+            self.binds[method](*args)
+        except:
+            print_exc()
+
+    def set_observe_ptrs(
+        self,
+        zoomchange_callback,
+        navigating_callback,
+        FilesDropped_callback,
+        titlechange_callback,
+        IconChanged_callback,
+    ):
+        self.monitorptrs.append(webview2_zoomchange_callback_t(zoomchange_callback))
+        self.monitorptrs.append(webview2_navigating_callback_t(navigating_callback))
+        self.monitorptrs.append(
+            webview2_webmessage_callback_t(self.__webmessage_callback_f)
+        )
+        self.monitorptrs.append(webview2_FilesDropped_callback_t(FilesDropped_callback))
+        self.monitorptrs.append(webview2_titlechange_callback_t(titlechange_callback))
+        self.monitorptrs.append(webview2_IconChanged_callback_t(IconChanged_callback))
+        webview2_set_observe_ptrs(self.webview, *self.monitorptrs)
+
+    class Extensions:
+
+        @staticmethod
+        def List():
+            collect = []
+
+            def __(_, _1, _2):
+                collect.append((_, _1, _2))
+
+            _ = webview2_list_ext_CALLBACK_T(__)
+            windows.CHECK_FAILURE(webview2_ext_list(_))
+            return collect
+
+        @staticmethod
+        def Enable(_id, enable):
+            windows.CHECK_FAILURE(webview2_ext_enable(_id, enable))
+
+        @staticmethod
+        def Remove(_id):
+            windows.CHECK_FAILURE(webview2_ext_rm(_id))
+
+        @staticmethod
+        def Add(path):
+            windows.CHECK_FAILURE(webview2_ext_add(path))
+
+        @staticmethod
+        def Manifest_Info(extid: str):
+
+            def __ExtensionDir(extid: str):
+
+                def __getuserdir():
+                    _ = []
+                    __ = webview2_get_userdir_callback(_.append)
+                    webview2_get_userdir(__)
+                    if _:
+                        return _[0]
+
+                path = __getuserdir()
+                if not path:
+                    return
+                path = os.path.join(path, "EBWebView/Default/Secure Preferences")
+                try:
+                    with open(path, "r", encoding="utf8") as ff:
+                        js = json.load(ff)
+                    path = js["extensions"]["settings"][extid]["path"]
+                    return path
+                except:
+                    pass
+
+            path = __ExtensionDir(extid)
+            if not path:
+                return
+            path1 = os.path.join(path, "manifest.json")
+            try:
+                with open(path1, "r", encoding="utf8") as ff:
+                    manifest = json.load(ff)
+                data = {}
+                data["path"] = path
+                try:
+                    icons = manifest["icons"]
+                    icon = icons[str(max((int(_) for _ in icons)))]
+                    data["icon"] = os.path.join(path, icon)
+                except:
+                    pass
+                try:
+                    path = manifest["options_ui"]["page"]
+                    url = "chrome-extension://{}/{}".format(extid, path)
+                    data["url"] = url
+                except:
+                    pass
+                return data
+            except:
+                return
+
+
 # WebView2
 
 # LoopBack
@@ -794,3 +1020,58 @@ def GetLiveCaptionsText(pid):
     if ret:
         return ret[0]
     return None
+
+
+### OTHERS
+
+glens_create_request = utilsdll.glens_create_request
+glens_create_request_CB = CFUNCTYPE(None, POINTER(c_char), c_size_t)
+glens_create_request.argtypes = (
+    c_uint64,
+    c_char_p,
+    c_size_t,
+    c_char_p,
+    c_size_t,
+    c_int32,
+    c_int32,
+    glens_create_request_CB,
+)
+glens_parse_response = utilsdll.glens_parse_response
+glens_parse_response_CB = CFUNCTYPE(None, c_char_p, c_float, c_float, c_float, c_float)
+glens_parse_response.argtypes = c_char_p, c_size_t, glens_parse_response_CB
+
+
+wcocr_init = utilsdll.wcocr_init
+wcocr_init.argtypes = (
+    c_wchar_p,
+    c_wchar_p,
+)
+wcocr_init.restype = c_void_p
+
+wcocr_destroy = utilsdll.wcocr_destroy
+wcocr_destroy.argtypes = (c_void_p,)
+
+wcocr_ocr = utilsdll.wcocr_ocr
+wcocr_ocr.argtypes = c_void_p, c_char_p, c_void_p
+wcocr_ocr.restype = c_bool
+wcocr_ocr_CB = CFUNCTYPE(None, c_float, c_float, c_float, c_float, c_char_p)
+
+
+RunMessageLoop = utilsdll.RunMessageLoop
+CreateMessageWindow = utilsdll.CreateMessageWindow
+CreateMessageWindow.argtypes = (WindowMessageCallback_t,)
+CreateMessageWindow.restype = HWND
+
+CreateSelectRangeWindow = utilsdll.CreateSelectRangeWindow
+CreateSelectRangeWindow_CB = CFUNCTYPE(
+    None, c_int, c_int, c_int, c_int, c_int, c_int, POINTER(c_char), c_size_t
+)
+CreateSelectRangeWindow.argtypes = (
+    HWND,
+    c_float,
+    c_int,
+    c_int,
+    c_int,
+    c_float,
+    CreateSelectRangeWindow_CB,
+)

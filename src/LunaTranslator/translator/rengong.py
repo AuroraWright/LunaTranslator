@@ -7,7 +7,6 @@ import gobject
 
 
 class TS(basetrans):
-    _compatible_flag_is_sakura_less_than_5_52_3 = False
 
     def checkfilechanged(self, p1, p):
         if self.paths == (p1, p):
@@ -96,7 +95,7 @@ class TS(basetrans):
                     self.lines[ks[i]].append(vs[i])
 
     def tryfindtranslate(self, content: str, _js: dict, _js2: dict = None):
-        if globalconfig["premtsimi2"] < 100:
+        if self.config["premtsimi2"] < 100:
 
             maxsim = 0
             savet = None
@@ -107,7 +106,7 @@ class TS(basetrans):
                     dis = NativeUtils.similarity(content, jc)
                     if dis > maxsim:
                         maxsim = dis
-                        if maxsim * 100 >= globalconfig["premtsimi2"]:
+                        if maxsim * 100 >= self.config["premtsimi2"]:
                             savet = self.analyze_result(jx[jc])
             return savet
 

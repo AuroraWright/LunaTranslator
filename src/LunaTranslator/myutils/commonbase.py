@@ -1,6 +1,6 @@
 from myutils.proxy import getproxy
 from myutils.utils import getlangtgt, getlangsrc, getlanguse, stringfyerror
-from myutils.config import _TR
+from myutils.config import _TR, globalconfig
 from myutils.wrapper import stripwrapper
 from language import Languages
 import requests, types
@@ -168,9 +168,20 @@ class commonbase(multikeyhelper):
         return self.__getlang(self.tgtlang_1)
 
     @property
+    def gconfig(self) -> dict:
+        return globalconfig[self._globalconfig_key].get(self.typename, {})
+
+    @property
     def config(self):
         try:
             return stripwrapper(self._setting_dict[self.typename]["args"])
+        except:
+            return {}
+
+    @property
+    def argstype(self):
+        try:
+            return self._setting_dict[self.typename]["argstype"]
         except:
             return {}
 
@@ -209,3 +220,12 @@ class commonbase(multikeyhelper):
 
     def renewsesion(self):
         self.proxysession = proxysession(self._globalconfig_key, self.typename)
+
+    def smartparselangprompt(self, template: str):
+        if template.isascii():
+            template = template.replace("{srclang}", self.srclang)
+            template = template.replace("{tgtlang}", self.tgtlang)
+        else:
+            template = template.replace("{srclang}", _TR(self.srclang_1.zhsname))
+            template = template.replace("{tgtlang}", _TR(self.tgtlang_1.zhsname))
+        return template

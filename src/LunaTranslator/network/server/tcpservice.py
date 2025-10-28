@@ -8,6 +8,7 @@ from urllib.parse import parse_qsl, urlsplit
 from network.structures import CaseInsensitiveDict
 from myutils.wrapper import threader
 from myutils.mimehelper import query_mime
+from myutils.config import globalconfig
 
 
 class ResponseWithHeader:
@@ -226,6 +227,8 @@ class WSHandler(HandlerBase):
             msg = self.__readstr()
             if not msg:
                 break
+            if isinstance(msg, bool):
+                continue
             self.onmessage(msg)
         self.sock.close()
 
@@ -301,6 +304,7 @@ class WSHandler(HandlerBase):
         elif opcode == 0x9:  # Ping 帧
             pong_frame = self.build_frame(0xA, payload)
             self.sock.send(pong_frame)
+            return True
 
     def send_close_frame(
         self, client_socket: socket.socket, status_code=1000, reason=""
@@ -413,6 +417,9 @@ class TCPService:
     def handle_client(self, client_socket: socket.socket):
         info = RequestInfo.readfrom(client_socket)
         print(info.log)
+        if info.path in globalconfig["network_service_disabled_paths"]:
+            print("disabled", info.path)
+            return ResponseInfo._404(client_socket)
         iswsreq = self.__checkifwebsocket(info.headers)
         for handler in self.handlers:
             if (iswsreq and issubclass(handler, HTTPHandler)) or (

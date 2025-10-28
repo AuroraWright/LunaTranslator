@@ -387,7 +387,7 @@ class TextBrowser(WebviewWidget, somecommon):
     def __init__(self, parent) -> None:
         super().__init__(parent, transp=True, loadext=globalconfig["webviewLoadExt"])
         # webview2当会执行alert之类的弹窗js时，若qt窗口不可视，会卡住
-        self.setMouseTracking(True)
+        self.setMouseTracking(globalconfig["dragable"])
         nexti = self.add_menu(0, lambda: _TR("查词"), self.menusearchword)
         nexti = self.add_menu(
             nexti,
@@ -400,11 +400,22 @@ class TextBrowser(WebviewWidget, somecommon):
             lambda w: gobject.base.read_text(w.strip()),
         )
         self.add_menu_noselect(0, lambda: _TR("清空"), self.___cleartext)
+
+        def __cb():
+            globalconfig["dragable"] = not globalconfig["dragable"]
+            self.setMouseTracking(globalconfig["dragable"])
+
+        self.add_menu_noselect(
+            1,
+            lambda: _TR("可拖动的"),
+            __cb,
+            getchecked=lambda: globalconfig["dragable"],
+        )
         self.bind("calllunaclickedword", gobject.base.clickwordcallback)
         self.bind("calllunaMouseMove", self.calllunaMouseMove)
         self.bind("calllunaMousePress", self.calllunaMousePress)
         self.bind("calllunaMouseRelease", self.calllunaMouseRelease)
-        self.bind("calllunaheightchange", self.calllunaheightchange)
+        self.bind("calllunaSizeChanged", self.calllunaSizeChanged)
         self.bind("calllunaEnter", self.calllunaEnter)
         self.bind("calllunaLeave", self.calllunaLeave)
         self.bind("calllunaloadready", self.calllunaloadready)
@@ -485,7 +496,7 @@ class TextBrowser(WebviewWidget, somecommon):
         if not globalconfig["useextrahtml"]:
             return
         for _ in [
-            "userconfig/extrahtml.html",
+            gobject.getconfig("extrahtml.html"),
             r"LunaTranslator\htmlcode\uiwebview\extrahtml\mainui.html",
         ]:
             if not os.path.exists(_):
@@ -497,11 +508,9 @@ class TextBrowser(WebviewWidget, somecommon):
         # print(js)
         self.eval(js)
 
-    def calllunaheightchange(self, h):
-        sz = QSizeF(
-            self.width(),
-            h * self.get_zoom(),
-        )
+    def calllunaSizeChanged(self, h, w):
+        r = self.get_zoom()
+        sz = QSizeF(w, h) * r
         if gobject.runtime_for_xp:
             sz *= NativeUtils.GetDevicePixelRatioF(int(self.winId()))
         self.contentsChanged.emit(sz.toSize())

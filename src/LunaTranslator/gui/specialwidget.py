@@ -2,6 +2,75 @@ from qtsymbols import *
 import threading
 from traceback import print_exc
 from myutils.wrapper import trypass
+import qtawesome
+from gui.dynalang import IconToolButton
+
+
+def find_best_ticks(max_seconds):
+    IDEAL_TICK_COUNT = 5
+
+    nice_intervals = [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        10,
+        15,
+        20,
+        30,
+        60,  # 秒
+        2 * 60,
+        3 * 60,
+        4 * 60,
+        5 * 60,
+        6 * 60,
+        10 * 60,
+        15 * 60,
+        20 * 60,
+        30 * 60,  # 分钟
+        3600,
+        2 * 3600,
+        3 * 3600,
+        4 * 3600,
+        5 * 3600,
+        6 * 3600,
+        12 * 3600,  # 小时
+    ]
+
+    best_option = {"interval": None, "score": float("inf")}
+
+    for interval in nice_intervals:
+        num_ticks = max_seconds // interval + 1
+
+        count_penalty = abs(num_ticks - IDEAL_TICK_COUNT) ** 1.5
+
+        axis_end_time = num_ticks * interval
+        overshoot_ratio = (
+            (axis_end_time - max_seconds) / axis_end_time if axis_end_time > 0 else 0
+        )
+
+        total_score = count_penalty * 10 + overshoot_ratio
+
+        if total_score < best_option["score"]:
+            best_option = {
+                "interval": interval,
+                "num_ticks": num_ticks,
+                "score": total_score,
+            }
+
+    best_interval = best_option["interval"]
+    final_num_ticks = best_option["num_ticks"]
+
+    ticks = []
+    for i in range(final_num_ticks):
+        tick_seconds = i * best_interval
+        if tick_seconds > max_seconds:
+            continue
+        ticks.append(tick_seconds)
+
+    return ticks
 
 
 class chartwidget(QWidget):
@@ -46,7 +115,10 @@ class chartwidget(QWidget):
             xmargin = 0
 
             max_y = int(max(y for _, y in self.data))
-            y_labels = [self.ytext(i * max_y / 5) for i in range(6)]
+            yticks = find_best_ticks(max_y)
+            if self.data and self.data[0][1]:
+                yticks.insert(0, self.data[0][1])
+            y_labels = [self.ytext(y) for y in yticks]
 
             x_labels = [self.xtext(x) for x, _ in self.data]
             for l in y_labels:
@@ -66,20 +138,22 @@ class chartwidget(QWidget):
             height = self.height() - 2 * ymargin
 
             # 纵坐标
+            rects: "list[QRectF]" = []
             for i, label in enumerate(y_labels):
-                y = ymargin + height - i * (height / 5)
+                y = ymargin + height - height * yticks[i] / max_y
                 painter.drawLine(
                     QPointF(xmargin - self.scalelinelen, y), QPointF(xmargin, y)
                 )
-                painter.drawText(
-                    QPointF(
-                        xmargin
-                        - self.scalelinelen
-                        - self.fmetrics.size(0, label).width(),
-                        y + 5,
-                    ),
-                    label,
+                p = QPointF(
+                    xmargin - self.scalelinelen - self.fmetrics.size(0, label).width(),
+                    y + 5,
                 )
+                newrect = QRectF(p, self.fmetrics.size(0, label))
+                if any(_.intersected(newrect) for _ in rects):
+                    continue
+                else:
+                    rects.append(newrect)
+                    painter.drawText(newrect.topLeft(), label)  # value
 
             painter.drawLine(
                 QPointF(xmargin, ymargin), QPointF(xmargin, ymargin + height)
@@ -458,12 +532,22 @@ class delayloadvbox(QWidget):
         return len(self.internal_widgets)
 
 
-class shownumQPushButton(QPushButton):
-    def __init__(self, *arg, **kw):
-        super().__init__(*arg, **kw)
+class shownumQPushButton(IconToolButton):
+    def __init__(self, T):
+        super().__init__()
+        self.setText(T)
         self.num = 0
         self.setCheckable(True)
-        self.clicked.connect(self.setChecked)
+        self.toggled.connect(self.setChecked)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+    def setChecked(self, checked):
+        self.setIcon(
+            qtawesome.icon("fa.chevron-down" if checked else "fa.chevron-right")
+        )
+        super().setChecked(checked)
 
     def setnum(self, num):
         self.num = num
@@ -479,18 +563,10 @@ class shownumQPushButton(QPushButton):
 
         textRect = self.fontMetrics().boundingRect(self.text())
         numberRect = rect.adjusted(textRect.width() + 10, 0, -10, 0)
-
         painter.drawText(
             numberRect,
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
             str(self.num),
-        )
-
-        numberRect = rect.adjusted(10, 0, textRect.width() + -10, 0)
-        painter.drawText(
-            numberRect,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            ("+", "-")[self.isChecked()],
         )
 
 

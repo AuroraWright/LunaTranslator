@@ -5,7 +5,9 @@
 
 すべてのボタンは自由に位置を調整できます。ボタンは「左」「中央」「右」の整列グループに設定でき、相対位置の調整は整列グループ内で制限されます。
 
-ボタンの色は「表示設定」->「インターフェース設定」->「ツールバー」->「ボタンの色」でカスタマイズできます。
+ボタンの色は「色」をクリックしてカスタマイズできます。
+
+ボタンのアイコンは「アイコン」をクリックしてカスタマイズできます。
 
 一部のボタンには2つのアイコンがあり、2つの異なる状態を示します。一部のボタンには1つのアイコンしかありませんが、異なる色を使用して異なる状態を表します。
 :::
@@ -25,12 +27,12 @@
 }
 </style>
 
-1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> 手動翻訳 {#anchor-retrans}
+1. #### <i class="fa fa-rotate-right"></i> <i class="fa fa-icon fa-rotate-right"></i> 手動実行 {#anchor-retrans}
     実際の意味は、現在のテキスト入力ソースから1回入力を読み取り、翻訳を実行することです。
 
     たとえば、現在のモードがOCRの場合、再度OCRを実行します。
 
-1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> 自動翻訳 {#anchor-automodebutton}
+1. #### <i class="fa fa-forward"></i> <i class="btnstatus2 fa fa-forward"></i> オートモード {#anchor-automodebutton}
     実際の意味は、現在のテキスト入力ソースからの自動読み取りを一時停止/再開することです。
 
     たとえば、現在のモードがHOOKの場合、ゲームテキストの読み取りを一時停止します。現在のモードがOCRの場合、自動画像認識を一時停止します。現在のモードがクリップボードモードの場合、クリップボードの自動読み取りを一時停止します。
@@ -91,7 +93,7 @@
 1. #### <i class="fa fa-spinner"></i> <i class="fa fa-icon fa-rotate-right"></i> OCRを再実行 {#anchor-ocr_once_follow}
     `1回OCRを実行`を使用した後、このボタンを使用して、元の位置で再度OCRを実行し、認識エリアを再選択する必要はありません。
     
-1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 固有名詞翻訳 翻訳前の置換 {#anchor-noundict_direct}
+1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 翻訳前の置換 {#anchor-noundict_direct}
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 固有名詞翻訳 {#anchor-noundict}
 1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> 翻訳結果の修正 {#anchor-fix}
     上記の3つのボタンは、翻訳最適化設定ウィンドウを迅速に開いて新しい指定用語を追加するために使用されます。
@@ -108,17 +110,17 @@
 
     実際には、ボタンバーにボタンがない場合、追加の空白領域があり、自由にドラッグできます。このボタンはドラッグ位置を予約するためのものです。
 1. #### <i class="fa fa-compress"></i> <i class="fa fa-expand"></i> ウィンドウ拡大縮小 {#anchor-fullscreen}
-    ゲームウィンドウに内蔵のMagpieを使用してワンクリックでスケーリングが可能です。
+    ゲームウィンドウをバインド後、ゲームウィンドウに内蔵のMagpieを使用してワンクリックでスケーリングが可能です。
 
     左クリックでウィンドウスケーリング、右クリックでフルスクリーンスケーリングを行います。
 
 1. #### <i class="fa fa-camera"></i> <i class="fa fa-icon fa-rotate-right"></i> ウィンドウスクリーンショット {#anchor-grabwindow}
-    バインドされたウィンドウのスクリーンショットを撮ることができます（デフォルトではGDIとWinrtの2つのスクリーンショットを撮りますが、どちらも失敗する可能性があります）。最良の部分は、現在Magpieを使用してスケーリングしている場合、拡大されたウィンドウのスクリーンショットも撮ることです。
+    ゲームウィンドウをバインド後、バインドされたウィンドウのスクリーンショットを撮ることができます（デフォルトではGDIとWinrtの2枚が撮られ、どちらも失敗する可能性があります）。Magpieでスケーリング中使用中の場合は、拡大されたウィンドウも撮影されます。
 
     左クリックすると、スクリーンショットがファイルに保存され、右クリックすると、スクリーンショットがクリップボードに保存されます。中ボタンはゲーム内のオーバーレイレイヤを開くためです。
 
 1. #### <i class="fa fa-volume-off"></i> <i class="btnstatus2 fa fa-volume-up"></i> ゲームをミュート {#anchor-muteprocess}
-    ゲームウィンドウをバインドした後（HOOKモードだけでなく、OCRまたはクリップボードモードでも、ゲームウィンドウがバインドされている限り）、ワンクリックでゲームをミュートにできます。システムの音量ミキサーでゲームをミュートにする手間が省けます。
+    ゲームウィンドウをバインドした後、ワンクリックでゲームをミュートにできます。システムの音量ミキサーでゲームをミュートにする手間が省けます。
 1. #### <i class="fa fa-eye"></i> <i class="btnstatus2 fa fa-eye-slash"></i> 原文の表示/非表示 {#anchor-showraw}
     原文を表示するかどうかを切り替えます。すぐに反映されます。
 
@@ -175,3 +177,6 @@
 
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> 辞書を引く {#anchor-searchwordW}
     現在選択されているテキストがある場合は、選択されているテキストを問い合せ、単語検索ウィンドウを開きます。それ以外の場合は単に単語検索ウィンドウを開いたり閉じたりします。
+
+1. #### <i class="fa fa-refresh"></i> 翻訳状態をリセットします {#anchor-reset_TS_status}
+    翻訳状態をリセットします。主に増加し続ける大規模モデル翻訳のニーズに対応し、保存されたコンテキストやその他の情報をクリアできます。

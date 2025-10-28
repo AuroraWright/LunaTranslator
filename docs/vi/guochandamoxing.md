@@ -7,23 +7,69 @@ Nếu bạn chỉ có nhiều khóa khác nhau và muốn luân phiên sử dụ
 
 Tuy nhiên, đôi khi bạn có thể muốn sử dụng nhiều địa chỉ giao diện API, lời nhắc, mô hình hoặc tham số khác nhau đồng thời để so sánh kết quả dịch thuật. Đây là cách thực hiện:
 
-1. Nhấp vào nút "+" ở phía trên
-   ![img](https://image.lunatranslator.org/zh/damoxing/extraapi1.png)
-1. Một cửa sổ sẽ xuất hiện. Chọn giao diện mô hình lớn chung và đặt tên cho nó. Điều này sẽ sao chép các cài đặt và API của giao diện mô hình lớn chung hiện tại.
-   ![img](https://image.lunatranslator.org/zh/damoxing/extraapi2.png)
+1. Nhấp vào nút "+" phía trên và chọn giao diện mô hình lớn thông dụng
+   ![img](https://image.lunatranslator.org/zh/damoxing/plus.png)
+1. Một cửa sổ sẽ bật lên - hãy đặt tên cho nó. Thao tác này sẽ sao chép cài đặt và API hiện tại của giao diện mô hình lớn thông dụng
+   ![img](https://image.lunatranslator.org/zh/damoxing/name.png)
 1. Kích hoạt giao diện đã sao chép và cấu hình nó riêng biệt. Giao diện đã sao chép có thể chạy song song với giao diện gốc, cho phép bạn sử dụng nhiều cài đặt khác nhau đồng thời.
    ![img](https://image.lunatranslator.org/zh/damoxing/extraapi3.png)
 :::
 
-::: info
-Hầu hết các **địa chỉ giao diện API** có thể được chọn từ danh sách thả xuống, nhưng một số có thể bị thiếu. Đối với các giao diện khác không có trong danh sách, vui lòng tham khảo tài liệu của chúng để điền thông tin chi tiết.
-:::
+### Giải thích tham số
 
-::: tip
-**model** có thể được chọn từ danh sách thả xuống, và một số giao diện có thể tự động lấy danh sách mô hình dựa trên **địa chỉ giao diện API** và **API Key**. Sau khi điền hai trường này, nhấp vào nút làm mới bên cạnh **model** để lấy danh sách mô hình khả dụng.
+1. #### Địa chỉ API
 
-Nếu nền tảng không hỗ trợ lấy mô hình qua API và danh sách mặc định không bao gồm mô hình bạn cần, vui lòng tham khảo tài liệu chính thức của giao diện để điền thủ công mô hình.
-:::
+    `Địa chỉ API` của hầu hết các nền tảng mô hình lớn phổ biến có thể được chọn trong danh sách thả xuống, nhưng có thể bị thiếu một số. Đối với các API không được liệt kê, vui lòng tự tham khảo tài liệu của nền tảng để điền.
+
+1. #### API Key
+
+    `API Key` có thể lấy được trên nền tảng. Đối với nhiều Key được thêm vào, hệ thống sẽ tự động luân phiên và điều chỉnh trọng số của Key dựa trên phản hồi lỗi.
+
+1. #### Model
+
+    Với hầu hết các nền tảng, sau khi điền `Địa chỉ API` và `API Key`, nhấp vào nút làm mới bên cạnh `model` để lấy danh sách model khả dụng.
+
+    Nếu nền tảng không hỗ trợ API lấy model và model bạn cần không có trong danh sách mặc định, vui lòng tham khảo tài liệu chính thức của API để điền model thủ công.
+
+1. #### Xuất luồng (Streaming output)
+
+    Khi bật, nội dung đầu ra của model sẽ được hiển thị theo luồng tăng dần. Nếu tắt, tất cả nội dung sẽ được hiển thị một lần sau khi model hoàn thành.
+
+1. #### Ẩn quá trình suy nghĩ
+
+    Khi bật, nội dung được bao bọc bởi thẻ \<think\> sẽ không được hiển thị. Nếu bật ẩn quá trình suy nghĩ, tiến độ suy nghĩ hiện tại sẽ được hiển thị.
+
+1. #### Số lượng ngữ cảnh đính kèm
+
+    Sẽ đính kèm một số lịch sử văn bản gốc và API dịch cho mô hình lớn để tối ưu hóa bản dịch. Đặt thành 0 sẽ tắt tối ưu hóa này.
+
+    - **Tối ưu tỷ lệ trúng cache** - Đối với các nền tảng như DeepSeek, nền tảng sẽ tính phí thấp hơn cho đầu vào trúng cache. Khi kích hoạt, hình thức đính kèm ngữ cảnh sẽ được tối ưu để tăng tỷ lệ trúng cache.
+
+1. #### Tùy chỉnh system prompt / Tùy chỉnh user message / Prefill
+
+    Một số cách khác nhau để kiểm soát nội dung đầu ra, có thể thiết lập theo sở thích hoặc sử dụng mặc định.
+
+    Trong prompt hệ thống tùy chỉnh và tin nhắn người dùng, bạn có thể sử dụng các trường để tham chiếu thông tin:
+    - `{sentence}`: Văn bản cần dịch
+    - `{srclang}` và `{tgtlang}`: Ngôn ngữ nguồn và ngôn ngữ đích. Nếu chỉ sử dụng tiếng Anh trong prompt, chúng sẽ được thay thế bằng bản dịch tiếng Anh của tên ngôn ngữ. Ngược lại, chúng sẽ được thay thế bằng bản dịch tên ngôn ngữ trong ngôn ngữ UI hiện tại.
+    - `{contextOriginal[N]}` và `{contextTranslation[N]}` và `{contextTranslation[N]}`: N câu lịch sử văn bản gốc, bản dịch và cả hai. N không liên quan đến "số lượng ngữ cảnh đi kèm" và cần được thay thế bằng một số nguyên khi nhập vào.
+    - `{DictWithPrompt[XXXXX]}`: Trường này có thể tham chiếu các mục trong "Danh sách Dịch Thuật Ngữ Riêng". **Nếu không tìm thấy mục phù hợp, trường này sẽ bị xóa để tránh làm hỏng nội dung dịch**. Ở đây, `XXXXX` là một đoạn hướng dẫn LLM sử dụng các mục đã cho để tối ưu hóa bản dịch. Nó có thể được tùy chỉnh hoặc vô hiệu hóa tin nhắn tùy chỉnh của người dùng để sử dụng lời nhắc mặc định.
+
+1. #### Temperature / max tokens / top p / frequency penalty
+
+    Đối với một số nền tảng và mô hình, các tham số như `top p` và `frequency penalty` có thể không được chấp nhận bởi giao diện, hoặc tham số `max tokens` đã bị loại bỏ và thay bằng `max completion tokens`. Việc kích hoạt hoặc hủy kích hoạt công tắc có thể giải quyết những vấn đề này.
+
+1. #### Reasoning effort
+
+    Đối với nền tảng Gemini, tùy chọn sẽ tự động ánh xạ thành `thinkingBudget` của Gemini, quy tắc ánh xạ: 
+    
+    minimal->0 (tắt suy nghĩ, nhưng không áp dụng cho model Gemini-2.5-Pro), low->512, medium->-1 (kích hoạt suy nghĩ động), high->24576.
+
+1. #### Các tham số khác
+
+    Trên đây chỉ cung cấp một số tham số phổ biến. Nếu nền tảng bạn sử dụng cung cấp các tham số hữu ích khác chưa được liệt kê, có thể tự thêm cặp khóa-giá trị.
+
+## Các nền tảng mô hình lớn phổ biến
 
 ### Nền tảng mô hình lớn ở Âu Mỹ  
 
@@ -151,8 +197,14 @@ Thay thế `{endpoint}` và `{deployName}` bằng endpoint và deployName của 
 
 :::
 
-## Giao Diện Chung Cho Mô Hình Lớn - Dịch ngoại tuyến
+### Trình quản lý tổng hợp API
 
-Bạn cũng có thể sử dụng các công cụ như [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama), [one-api](https://github.com/songquanpeng/one-api) để triển khai các mô hình, sau đó điền địa chỉ và mô hình.
+Bạn cũng có thể sử dụng các công cụ chuyển tiếp API như [new-api](https://github.com/QuantumNous/new-api) để quản lý tổng hợp nhiều nền tảng mô hình lớn và nhiều khóa một cách thuận tiện hơn.
 
-Bạn cũng có thể sử dụng các nền tảng như Kaggle để triển khai mô hình lên đám mây, trong trường hợp này bạn có thể cần sử dụng SECRET_KEY; nếu không, bạn có thể bỏ qua tham số SECRET_KEY.
+Để biết phương pháp sử dụng, bạn có thể tham khảo [bài viết này](https://www.newapi.ai/apps/luna-translator/).
+
+
+### Mô hình triển khai ngoại tuyến
+
+Bạn cũng có thể sử dụng các công cụ như [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama) để triển khai các mô hình, sau đó điền địa chỉ và mô hình.
+

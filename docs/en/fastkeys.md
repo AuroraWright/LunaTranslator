@@ -6,11 +6,11 @@
 
 ## General
 
-1. #### Retranslate {#anchor-_1}
+1. #### Manual execution {#anchor-_1}
     Reads input once from the current text input source and performs translation.
     For example, if the current mode is OCR, it will perform OCR again.
 
-1. #### Auto Translation {#anchor-_2}
+1. #### Auto mode {#anchor-_2}
     Pauses/resumes automatic text reading from the current text input source.
     For example, if the current mode is HOOK, it will pause reading game text; if the current mode is OCR, it will pause automatic image recognition; if the current mode is clipboard, it will pause automatic reading from the clipboard.
 
@@ -46,6 +46,15 @@
 
 1. #### Exit {#anchor-_17}
     N/A
+
+1. #### Auto Clicker {#anchor-44}
+    N/A
+
+1. #### Reset translation state {#anchor-45}
+    Resets the translation status, primarily addressing the growing demand for large model translations, and clears saved context and other information.
+
+1. #### Save configuration immediately {#anchor-50}
+    Save the current user configuration immediately, rather than waiting until exit.
 
 ## HOOK
 
@@ -83,6 +92,26 @@
 1. #### Perform OCR Again {#anchor-_26_1}
     After using `Perform OCR Once`, using this shortcut key will perform OCR again in the original position without reselecting the recognition area.
 
+1. #### Multi-Region Mode Switch to the previous area. {#anchor-46}
+    **Only available in OCR mode**
+
+    After activating Multi-zone mode, you can use this shortcut to switch the focused zone to the previous one and immediately re-perform OCR.
+
+1. #### Multi-Region Mode Switch to the next area. {#anchor-47}
+    **Only available in OCR mode**
+
+    After activating Multi-zone mode, you can use this shortcut to switch the focused zone to the next one and immediately re-perform OCR.
+
+1. #### Multi-Region Mode Switch to the area adjacent to the mouse. {#anchor-48}
+    **Only available in OCR mode**
+
+    After activating Multi-zone mode, you can use this shortcut to switch the focused zone to the one near the mouse cursor and immediately re-perform OCR.
+
+1. #### Multi-Region Mode Cancel regional focus {#anchor-49}
+    **Only available in OCR mode**
+
+    After activating multi-zone mode, you can use this shortcut key to cancel zone focus.
+
 ## Clipboard
 
 1. #### Read Clipboard {#anchor-36}
@@ -108,6 +137,9 @@
 
 ## Game
 
+1. #### Game Management {#anchor-_10}
+    N/A
+
 1. #### Bind to Window (Click to Cancel) {#anchor-_15}
     After binding the game window, `Window Scaling`, `Window Screenshot`, `Game Mute`, `Follow Game Window` -> `Cancel Topmost When Game Loses Focus` and `Move Synchronously When Game Window Moves`, as well as recording game time, become available.
     This shortcut key is available regardless of HOOK/OCR/clipboard mode.
@@ -116,16 +148,19 @@
     In OCR/clipboard mode, after binding the window, it can also be associated with the current game settings in HOOK mode, thus using the game's proprietary translation optimization dictionary, etc.
 
 1. #### Window Screenshot {#anchor-_21}
-    Can take a screenshot of the bound window (default takes two screenshots, GDI and Winrt, both of which may fail). The best part is that if Magpie is currently being used for scaling, it will also take a screenshot of the scaled window.
+    After binding the game window, you can take screenshots of the bound window (by default, two screenshots will be taken: GDI and Winrt, both of which may fail). If Magpie scaling is currently in use, it will also capture the magnified window.
 
 1. #### Mute Game {#anchor-_22}
-    After binding the game window (not just in HOOK mode, but also in OCR or clipboard mode, as long as the game window is bound), you can mute the game with one click, saving the trouble of muting the game in the system volume mixer.
+    After binding the game window, you can mute the game with one click, eliminating the hassle of muting the game in the system volume mixer.
+
+1. #### Game paused {#anchor-43}
+    After binding the game window, you can pause or resume the game process with one click.
 
 1. #### Magpie Scale {#anchor-41}
-    Allows one-click full-screen scaling of the game window using the built-in Magpie.
+    After binding the game window, you can use the built-in Magpie to perform full-screen scaling on the game window with one click.
 
 1. #### Magpie Windowed Scaling {#anchor-42}
-    Allows one-click windowed scaling of the game window using the built-in Magpie.
+    After binding the game window, you can use the built-in Magpie to perform windowed scaling on the game window with one click.
 
 ## Dictionary Lookup
 

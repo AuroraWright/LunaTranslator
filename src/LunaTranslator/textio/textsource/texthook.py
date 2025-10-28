@@ -7,9 +7,9 @@ from myutils.config import (
     globalconfig,
     savehook_new_data,
     findgameuidofpath,
-    getlanguse,
     _TR,
 )
+from main import checkintegrity
 from textio.textsource.textsourcebase import basetext
 from myutils.utils import getlangtgt, safe_escape, stringfyerror
 from myutils.kanjitrans import kanjitrans
@@ -33,6 +33,7 @@ from ctypes import (
     c_uint8,
     c_uint,
     c_char,
+    cast,
 )
 from ctypes.wintypes import DWORD, LPCWSTR
 
@@ -86,6 +87,7 @@ HostInfoHandler = CFUNCTYPE(None, c_int, c_wchar_p)
 HookInsertHandler = CFUNCTYPE(None, DWORD, c_uint64, c_wchar_p)
 EmbedCallback = CFUNCTYPE(None, c_wchar_p, ThreadParam)
 QueryHistoryCallback = CFUNCTYPE(None, c_wchar_p)
+I18NQueryCallback = CFUNCTYPE(c_void_p, c_wchar_p)
 
 
 class texthook(basetext):
@@ -128,7 +130,6 @@ class texthook(basetext):
         self.maybepids = []
         self.maybepidslock = threading.Lock()
         self.keepref = []
-        self.selectinghook = None
         self.selectedhook = []
         self.usermanualaccepthooks = []
         self.multiselectedcollector = []
@@ -178,7 +179,11 @@ class texthook(basetext):
             HostInfoHandler,
             HookInsertHandler,
             EmbedCallback,
+            I18NQueryCallback,
         )
+        self.Luna_AllocString = LunaHost.Luna_AllocString
+        self.Luna_AllocString.argtypes = (c_wchar_p,)
+        self.Luna_AllocString.restype = c_void_p
         self.Luna_ConnectProcess = LunaHost.Luna_ConnectProcess
         self.Luna_ConnectProcess.argtypes = (DWORD,)
         self.Luna_CheckIfNeedInject = LunaHost.Luna_CheckIfNeedInject
@@ -191,8 +196,7 @@ class texthook(basetext):
         self.Luna_RemoveHook.argtypes = DWORD, c_uint64
         self.Luna_DetachProcess = LunaHost.Luna_DetachProcess
         self.Luna_DetachProcess.argtypes = (DWORD,)
-        self.Luna_SetLanguage = LunaHost.Luna_SetLanguage
-        self.Luna_SetLanguage.argtypes = (c_char_p,)
+        self.Luna_ResetLang = LunaHost.Luna_ResetLang
         self.Luna_FindHooks = LunaHost.Luna_FindHooks
         self.Luna_FindHooks.argtypes = (
             DWORD,
@@ -230,11 +234,15 @@ class texthook(basetext):
             HostInfoHandler(gobject.base.hookselectdialog.sysmessagesignal.emit),
             HookInsertHandler(self.newhookinsert),
             EmbedCallback(self.getembedtext),
+            I18NQueryCallback(self.i18nQueryCallback),
         ]
         self.keepref += procs
         self.Luna_Start(*procs)
         self.setsettings()
         self.setlang()
+
+    def i18nQueryCallback(self, querytext: str):
+        return self.Luna_AllocString(_TR(querytext))
 
     def listprocessm(self):
         cachefname = gobject.gettempdir("{}.txt".format(time.time()))
@@ -361,6 +369,10 @@ class texthook(basetext):
             self.autohookmonitorthread()
 
     def start_unsafe(self, pids):
+        _ = checkintegrity()
+        if _:
+            gobject.base.RichMessageBox.emit(_)
+            return
         injectpids = []
         for pid in pids:
             self.Luna_ConnectProcess(pid)
@@ -411,7 +423,7 @@ class texthook(basetext):
             self.start_unsafe(pids)
         except Exception as e:
             print_exc()
-            gobject.base.translation_ui.displaymessagebox.emit("错误", stringfyerror(e))
+            gobject.base.RichMessageBox.emit((_TR("错误"), stringfyerror(e)))
 
     @threader
     def waitend(self, pid):
@@ -440,7 +452,6 @@ class texthook(basetext):
             self.Luna_InsertPCHooks(pid, 1)
         gobject.base.displayinfomessage(self.hconfig["title"], "<msg_info_refresh>")
         self.flashembedsettings(pid)
-        self.setsettings()
 
     def InsertPCHooks(self, which):
         for pid in self.pids:
@@ -558,7 +569,6 @@ class texthook(basetext):
         autoindex = self.matchkeyindex(key)
         select = autoindex != -1
         if select:
-            self.selectinghook = key
             insertindex = len(self.selectedhook) - 1
             for j in range(len(self.selectedhook)):
                 if self.selectedhook[j] in self.usermanualaccepthooks:
@@ -574,7 +584,7 @@ class texthook(basetext):
         gobject.base.hookselectdialog.addnewhooksignal.emit(key, select, isembedable)
 
     def setlang(self):
-        self.Luna_SetLanguage(getlanguse().encode())
+        self.Luna_ResetLang()
 
     def setsettings(self):
         self.Luna_Settings(
@@ -679,9 +689,6 @@ class texthook(basetext):
                 self.dispatchtext(output)
             else:
                 self.dispatchtext_multiline_delayed(key, output)
-        if key == self.selectinghook:
-            gobject.base.hookselectdialog.getnewsentencesignal.emit(output)
-
         gobject.base.hookselectdialog.update_item_new_line.emit(key, output)
 
     def serialkey(self, key):
@@ -701,11 +708,9 @@ class texthook(basetext):
 
     def dispatchtext(self, text):
         self.runonce_line = text
-
-        donttrans = (windows.GetKeyState(windows.VK_CONTROL) < 0) or (
-            windows.GetKeyState(windows.VK_SHIFT) < 0
-        )
-        return super().dispatchtext(text, donttrans=donttrans, isFromHook=True)
+        if len(text) > globalconfig.get("maxOutputSize", 10000):
+            return
+        return super().dispatchtext(text, isFromHook=True)
 
     def gettextonce(self):
         return self.runonce_line

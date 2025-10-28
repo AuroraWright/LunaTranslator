@@ -80,7 +80,7 @@ export const zh = defineConfig({
             {
                 text: '基本的',
                 items: [
-                    { text: '下载 & 启动 & 更新', link: '/zh/README' },
+                    { text: '软件下载 & 常见问题', link: '/zh/README' },
                     { text: '基本用法', link: '/zh/basicuse' },
                     { text: '支持作者', link: '/zh/support' }
                 ]
@@ -103,11 +103,10 @@ export const zh = defineConfig({
                         items: [
                             { text: 'OCR接口设置', link: '/zh/useapis/ocrapi' },
                             { text: 'OCR自动化执行方法', link: '/zh/ocrparam' },
-                            { text: 'OCR模式绑定游戏窗口', link: '/zh/gooduseocr' }
                         ]
                     },
                     {
-                        text: '翻译接口设置', link: '/zh/useapis/tsapi',
+                        text: '翻译接口设置', link: '/zh/guochandamoxing',
                         collapsed: true,
                         items: [
                             { text: '大模型翻译接口', link: '/zh/guochandamoxing' },
@@ -144,6 +143,16 @@ export const zh = defineConfig({
                     { text: '快捷按键', link: '/zh/fastkeys' },
                     { text: '网络服务', link: '/zh/apiservice' },
                     { text: '语音识别', link: '/zh/sr' },
+                    {
+                        text: '实用技巧', link: '/zh/gooduse/multiconfigs',
+                        collapsed: true,
+                        items: [
+                            { text: '创建多份配置文件', link: '/zh/gooduse/multiconfigs' },
+                            { text: '在HOOK模式下临时使用OCR', link: '/zh/gooduse/useocrinhook' },
+                            { text: 'OCR模式绑定游戏窗口', link: '/zh/gooduse/gooduseocr' },
+                        ]
+
+                    },
                 ]
             }
         ]

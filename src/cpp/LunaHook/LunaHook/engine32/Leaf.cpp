@@ -594,7 +594,7 @@ bool InsertAquaplus3Hook()
   hp.address = addr + 1;
   hp.offset = regoffset(eax);
   hp.type = CODEC_UTF8 | USING_STRING | NO_CONTEXT;
-  hp.filter_fun = NewLineCharToSpaceFilterA;
+  hp.filter_fun = NewLineCharToSpaceA;
   return NewHook(hp, "Aquaplus3");
 }
 bool InsertAquaplusHooks()
@@ -822,7 +822,93 @@ namespace
     return NewHook(hp, "toheartpse");
   }
 }
+namespace
+{
+  //[000128][Leaf] Filsnown ～光と刻～ Windows版（猪名川でいこう!!付属）
+  bool filsnown()
+  {
+    BYTE sig[] = {
+        0x8b, 0x45, 0x14,
+        0x3d, 0x40, 0x81, 0x00, 0x00,
+        0x0f, 0x84, XX4,
+        0x83, 0xf8, 0x20,
+        0x0f, 0x86, XX4,
+        0x3d, 0xd0, 0x00, 0x00, 0x00,
+        0x73, XX,
+        0xC7, 0x45, XX, 0x01, 0x00, 0x00, 0x00,
+        0x8b, 0x04, 0x85, XX4,
+        0x89, 0x45, XX,
+        0xeb, XX,
+        0x3d, 0x40, 0x81, 0x00, 0x00,
+        0x72, XX,
+        0x3d, 0xa0, 0x83, 0x00, 0x00,
+        0x73, XX};
+    auto addr = MemDbg::findBytes(sig, sizeof(sig), processStartAddress, processStopAddress);
+    if (!addr)
+      return false;
+    addr = MemDbg::findEnclosingAlignedFunction(addr);
+    if (!addr)
+      return false;
+    HookParam hp;
+    hp.address = addr;
+    hp.offset = stackoffset(4);
+    hp.type = USING_CHAR | CODEC_ANSI_BE;
+    return NewHook(hp, "filsnown");
+  }
+}
+namespace
+{
+  bool veryveryold()
+  {
+    static bool iskizuato = wcscmp(processName_lower, L"kizuato.exe") == 0;
+    static bool issizuku = wcscmp(processName_lower, L"sizuku.exe") == 0;
+    if (!issizuku && !iskizuato)
+      return false;
+    if (0)
+    {
+      // https://github.com/catmirrors/xlvns
+      // 这里面有，不过不太对，需要校对。
+      HookParam hp;
+      hp.address = iskizuato ? 0x40B3AE : 0x4095BE;
+      hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+      {
+        hp->text_fun = nullptr;
+        auto _ = (char *)context->esi;
+        ConsoleOutput("%p", _);
+        auto f = fopen("./1.bin", "wb");
+        fwrite(_, 1, 72 * 0x1000, f);
+        fclose(f);
+      };
+      return NewHook(hp, "kizuato");
+    }
+    BYTE sig[] = {
+        0xe8, XX4,
+        0xa3, XX4,
+        0x83, 0xc0, 0x28,
+        0x83, 0xc4, 0x08,
+        0x4f,
+        0xa3, XX4,
+        0x8d, 0x90, 0x00, 0x04, 0x00, 0x00,
+        0x0f, 0xbf, 0xc7};
+    auto addr = MemDbg::findBytes(sig, sizeof(sig), processStartAddress, processStopAddress);
+    if (!addr)
+      return false;
+    addr = findfuncstart(addr, 0x100, true);
+    if (!addr)
+      return false;
+    HookParam hp;
+    hp.address = addr;
+    hp.type = USING_CHAR | CODEC_UTF16;
+    hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+    {
+      WORD ch = context->stack[3];
+      static auto charset = StringToWideString(LoadResData(iskizuato ? L"kizfont" : L"sizfont", L"CHARSET"));
+      buffer->from_t(charset[ch]);
+    };
+    return NewHook(hp, iskizuato ? "kizuato" : "sizuku");
+  }
+}
 bool Leaf::attach_function()
 {
-  return InsertLeafHook() || activehook() || InsertAquaplusHooks() || kizuato() || wa2special() || toheartpse();
+  return InsertLeafHook() || activehook() || InsertAquaplusHooks() || kizuato() || wa2special() || toheartpse() || filsnown() || veryveryold();
 }

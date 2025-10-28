@@ -3,7 +3,7 @@ from myutils.config import globalconfig, static_data, _TR
 from gobject import runtime_for_xp, runtime_bit_64, runtime_for_win10, runtimedir
 from myutils.wrapper import threader, tryprint, trypass
 from myutils.hwnd import getcurrexe
-import requests
+import requests, base64
 import shutil, gobject
 from myutils.proxy import getproxy
 import zipfile, os
@@ -15,7 +15,7 @@ versionchecktask = queue.Queue()
 
 @threader
 def testdocconnect():
-    wait = threading.Semaphore(0)
+    wait = threading.Event()
     results = []
     proxy = getproxy()
     for i, main_server in enumerate(static_data["docs_server"]):
@@ -26,15 +26,15 @@ def testdocconnect():
             res = requests.get(main_server, verify=False, proxies=proxy)
             if res.status_code == 200:
                 results.append((i, res))
-                wait.release()
+                wait.set()
 
         __(i, main_server, proxy)
-    wait.acquire()
+    wait.wait()
     gobject.serverindex2 = results[0][0]
 
 
 def tryqueryfromhost():
-    wait = threading.Semaphore(0)
+    wait = threading.Event()
     results = []
     proxy = getproxy()
     for i, main_server in enumerate(static_data["main_server"]):
@@ -50,12 +50,12 @@ def tryqueryfromhost():
             )
             res = res.json()
             results.append((i, res))
-            wait.release()
+            wait.set()
 
         __(i, main_server, proxy)
         if proxy.get("https"):
             __(i, main_server, None)
-    wait.acquire()
+    wait.wait()
     gobject.serverindex = results[0][0]
     return results[0][1]["version"], results[0][1]
 
@@ -96,19 +96,18 @@ def doupdate():
             if _f.lower() == "lunatranslator.exe":
                 found = _dir
 
-    texts = [
+    texts: "list[str]" = [
         _TR("错误"),
         _TR("成功"),
         _TR("更新失败"),
         _TR("更新成功"),
         _TR("部分文件或目录被以下进程占用，是否终止以下进程？"),
     ]
-    with open(exe + ".txt", "w", encoding="utf-16-le") as ff:
-        for text in texts:
-            ff.write(text + "\n")
+    text = "\n".join(texts).encode("utf8")
+    b64 = base64.b64encode(text).decode()
     subprocess.Popen(
         r"{} update {} {} {} {}".format(
-            exe1, int(gobject.base.istriggertoupdate), found, os.getpid(), exe + ".txt"
+            exe1, int(gobject.base.istriggertoupdate), found, os.getpid(), b64
         )
     )
 

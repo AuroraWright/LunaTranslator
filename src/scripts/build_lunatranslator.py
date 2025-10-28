@@ -190,14 +190,14 @@ def buildhook(arch, target):
     if target == "win10":
         config = "-DWIN10ABOVE=ON"
     elif target == "win7":
-        config = ""
+        config = "-DWIN10ABOVE=OFF"
     elif target == "winxp":
-        config = "-DWINXP=ON"
+        config = "-DWINXP=ON -DWIN10ABOVE=OFF"
     subprocess.run(
         f'cmake {config} -DBUILD_HOST=OFF ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target}_2'
     )
     subprocess.run(
-        f"cmake --build ./build/{arch}_{target}_2 --config Release --target ALL_BUILD -j 14"
+        f"cmake --build ./build/{arch}_{target}_2 --config Release --target ALL_BUILD -j {os.cpu_count()}"
     )
     if target != "win10":
         config += " -DUSE_VC_LTL=ON "
@@ -205,7 +205,7 @@ def buildhook(arch, target):
         f'cmake {config} -DBUILD_HOOK=OFF ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target}_1'
     )
     subprocess.run(
-        f"cmake --build ./build/{arch}_{target}_1 --config Release --target ALL_BUILD -j 14"
+        f"cmake --build ./build/{arch}_{target}_1 --config Release --target ALL_BUILD -j {os.cpu_count()}"
     )
     release = os.path.join("builds", os.listdir("builds")[0])
     os.makedirs("builds/Release", exist_ok=True)
@@ -217,20 +217,24 @@ def buildhook(arch, target):
 def buildPlugins(arch, target):
     os.chdir(rootDir + "/cpp")
     archA = ("win32", "x64")[arch == "x64"]
-
-    flag = (
-        "-DWIN10ABOVE=ON"
-        if target == "win10"
-        else (" -DWINXP=ON " if target == "winxp" else "")
-    )
+    if target == "win10":
+        config = "-DWIN10ABOVE=ON"
+    elif target == "win7":
+        config = "-DWIN10ABOVE=OFF"
+    elif target == "winxp":
+        config = "-DWINXP=ON -DWIN10ABOVE=OFF"
     sysver = " -DCMAKE_SYSTEM_VERSION=10.0.26621.0 "
     vsver = "Visual Studio 17 2022"
     Tool = "v141_xp" if target == "winxp" else f"host={arch}"
+
+    if arch == "x86" and target == "win10":
+        # 对于64位会使用自带的vcrt，win7/xp会静态编译，仅win10 shareddllproxy32这个文件可能会缺少vcrt，因此把它也静态编译以避免无法运行导致注入失败。
+        config += " -DSTATIC_FORCE=ON"
     subprocess.run(
-        f'cmake {flag} ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target} {sysver}'
+        f'cmake {config} ./CMakeLists.txt -G "{vsver}" -A {archA} -T {Tool} -B ./build/{arch}_{target} {sysver}'
     )
     subprocess.run(
-        f"cmake --build ./build/{arch}_{target} --config Release --target ALL_BUILD -j 14"
+        f"cmake --build ./build/{arch}_{target} --config Release --target ALL_BUILD -j {os.cpu_count()}"
     )
     for _dir, _, _fs in os.walk("builds"):
         print(_dir, _fs)

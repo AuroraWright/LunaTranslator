@@ -69,6 +69,9 @@ bool embedbishop()
     {
       flag.clear();
     }
+    auto s = buffer->strW();
+    s = re::sub(s, LR"(\\n(　)*)");
+    buffer->from(s);
   };
   hp.embed_fun = [](hook_context *context, TextBuffer buffer)
   {

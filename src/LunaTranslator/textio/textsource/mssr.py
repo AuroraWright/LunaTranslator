@@ -2,7 +2,7 @@ from textio.textsource.textsourcebase import basetext
 from myutils.wrapper import threader
 import NativeUtils, windows, uuid, os, gobject, time
 from ctypes import c_int
-from myutils.config import globalconfig, _TR, isascii
+from myutils.config import globalconfig, _TR
 
 
 def getlocaleandlv(path):
@@ -159,14 +159,15 @@ class mssr(basetext):
             lines = this.splitlines()
 
             this = lines[-1]
-            if this != last:
-                self.updaterawtext(this)
             thist = time.time()
+            need = this != last
             if thist - lastt > interval:
                 if lasttt != this:
                     self.dispatchtext(this, updateTranslate=True)
                 lastt = thist
                 lasttt = this
+            if need:
+                self.updaterawtext(this)
             last = this
 
             time.sleep(0.1)
@@ -190,7 +191,7 @@ class mssr(basetext):
         if not path:
             gobject.base.displayinfomessage(_TR("无可用语言"), "<msg_error_Origin>")
             return
-        if path and not isascii(path):
+        if path and not path.isascii():
             gobject.base.displayinfomessage(
                 _TR("请勿使用非英文路径"), "<msg_error_Origin>"
             )
@@ -259,13 +260,13 @@ class mssr(basetext):
                     #  print(increased, any(_ in punctuations for _ in increased))
                     last = text
                     thist = time.time()
-                    self.updaterawtext(text)
                     if ok or (
                         thist - lastt
                         > globalconfig["sourcestatus2"]["mssr"]["refreshinterval"]
                     ):
-                        self.dispatchtext(text, updateTranslate=True)
+                        self.dispatchtext(text, updateTranslate=True, statusok=ok)
                         lastt = thist
+                    self.updaterawtext(text)
                 elif t == 4:
                     gobject.base.displayinfomessage(
                         _TR("正在加载语音识别模型"), "<msg_info_refresh>"

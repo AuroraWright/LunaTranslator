@@ -1,4 +1,5 @@
 {
+    "screenshot_savepath": "",
     "history": {
         "autosave": false,
         "showorigin": true,
@@ -29,19 +30,23 @@
     "useextrahtml": false,
     "ocrselectalpha": 0.3,
     "foldstatus": {
+        "others": {
+            "fts": true,
+            "netservice": true,
+            "sr": true,
+            "proxy": false
+        },
         "proxy": {
             "gpt": true,
             "api": false,
-            "free": true,
-            "external": true
+            "free": true
         },
         "ts": {
-            "gptoffline": true,
             "outdate": false,
             "gpt": true,
             "api": false,
             "free": true,
-            "external": true
+            "special": false
         }
     },
     "usecustomankigen": false,
@@ -75,8 +80,7 @@
                         "name": "阴影强度",
                         "type": "intspin",
                         "min": 1,
-                        "max": 100,
-                        "step": 1
+                        "max": 100
                     },
                     "shadowR": {
                         "name": "阴影半径",
@@ -89,8 +93,7 @@
                         "name": "阴影半径",
                         "type": "spin",
                         "min": 0,
-                        "max": 100,
-                        "step": 0.1
+                        "max": 100
                     }
                 }
             },
@@ -115,8 +118,7 @@
                         "name": "描边宽度",
                         "type": "spin",
                         "min": 0,
-                        "max": 100,
-                        "step": 0.1
+                        "max": 100
                     },
                     "width_rate": {
                         "name": "描边宽度",
@@ -154,8 +156,7 @@
                         "name": "描边宽度",
                         "type": "spin",
                         "min": 0,
-                        "max": 100,
-                        "step": 0.1
+                        "max": 100
                     },
                     "width_rate": {
                         "name": "描边宽度",
@@ -168,8 +169,7 @@
                         "name": "投影距离",
                         "type": "spin",
                         "min": 0,
-                        "max": 100,
-                        "step": 0.1
+                        "max": 100
                     }
                 }
             },
@@ -190,8 +190,7 @@
                         "name": "阴影强度",
                         "type": "intspin",
                         "min": 1,
-                        "max": 100,
-                        "step": 1
+                        "max": 100
                     },
                     "shadowR": {
                         "name": "阴影半径",
@@ -204,8 +203,7 @@
                         "name": "阴影半径",
                         "type": "spin",
                         "min": 0,
-                        "max": 100,
-                        "step": 0.1
+                        "max": 100
                     }
                 }
             }
@@ -262,6 +260,7 @@
     },
     "networktcpport": 2333,
     "networktcpenable": false,
+    "network_service_disabled_paths": [],
     "textoutputer": {
         "clipboard": {
             "use": false,
@@ -288,7 +287,7 @@
         "limittextlength_length": 40,
         "clearText": false
     },
-    "requestinterval": 0.5,
+    "requestinterval": 0,
     "keepontop": true,
     "buttonsize": 20,
     "buttonsize2": 18,
@@ -305,7 +304,8 @@
         "transerrorfix": false,
         "vndbnamemap": false,
         "myprocess": false,
-        "arabic_reshaper": false
+        "arabic_reshaper": false,
+        "skiponlypunctuations": true
     },
     "showintab": true,
     "showintab_sub": true,
@@ -426,7 +426,7 @@
     "isshowhira": true,
     "locktools": true,
     "locktoolsEx": false,
-    "showfanyisource": false,
+    "showfanyisource": true,
     "showfanyi": true,
     "autoread": false,
     "ttsnointerrupt": false,
@@ -469,7 +469,6 @@
     "settingfontbold": false,
     "buttoncolor": "#2e2eff",
     "buttoncolor_1": "#ff03f2",
-    "premtsimi2": 90,
     "ocrrangecolor": "#000000",
     "ocrrangewidth": 2,
     "useproxy": true,
@@ -503,7 +502,6 @@
     "gamemanageruseversion": 0,
     "gamemanager_integrated_internal_layout": 2,
     "profiles_index": 0,
-    "ocrautobindwindow": false,
     "toolbutton": {
         "rank2": [
             "move",
@@ -540,18 +538,19 @@
             "ocr_once_follow",
             "selectable",
             "minmize",
-            "quit"
+            "quit",
+            "reset_TS_status"
         ],
         "buttons": {
             "retrans": {
                 "use": true,
-                "tip": "手动翻译",
+                "tip": "手动执行",
                 "icon": "fa.rotate-right",
                 "align": 2
             },
             "automodebutton": {
                 "use": false,
-                "tip": "自动翻译",
+                "tip": "自动模式",
                 "icon": "fa.forward",
                 "icon2": "fa.play",
                 "align": 2
@@ -641,9 +640,15 @@
                 "icon": "fa.spinner",
                 "align": 2
             },
+            "reset_TS_status": {
+                "use": false,
+                "tip": "重置翻译状态",
+                "icon": "fa.refresh",
+                "align": 2
+            },
             "noundict_direct": {
                 "use": false,
-                "tip": "专有名词翻译_翻译前替换",
+                "tip": "翻译前替换",
                 "icon": "fa.book",
                 "align": 0
             },
@@ -856,12 +861,12 @@
             },
             "_1": {
                 "use": false,
-                "name": "手动翻译",
+                "name": "手动执行",
                 "keystring": ""
             },
             "_2": {
                 "use": false,
-                "name": "自动翻译",
+                "name": "自动模式",
                 "keystring": ""
             },
             "_3": {
@@ -939,6 +944,41 @@
                 "name": "清除OCR范围",
                 "keystring": ""
             },
+            "44": {
+                "use": false,
+                "name": "连点器",
+                "keystring": ""
+            },
+            "45": {
+                "use": false,
+                "name": "重置翻译状态",
+                "keystring": ""
+            },
+            "46": {
+                "use": false,
+                "name": "多重区域模式_切换到前一个区域",
+                "keystring": ""
+            },
+            "47": {
+                "use": false,
+                "name": "多重区域模式_切换到下一个区域",
+                "keystring": ""
+            },
+            "48": {
+                "use": false,
+                "name": "多重区域模式_切换到鼠标临近区域",
+                "keystring": ""
+            },
+            "49": {
+                "use": false,
+                "name": "多重区域模式_取消区域聚焦",
+                "keystring": ""
+            },
+            "50": {
+                "use": false,
+                "name": "立即保存配置",
+                "keystring": ""
+            },
             "_15": {
                 "use": false,
                 "name": "绑定窗口_（点击自己取消）",
@@ -962,6 +1002,11 @@
             "_22": {
                 "use": false,
                 "name": "游戏静音",
+                "keystring": ""
+            },
+            "43": {
+                "use": true,
+                "name": "游戏暂停",
                 "keystring": ""
             },
             "41": {
@@ -1139,7 +1184,6 @@
                     "type": "intspin",
                     "min": 1,
                     "max": 65535,
-                    "step": 1,
                     "name": "端口号"
                 }
             }
@@ -1247,6 +1291,7 @@
     },
     "cishu": {
         "mojidict": {
+            "canGetUrl": false,
             "use": true,
             "name": "Moji辞书",
             "useproxy": false
@@ -1281,6 +1326,7 @@
             "name": "goo"
         },
         "chatgptlike": {
+            "canGetUrl": false,
             "use": false,
             "name": "大模型通用接口",
             "args": {
@@ -1292,12 +1338,14 @@
                 "自定义promt": "",
                 "Temperature": 0.3,
                 "max_tokens": 4096,
+                "use_max_completion_tokens": false,
                 "top_p": 0.3,
+                "top_p_use": true,
                 "frequency_penalty": 0,
-                "frequency_penalty_use": 0,
+                "frequency_penalty_use": false,
                 "reasoning_effort": "medium",
                 "reasoning_effort_use": false,
-                "user_user_prompt_1": "{sentence}\nword:{word}",
+                "user_user_prompt_1": "",
                 "use_user_user_prompt": false,
                 "s": "",
                 "s2": "",
@@ -1308,11 +1356,13 @@
                     "type": "combo",
                     "refswitch": "reasoning_effort_use",
                     "internal": [
+                        "minimal",
                         "low",
                         "medium",
                         "high"
                     ],
                     "list": [
+                        "minimal",
                         "low",
                         "medium",
                         "high"
@@ -1325,6 +1375,8 @@
                     "rank": -1
                 },
                 "user_user_prompt_1": {
+                    "placeholder": "{sentence}\nword:{word}",
+                    "type": "multiline",
                     "name": "自定义_user message",
                     "refswitch": "use_user_user_prompt",
                     "rank": 5.1
@@ -1356,6 +1408,7 @@
                     "type": "list_cache"
                 },
                 "top_p": {
+                    "refswitch": "top_p_use",
                     "type": "spin",
                     "min": 0,
                     "max": 1,
@@ -1368,17 +1421,24 @@
                     "max": 2,
                     "step": 0.01
                 },
+                "use_max_completion_tokens": {
+                    "name": "使用_max_completion_tokens",
+                    "type": "switch"
+                },
                 "max_tokens": {
                     "type": "intspin",
                     "min": 1,
                     "max": 1000000,
-                    "step": 1
+                    "appends": [
+                        "use_max_completion_tokens"
+                    ]
                 },
                 "自定义promt": {
                     "type": "multiline",
                     "refswitch": "使用自定义promt",
                     "name": "自定义_system prompt",
-                    "rank": 5
+                    "rank": 5,
+                    "placeholder": "You are a professional dictionary assistant whose task is to help users search for information such as the meaning, pronunciation, etymology, synonyms, antonyms, and example sentences of {srclang} words. \nYou should be able to handle queries in multiple languages and provide in-depth information or simple definitions according to user needs. You should reply in {tgtlang}.\nThe user may provide the sentence in which the word is located. If the user provides the sentence in which the word is located, the semantics of the word in the sentence should also be analyzed."
                 },
                 "Temperature": {
                     "type": "spin",
@@ -1389,6 +1449,7 @@
             }
         },
         "mdict": {
+            "canGetUrl": false,
             "use": true,
             "name": "MDict",
             "args": {
@@ -1409,15 +1470,13 @@
                     "type": "intspin",
                     "name": "模糊匹配_编辑距离",
                     "min": 0,
-                    "max": 100,
-                    "step": 1
+                    "max": 100
                 },
                 "max_num": {
                     "type": "intspin",
                     "name": "最大结果条数",
                     "min": 1,
-                    "max": 9999,
-                    "step": 1
+                    "max": 9999
                 },
                 "stylehv": {
                     "type": "combo",
@@ -1586,12 +1645,6 @@
             "color": "pink",
             "name": "Azure"
         },
-        "baidu": {
-            "use": false,
-            "color": "#ff65db",
-            "useproxy": false,
-            "name": "百度"
-        },
         "bing": {
             "use": false,
             "color": "#000ff0",
@@ -1628,13 +1681,13 @@
             "name": "阿里"
         },
         "youdaodict": {
-            "use": false,
+            "use": true,
             "useproxy": false,
             "color": "#95a5ff",
             "name": "有道"
         },
         "caiyun": {
-            "use": false,
+            "use": true,
             "useproxy": false,
             "color": "blue",
             "name": "彩云"
@@ -1748,7 +1801,7 @@
             "name": "yandex"
         },
         "qqimt": {
-            "use": false,
+            "use": true,
             "useproxy": false,
             "color": "blue",
             "name": "qqimt"
@@ -1761,7 +1814,7 @@
             "name": "小牛"
         },
         "huoshan": {
-            "use": false,
+            "use": true,
             "color": "blue",
             "useproxy": false,
             "name": "火山"
@@ -1781,7 +1834,7 @@
             "name": "火山"
         },
         "papago": {
-            "use": false,
+            "use": true,
             "useproxy": false,
             "color": "blue",
             "name": "papago"
@@ -1843,7 +1896,11 @@
             "color": "blue",
             "name": "Sakura大模型",
             "is_gpt_like": true,
-            "useproxy": false
+            "useproxy": false,
+            "langs": [
+                "zh",
+                "cht"
+            ]
         },
         "realtime_edit": {
             "use": false,
@@ -1910,5 +1967,7 @@
     "verticalhorizontal": false,
     "noundictconfig_ex": [],
     "toppest_translator": null,
-    "range_select_multi_dpi_capture_force": false
+    "use_ocr_preprocess": false,
+    "extraLangs": [],
+    "dragable": true
 }

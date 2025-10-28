@@ -600,6 +600,12 @@ namespace
     return NewHook(hp, "waffle3");
   }
 }
+static void filterline(TextBuffer *buffer, HookParam *hp)
+{
+  auto s = buffer->strA();
+  s = re::sub(s, "[\n\r]+(\x81\x40)*");
+  buffer->from(s);
+}
 namespace
 {
   bool fantacyfhd()
@@ -622,13 +628,36 @@ namespace
         0X50,
         0X89, 0X45, XX,
         0XE8, XX4};
+    const uint8_t bytes2[] = {
+        //[250926][1340821][Waffle] ボクをほっとけない後輩ギャル DL版 (files)
+        0X6A, 0X04,
+        0X59,
+        0XF7, 0XE1,
+        0x6a, 0xff,
+        0x59,
+        0x0f, 0x42, 0xc1,
+        0x50,
+        0xe8, XX4,
+        0X8B, 0X8B, XX4,
+        0XC1, 0XE1, 0X02,
+        0X51,
+        0X6A, 0X00,
+        0X50,
+        0X89, 0X45, XX,
+        0XE8, XX4};
+    int range = 0x100;
     auto addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
+    if (!addr)
+    {
+      addr = MemDbg::findBytes(bytes2, sizeof(bytes2), processStartAddress, processStopAddress);
+      range = 0x180;
+    }
     if (!addr)
       return false;
     const uint8_t START[] = {
         0X55,
         0X8D, 0XAC, 0X24, XX4};
-    addr = reverseFindBytes(START, sizeof(START), addr - 0x100, addr);
+    addr = reverseFindBytes(START, sizeof(START), addr - range, addr);
     if (!addr)
       return false;
     HookParam hp;
@@ -637,11 +666,7 @@ namespace
     {
       buffer->from(((TextUnionA *)context->stack[1])->view());
     };
-    hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
-    {
-      CharFilter(buffer, '\n');
-      StringFilter(buffer, TEXTANDLEN("\x81\x40"));
-    };
+    hp.filter_fun = filterline;
     hp.embed_hook_font = F_TextOutA | F_GetTextExtentPoint32A;
     hp.type = EMBED_ABLE | USING_STRING | EMBED_DYNA_SJIS;
     hp.embed_fun = [](hook_context *context, TextBuffer buffer)
@@ -676,14 +701,44 @@ namespace
     HookParam hp;
     hp.address = addr;
     hp.offset = stackoffset(1);
-    hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
-    {
-      CharFilter(buffer, '\n');
-      CharFilter(buffer, '\r');
-      StringFilter(buffer, TEXTANDLEN("\x81\x40"));
-    };
+    hp.filter_fun = filterline;
     hp.type = USING_STRING;
     return NewHook(hp, "waffle6");
+  }
+}
+namespace
+{
+  bool silklip()
+  {
+    // 魔法の少女シルキーリップ～三人の女王候補～
+    const uint8_t bytes[] = {
+        0xc7, 0x45, 0xfc, 0x06, 0x00, 0x00, 0x00,
+        0xe8, XX4, //->std::string::assign
+        0x6a, 0xff,
+        XX,
+        0x8d, XX, XX4,
+        XX,
+        0x8d, 0x4d, XX,
+        0xe8, XX4, //->std::string::assign
+        0x6a, 0xff,
+        XX,
+        0x8d, XX, XX4,
+        XX,
+        0x8d, 0x4d, XX,
+        0xe8, XX4 //->std::string::assign
+    };
+    auto addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
+    if (!addr)
+      return false;
+    HookParam hp;
+    hp.offset = regoffset(edx);
+    hp.type = USING_STRING | NO_CONTEXT;
+    hp.address = addr + 7 + 5;
+    hp.filter_fun = filterline;
+    auto succ = NewHook(hp, "waffle7");
+    hp.address = addr + 7 + 5 + 2 + 1 + 6 + 1 + 3 + 5;
+    succ &= NewHook(hp, "waffle7");
+    return succ;
   }
 }
 bool Waffle::attach_function()
@@ -693,7 +748,7 @@ bool Waffle::attach_function()
   bool b2 = InsertWaffleHookx();
   bool b3 = hh();
   b3 |= waffle3();
-  auto succ = b1 || b2 || embed || b3 || fantacyfhd() || waffle6();
+  auto succ = b1 || b2 || embed || b3 || fantacyfhd() || waffle6() || silklip();
   if (!succ)
   {
     succ = waffleoldhook();

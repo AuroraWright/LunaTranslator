@@ -1,7 +1,6 @@
 import re
 from cishu.cishubase import cishubase
 from myutils.utils import get_element_by, simplehtmlparser
-from myutils.config import isascii
 from language import Languages
 
 
@@ -11,7 +10,7 @@ class youdao(cishubase):
     def search(self, word: str):
         lang = self.srclang
         if self.is_src_auto:
-            if isascii(word):
+            if word.isascii():
                 lang = Languages.English
             else:
                 lang = Languages.Japanese
@@ -35,3 +34,8 @@ class youdao(cishubase):
         text = text.replace("min-width: 960px", "")
         text = text.replace("min-width:960px", "")
         return text
+
+    def getUrl(self, word):
+        return "https://dict.youdao.com/result?word={}&lang={}".format(
+            word, self.srclang
+        )

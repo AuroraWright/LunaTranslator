@@ -1,5 +1,6 @@
 import time, copy
 from myutils.config import globalconfig
+from myutils.utils import checkmd5reloadmodule
 import NativeUtils, windows
 from gui.rangeselect import rangeadjust
 from myutils.wrapper import threader
@@ -10,11 +11,41 @@ from myutils.keycode import vkcode_map
 from textio.textsource.textsourcebase import basetext
 from ocrengines.baseocrclass import OCRResultParsed
 from CVUtils import cvMat
+from traceback import print_exc
+
+
+def imageCutEx(*a):
+    img = imageCut(*a)
+    succ = True
+    if a[0]:
+        succ, img = img
+    else:
+        succ = False
+    if not succ:
+        rectX = QRect(a[1], a[2], a[3] - a[1], a[4] - a[2])
+        rect2 = windows.GetWindowRect(gobject.base.translation_ui.winid)
+        rect = QRect(rect2[0], rect2[1], rect2[2] - rect2[0], rect2[3] - rect2[1])
+        if rectX.intersected(rect):
+            rect.translate(-a[1], -a[2])
+            painter = QPainter(img)
+            painter.setBrush(Qt.GlobalColor.white)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRect(rect)
+            painter.end()
+
+    if globalconfig["use_ocr_preprocess"]:
+        try:
+            img = checkmd5reloadmodule(
+                gobject.getconfig("ocr_preprocess.py"), "ocr_preprocess"
+            ).Process(img)
+        except:
+            print_exc()
+    return img
 
 
 class rangemanger:
-    def __init__(self):
-        self.range_ui = rangeadjust(gobject.base.settin_ui)
+    def __init__(self, ranges: "list[rangemanger]"):
+        self.range_ui = rangeadjust(gobject.base.settin_ui, ranges)
         self.savelastimg: cvMat = None
         self.savelastrecimg: cvMat = None
         self.lastocrtime: float = 0
@@ -27,7 +58,7 @@ class rangemanger:
         rect = self.range_ui.getrect()
         if rect is None:
             return
-        imgr = imageCut(
+        imgr = imageCutEx(
             gobject.base.hwnd, rect[0][0], rect[0][1], rect[1][0], rect[1][1]
         )
         result = ocr_run(imgr)
@@ -41,7 +72,7 @@ class rangemanger:
         rect = self.range_ui.getrect()
         if rect is None:
             return
-        imgr = imageCut(
+        imgr = imageCutEx(
             gobject.base.hwnd, rect[0][0], rect[0][1], rect[1][0], rect[1][1]
         )
         ok = True
@@ -85,7 +116,7 @@ class rangemanger:
         rect = self.range_ui.getrect()
         if rect is None:
             return False
-        imgr = imageCut(
+        imgr = imageCutEx(
             gobject.base.hwnd, rect[0][0], rect[0][1], rect[1][0], rect[1][1]
         )
         imgr1 = cvMat.fromQImage(imgr)
@@ -112,10 +143,12 @@ class ocrtext(basetext):
 
     def leaveone(self):
         self.ranges = self.ranges[-1:]
+        if self.ranges:
+            self.ranges[0].range_ui.isfocus = False
 
     def newrangeadjustor(self):
         if len(self.ranges) == 0 or globalconfig["multiregion"]:
-            self.ranges.append(rangemanger())
+            self.ranges.append(rangemanger(self.ranges))
 
     def starttrace(self, pos):
         for _r in self.ranges:
@@ -224,14 +257,20 @@ class ocrtext(basetext):
                 time.sleep(0.1)
 
     def waitforstablex(self):
-        for range_ui in self.ranges:
+        for range_ui in self.getuseranges():
             if not range_ui.waitforstable():
                 return False
         return True
 
+    def getuseranges(self):
+        for r in self.ranges:
+            if r.range_ui.isfocus:
+                return [r]
+        return self.ranges
+
     def getallres(self, auto):
         __text: "list[OCRResultParsed]" = []
-        for r in self.ranges:
+        for r in self.getuseranges():
 
             if auto:
                 _ = r.getresauto()

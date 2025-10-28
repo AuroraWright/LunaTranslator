@@ -11,11 +11,14 @@ hero:
   #   alt: LunaTranslator  
   actions:  
     - theme: brand  
-      text: Tải xuống & Khởi chạy & Cập nhật
+      text: Tải xuống phần mềm & Câu hỏi thường gặp
       link: ./README  
     - theme: alt  
-      text: Hướng dẫn cơ bản  
+      text: Cách sử dụng cơ bản
       link: ./basicuse  
+    - theme: alt
+      text: Tài trợ
+      link: ./support
     - theme: alt  
       text: Github  
       link: https://github.com/HIllya51/LunaTranslator  
@@ -35,7 +38,7 @@ features:
     link: ./useapis/ocrapi
   - title: API dịch phong phú  
     details: Hỗ trợ hầu hết các công cụ dịch, bao gồm dịch bằng mô hình ngôn ngữ lớn, dịch ngoại tuyến và nhiều hơn nữa.  
-    link: ./useapis/tsapi
+    link: ./guochandamoxing
   - title: Học ngôn ngữ
     details: Hỗ trợ phân đoạn từ tiếng Nhật và chú thích kana, hỗ trợ AnkiConnect, hỗ trợ plugin Yomitan
     link: ./qa1

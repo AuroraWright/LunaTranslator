@@ -101,11 +101,8 @@ class triggereditor(LDialog):
         for row, k in enumerate(self.list):  # 2
             self.hcmodel.insertRow(row, [QStandardItem(), QStandardItem()])
             combo = SuperCombo()
-            combo.addItems(self.vkeys)
-            try:
-                combo.setCurrentIndex(self.vkeys.index(k["vkey"]))
-            except:
-                pass
+            combo.addItems(self.vkeys, internals=self.vkeys)
+            combo.setCurrentData(k.get("vkey"))
             self.hctable.setIndexWidget(self.hcmodel.index(row, 0), combo)
             combo = SuperCombo()
             combo.addItems(["按下", "松开"])
@@ -437,7 +434,7 @@ def internal(self):
                 title="离线",
                 type="grid",
                 grid=offgrids,
-                button=D_getdoclink("/useapis/ocrapi.html#anchor-offline"),
+                button=D_getdoclink("useapis/ocrapi.html#anchor-offline"),
             )
         ],
         [
@@ -445,7 +442,7 @@ def internal(self):
                 title="在线",
                 type="grid",
                 grid=initgridsources(self, online),
-                button=D_getdoclink("/useapis/ocrapi.html#anchor-online"),
+                button=D_getdoclink("useapis/ocrapi.html#anchor-online"),
             )
         ],
         [
@@ -541,21 +538,11 @@ def internal(self):
         [
             "选取OCR范围后显示范围框",
             D_getsimpleswitch(globalconfig, "showrangeafterrangeselect"),
-            "",
-            "选取OCR范围时不透明度",
-            D_getspinbox(
-                0,
-                1,
-                globalconfig,
-                "ocrselectalpha",
-                double=True,
-                step=0.01,
-            ),
         ],
     ]
     allothers = [
         [dict(title="识别设置", type="grid", grid=reco)],
-        [dict(title="自动化执行", grid=autorun, button=D_getdoclink("/ocrparam.html"))],
+        [dict(title="自动化执行", grid=autorun, button=D_getdoclink("ocrparam.html"))],
         [dict(title="其他设置", type="grid", grid=others)],
     ]
 

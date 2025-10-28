@@ -62,8 +62,8 @@ export const vi = defineConfig({
       {
         text: 'Cơ bản',
         items: [
-          { text: 'Tải xuống & Khởi chạy & Cập nhật', link: '/vi/README' },
-          { text: 'Sử dụng cơ bản', link: '/vi/basicuse' },
+          { text: 'Tải xuống phần mềm & Câu hỏi thường gặp', link: '/vi/README' },
+          { text: 'Cách sử dụng cơ bản', link: '/vi/basicuse' },
           { text: 'Tài trợ', link: '/vi/support' }
         ]
       },
@@ -85,11 +85,10 @@ export const vi = defineConfig({
             items: [
               { text: 'Cài đặt giao diện OCR', link: '/vi/useapis/ocrapi' },
               { text: 'Phương pháp thực thi tự động OCR', link: '/vi/ocrparam' },
-              { text: 'Gắn cửa sổ trò chơi trong chế độ OCR', link: '/vi/gooduseocr' }
             ]
           },
           {
-            text: 'Cài đặt giao diện dịch thuật', link: '/vi/useapis/tsapi',
+            text: 'Cài đặt giao diện dịch thuật', link: '/vi/guochandamoxing',
             collapsed: true,
             items: [
               { text: 'Giao diện dịch mô hình lớn', link: '/vi/guochandamoxing' },
@@ -126,7 +125,15 @@ export const vi = defineConfig({
           { text: 'Phím tắt', link: '/vi/fastkeys' },
           { text: 'Dịch vụ mạng', link: '/vi/apiservice' },
           { text: 'Nhận dạng giọng nói', link: '/vi/sr' },
-
+          {
+            text: 'Mẹo thực tế', link: '/vi/gooduse/multiconfigs',
+            collapsed: true,
+            items: [
+              { text: 'Tạo nhiều tệp cấu hình', link: '/vi/gooduse/multiconfigs' },
+              { text: 'Sử dụng OCR tạm thời trong chế độ HOOK  ', link: '/vi/gooduse/useocrinhook' },
+              { text: 'Liên Kết Cửa Sổ Trò Chơi trong Chế Độ OCR', link: '/vi/gooduse/gooduseocr' },
+            ]
+          },
         ]
       }
     ]

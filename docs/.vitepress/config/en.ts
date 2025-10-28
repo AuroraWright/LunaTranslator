@@ -19,7 +19,7 @@ export const en = defineConfig({
             {
                 text: 'Basic',
                 items: [
-                    { text: 'Download & Launch & Update', link: '/en/README' },
+                    { text: 'Software Download & FAQ', link: '/en/README' },
                     { text: 'Basic Usage', link: '/en/basicuse' },
                     { text: 'Sponsorship', link: '/en/support' }
                 ]
@@ -42,11 +42,10 @@ export const en = defineConfig({
                         items: [
                             { text: 'OCR interface settings', link: '/en/useapis/ocrapi' },
                             { text: 'OCR Automation Execution Methods', link: '/en/ocrparam' },
-                            { text: 'Binding Game Window in OCR Mode', link: '/en/gooduseocr' }
                         ]
                     },
                     {
-                        text: 'Translation interface settings', link: '/en/useapis/tsapi',
+                        text: 'Translation interface settings', link: '/en/guochandamoxing',
                         collapsed: true,
                         items: [
                             { text: 'Large Model Translation Interface', link: '/en/guochandamoxing' },
@@ -83,7 +82,15 @@ export const en = defineConfig({
                     { text: 'Shortcut Keys', link: '/en/fastkeys' },
                     { text: 'Network Service', link: '/en/apiservice' },
                     { text: 'Speech Recognition', link: '/en/sr' },
-
+                    {
+                        text: 'Practical Tips', link: '/en/gooduse/multiconfigs',
+                        collapsed: true,
+                        items: [
+                            { text: 'Creating Multiple Configuration Files', link: '/en/gooduse/multiconfigs' },
+                            { text: 'Temporarily Using OCR in HOOK Mode  ', link: '/en/gooduse/useocrinhook' },
+                            { text: 'Binding Game Window in OCR Mode', link: '/en/gooduse/gooduseocr' },
+                        ]
+                    },
                 ]
             }
         ]

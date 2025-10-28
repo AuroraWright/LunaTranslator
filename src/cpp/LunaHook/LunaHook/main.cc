@@ -23,12 +23,98 @@ namespace
 	TextHook (*hooks)[MAX_HOOK];
 	int currentHook = 0;
 }
+void Send_I18N_Keys()
+{
+	for (auto &[_en, data] : TR.get_hook())
+	{
+		HostInfoI18NReq resp(_en, data.raw());
+		WriteFile(hookPipe, &resp, sizeof(resp), DUMMY, nullptr);
+	}
+}
+static void ParseCommand(HANDLE hostPipe, bool &running)
+{
+	DWORD count = 0;
+	static BYTE buffer[PIPE_BUFFER_SIZE] = {};
+	if (!running)
+		return;
+	if (!ReadFile(hostPipe, buffer, PIPE_BUFFER_SIZE, &count, nullptr))
+	{
+		running = false;
+		return;
+	}
+	switch (*(HostCommandType *)buffer)
+	{
+	case HOST_COMMAND_I18N_RESPONSE:
+	{
+		auto info = (I18NResponse *)buffer;
+		TR.get_hook()[info->enum_].set(info->result);
+	}
+	break;
+	case HOST_COMMAND_NEW_HOOK:
+	{
+		auto info = (InsertHookCmd *)buffer;
+		static int userHooks = 0;
+		NewHook(info->hp, ("UserHook" + std::to_string(userHooks += 1)).c_str());
+	}
+	break;
+	case HOST_COMMAND_INSERT_PC_HOOKS:
+	{
+		auto info = (InsertPCHooksCmd *)buffer;
+		if (info->which == 0)
+			PcHooks::hookGdiGdiplusD3dxFunctions();
+		else if (info->which == 1)
+			PcHooks::hookOtherPcFunctions();
+	}
+	break;
+	case HOST_COMMAND_I18N_QUERY:
+	{
+		Send_I18N_Keys();
+	}
+	break;
+	case HOST_COMMAND_REMOVE_HOOK:
+	{
+		auto info = (RemoveHookCmd *)buffer;
+		RemoveHook(info->address, 0);
+	}
+	break;
+	case HOST_COMMAND_FIND_HOOK:
+	{
+		auto info = (FindHookCmd *)buffer;
+		if (*info->sp.text)
+			SearchForText(info->sp.text, info->sp.codepage);
+		else
+			SearchForHooks(info->sp);
+	}
+	break;
+	case HOST_COMMAND_DETACH:
+	{
+		running = false;
+	}
+	break;
+	}
+}
+void CommunicationInitialize(HANDLE hostPipe, HANDLE hookPipe, bool &running)
+{
+	// 1. hook->host
+	// WORD[4] version
+	DWORD count;
+	WriteFile(hookPipe, LUNA_VERSION, sizeof(LUNA_VERSION), &count, nullptr);
+	// 2. hook->host && host->hook
+	// i18n key & result
+	for (auto &[_en, data] : TR.get_hook())
+	{
+		HostInfoI18NReq req(_en, data.raw());
+		WriteFile(hookPipe, &req, sizeof(req), DUMMY, nullptr);
+		ParseCommand(hostPipe, running);
+		if (!running)
+			return;
+	}
+	WriteFile(hookPipe, &HostInfoPreparedOK, sizeof(HostInfoPreparedOK), DUMMY, nullptr);
+}
 DWORD WINAPI Pipe(LPVOID)
 {
 	for (bool running = true; running; hookPipe = INVALID_HANDLE_VALUE)
 	{
-		DWORD count = 0;
-		BYTE buffer[PIPE_BUFFER_SIZE] = {};
 		AutoHandle<> hostPipe = INVALID_HANDLE_VALUE;
 
 		while (!hostPipe || !hookPipe)
@@ -42,60 +128,11 @@ DWORD WINAPI Pipe(LPVOID)
 		DWORD mode = PIPE_READMODE_MESSAGE;
 		SetNamedPipeHandleState(hostPipe, &mode, NULL, NULL);
 
-		*(DWORD *)buffer = GetCurrentProcessId();
-		WriteFile(hookPipe, buffer, sizeof(DWORD), &count, nullptr);
-		WriteFile(hookPipe, LUNA_VERSION, sizeof(LUNA_VERSION), &count, nullptr);
-
-		ReadFile(hostPipe, &curr_lang, sizeof(SUPPORT_LANG), &count, nullptr);
-		ConsoleOutput(TR[PIPE_CONNECTED]);
+		CommunicationInitialize(hostPipe, hookPipe, running);
 		HIJACK();
 		host_connected = true;
-		while (running && ReadFile(hostPipe, buffer, PIPE_BUFFER_SIZE, &count, nullptr))
-			switch (*(HostCommandType *)buffer)
-			{
-			case HOST_COMMAND_NEW_HOOK:
-			{
-				auto info = *(InsertHookCmd *)buffer;
-				static int userHooks = 0;
-				NewHook(info.hp, ("UserHook" + std::to_string(userHooks += 1)).c_str());
-			}
-			break;
-			case HOST_COMMAND_INSERT_PC_HOOKS:
-			{
-				auto info = *(InsertPCHooksCmd *)buffer;
-				if (info.which == 0)
-					PcHooks::hookGdiGdiplusD3dxFunctions();
-				else if (info.which == 1)
-					PcHooks::hookOtherPcFunctions();
-			}
-			break;
-			case HOST_COMMAND_SET_LANGUAGE:
-			{
-				auto info = *(SetLanguageCmd *)buffer;
-				curr_lang = info.lang;
-			}
-			break;
-			case HOST_COMMAND_REMOVE_HOOK:
-			{
-				auto info = *(RemoveHookCmd *)buffer;
-				RemoveHook(info.address, 0);
-			}
-			break;
-			case HOST_COMMAND_FIND_HOOK:
-			{
-				auto info = *(FindHookCmd *)buffer;
-				if (*info.sp.text)
-					SearchForText(info.sp.text, info.sp.codepage);
-				else
-					SearchForHooks(info.sp);
-			}
-			break;
-			case HOST_COMMAND_DETACH:
-			{
-				running = false;
-			}
-			break;
-			}
+		while (running)
+			ParseCommand(hostPipe, running);
 	}
 
 	if (dont_detach)
@@ -218,8 +255,8 @@ BOOL WINAPI DllMain(HINSTANCE hModule, DWORD fdwReason, LPVOID)
 	break;
 	case DLL_PROCESS_DETACH:
 	{
-		MH_Uninitialize();
 		detachall();
+		MH_Uninitialize();
 		delete[] hooks;
 		UnmapViewOfFile(commonsharedmem);
 	}
@@ -383,6 +420,16 @@ bool NewHook(HookParam hp, LPCSTR name)
 	hp.address = emuaddr2jitaddr[hp.emu_addr].second;
 	return NewHook_1(hp, name);
 #endif
+}
+
+bool NewHookRetry(HookParam hp, LPCSTR name)
+{
+	if (NewHook(hp, name))
+		return true;
+	if (hp.type & BREAK_POINT)
+		return false;
+	hp.type |= BREAK_POINT;
+	return NewHook(hp, name);
 }
 void RemoveHook(uint64_t addr, int maxOffset)
 {

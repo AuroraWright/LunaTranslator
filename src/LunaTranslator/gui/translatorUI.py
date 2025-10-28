@@ -329,7 +329,6 @@ class ButtonBar(QFrame):
 
 class TranslatorWindow(resizableframeless):
     displayglobaltooltip = pyqtSignal(str)
-    displaymessagebox = pyqtSignal(str, str)
     displayres = pyqtSignal(dict)
     displayraw1 = pyqtSignal(str, bool)
     displayraw2 = pyqtSignal(str)
@@ -429,7 +428,7 @@ class TranslatorWindow(resizableframeless):
             if windows.MonitorFromWindow(hwnd) != windows.MonitorFromWindow(self.winid):
                 self.__lastpos = None
                 return
-            if globalconfig["top_align"] == 0:
+            if globalconfig["verticalhorizontal"] + globalconfig["top_align"] != 1:
                 self.safemove(
                     self.__tracepos - self.__lastpos.topLeft() + rect.topLeft()
                 )
@@ -856,6 +855,7 @@ class TranslatorWindow(resizableframeless):
                     rightclick=self.setselectableEx,
                 ),
             ),
+            ("reset_TS_status", buttonfunctions(clicked=gobject.base.prepare)),
         )
 
         _type = {"quit": 2}
@@ -1016,13 +1016,9 @@ class TranslatorWindow(resizableframeless):
     def displayglobaltooltip_f(self, string):
         QToolTip.showText(QCursor.pos(), string, self)
 
-    def displaymessagebox_f(self, string1, string2):
-        QMessageBox.information(self, _TR(string1), _TR(string2))
-
     def initsignals(self):
         self.hotkeyuse_selectprocsignal.connect(gobject.base.createattachprocess)
         self.displayglobaltooltip.connect(self.displayglobaltooltip_f)
-        self.displaymessagebox.connect(self.displaymessagebox_f)
         self.ocr_once_signal.connect(self.ocr_once_function)
         self.displaystatus.connect(self.showstatus)
         self.showhideuisignal.connect(self.showhideui)
@@ -1101,10 +1097,16 @@ class TranslatorWindow(resizableframeless):
         self.smooth_resizer.setDuration(500)
         self.smooth_resizer.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.smooth_resizer.valueChanged.connect(self.smooth_resizing)
+        self.smooth_resizer4 = QVariantAnimation(self)
+        self.smooth_resizer4.setDuration(500)
+        self.smooth_resizer4.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.smooth_resizer4.valueChanged.connect(self.smooth_resizing4)
         self.smooth_resizer2 = QVariantAnimation(self)
         self.smooth_resizer2.setDuration(500)
+        self.smooth_resizer2.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.smooth_resizer2.valueChanged.connect(self.smooth_resizing2)
         self.left_bottom_corner = self.geometry().bottomLeft()
+        self.right_top_corner = self.geometry().topRight()
         self.translate_text = Textbrowser(self)
         self.translate_text.loadinternal()
         self.translate_text.move(0, 0)
@@ -1176,13 +1178,28 @@ class TranslatorWindow(resizableframeless):
         if changed:
             gobject.base.startxiaoxueguan("mdict")
 
+    def __parsedropsqlite(self, file):
+        filer = mayberelpath(file)
+        try:
+            gameuid = gobject.base.gameuid
+            savehook_new_data[gameuid]["gamesqlitefile"] = filer
+            self.displaystatus.emit(
+                _TR("成功添加_sqlite翻译记录_ " + filer), TextType.Info
+            )
+        except:
+            print_exc()
+            translatorsetting["premt"]["args"]["sqlitefile"] = filer
+            self.displaystatus.emit(
+                _TR("成功添加_sqlite翻译记录_ " + filer), TextType.Info
+            )
+
     def __parsedropjson(self, file):
+        filer = mayberelpath(file)
         try:
             gameuid = gobject.base.gameuid
             _path = savehook_new_data[gameuid].get("gamejsonfile", [])
             if isinstance(_path, str):
                 _path = [_path]
-            filer = mayberelpath(file)
             if filer not in _path:
                 _path.append(filer)
                 savehook_new_data[gameuid]["gamejsonfile"] = _path
@@ -1193,7 +1210,6 @@ class TranslatorWindow(resizableframeless):
             print_exc()
 
             _path: list = translatorsetting["rengong"]["args"]["jsonfile"]
-            filer = mayberelpath(file)
             if filer not in _path:
                 _path.append(filer)
                 translatorsetting["rengong"]["args"]["jsonfile"] = _path
@@ -1215,6 +1231,7 @@ class TranslatorWindow(resizableframeless):
                 self.__parsedropmdx,
             ),
             (lambda: isfile and flow.endswith(".json"), self.__parsedropjson),
+            (lambda: isfile and flow.endswith(".sqlite"), self.__parsedropsqlite),
             (
                 lambda: isfile and (flow.endswith(".exe") or flow.endswith(".lnk")),
                 self.__parsedropexe,
@@ -1277,7 +1294,6 @@ class TranslatorWindow(resizableframeless):
             raw=True,
             color=SpecialColor.RawTextColor,
         )
-        globalconfig["lasttime2"] = time.time()
 
     def showEvent(self, e):
         super().showEvent(e)
@@ -1292,10 +1308,12 @@ class TranslatorWindow(resizableframeless):
         self.enterfunction(2 + globalconfig["disappear_delay_tool"])
         self.autohidedelaythread()
         self.tracewindowposthread()
-
-        if time.time() - globalconfig.get("lasttime2", 0) > 3600 * 24 * 3:
+        if time.time() - globalconfig.get("lasttime3", 0) > 3600 * 24 * 7:
             self.showabout()
-            globalconfig["lasttime2"] = time.time()
+            globalconfig["lasttime3"] = time.time()
+        elif time.time() - globalconfig.get("lasttime2", 0) > 3600 * 24 * 1:
+            self.showabout()
+        globalconfig["lasttime2"] = time.time()
 
     def setselectableEx(self):
         globalconfig["selectableEx"] = True
@@ -1407,6 +1425,12 @@ class TranslatorWindow(resizableframeless):
 
     @property
     def mousetranscheckrect(self):
+        if (
+            globalconfig["locktoolsEx"]
+            and (not self.titlebar.isVisible())
+            and (not gobject.base.settin_ui.isVisible())
+        ):
+            return QRect()
         btn: QWidget = self.titlebar.buttons["mousetransbutton"]
         usegeo = btn.geometry()
         usegeo = QRect(
@@ -1542,63 +1566,140 @@ class TranslatorWindow(resizableframeless):
     def mouseReleaseEvent(self, e: QMouseEvent):
         super().mouseReleaseEvent(e)
         self.left_bottom_corner = self.geometry().bottomLeft()
+        self.right_top_corner = self.geometry().topRight()
 
     def mousePressEvent(self, e: QMouseEvent):
         super().mousePressEvent(e)
         self.smooth_resizer.stop()
         self.smooth_resizer2.stop()
         self.left_bottom_corner = self.geometry().bottomLeft()
+        self.right_top_corner = self.geometry().topRight()
 
     def smooth_resizing(self, value):
-        self.resize(QSize(self.width(), value))
+        self.resizeFuck(QSize(self.width(), value))
+
+    def smooth_resizing4(self, w):
+        self.resizeFuck(QSize(w, self.height()))
 
     def smooth_resizing2(self, new_size: QSize):
         new_pos = self.left_bottom_corner - QPoint(0, new_size.height())
-        self.setGeometry(new_pos.x(), new_pos.y(), new_size.width(), new_size.height())
+        self.setGeometryFuck(
+            new_pos.x(), new_pos.y(), new_size.width(), new_size.height()
+        )
+
+    def smooth_resizing3(self, new_size: QSize):
+        new_pos = self.right_top_corner - QPoint(new_size.width(), 0)
+        self.setGeometryFuck(
+            new_pos.x(), new_pos.y(), new_size.width(), new_size.height()
+        )
+
+    # 不知道为什么，webview2模式，任务栏中显示，然后最小化，然后resize，就会触发使窗口弹出（但没有文字），并且无法操作。其中的逻辑太复杂了，直接干脆不要得了。
+    # void QWidget::resize(const QSize &s)
+    # {
+    #     Q_D(QWidget);
+    #     setAttribute(Qt::WA_Resized);
+    #     if (testAttribute(Qt::WA_WState_Created)) {
+    #         d->fixPosIncludesFrame();
+    #         d->setGeometry_sys(geometry().x(), geometry().y(), s.width(), s.height(), false);
+    #         d->setDirtyOpaqueRegion();
+    #     } else {
+    #         const auto oldRect = data->crect;
+    #         data->crect.setSize(s.boundedTo(maximumSize()).expandedTo(minimumSize()));
+    #         if (oldRect != data->crect)
+    #             setAttribute(Qt::WA_PendingResizeEvent);
+    #     }
+    # }
+    def setGeometryFuck(self, x, y, w, h):
+        if not self.isMinimized():
+            return self.setGeometry(x, y, w, h)
+        ms = self.minimumSize()
+        w = max(w, ms.width())
+        h = max(h, ms.height())
+        r = self.devicePixelRatioF()
+        windows.MoveWindow(
+            self.winid, int(x * r), int(y * r), int(w * r), int(h * r), False
+        )
+
+    def resizeFuck(self, size: QSize):
+        if not self.isMinimized():
+            return self.resize(size)
+        ms = self.minimumSize()
+        w = max(size.width(), ms.width())
+        h = max(size.height(), ms.height())
+        r = self.devicePixelRatioF()
+        windows.SetWindowPos(
+            self.winid,
+            None,
+            0,
+            0,
+            int(w * r),
+            int(h * r),
+            windows.SWP_NOMOVE | windows.SWP_NOZORDER | windows.SWP_NOACTIVATE,
+        )
 
     def textAreaChanged(self, size: QSize):
+        # size只有一个维度是准确的，应当根据显示方向来使用其中有效的部分
         if self.translate_text.cleared:
             return
         if not globalconfig["adaptive_height"]:
             self.translate_text.scrolltoend()
             return
         if globalconfig["verticalhorizontal"]:
-            return
-        limit = min(size.height(), self.screen().geometry().height())
-        newHeight = limit + self.dynamicextraheight()
-        size = QSize(self.width(), newHeight)
-        self.smooth_resizer.stop()
-        self.smooth_resizer2.stop()
-        if self.isdoingsomething():
-            self.resize(size)
-            return
-        if globalconfig["top_align"] == 0:
-            if newHeight > self.height():
-                self.resize(size)
+            limit = min(size.width(), self.screen().geometry().width())
+            newW = limit + self.dynamicextraheight()
+            size = QSize(newW, self.height())
+            self.smooth_resizer.stop()
+            self.smooth_resizer2.stop()
+            self.smooth_resizer4.stop()
+            if self.isdoingsomething():
+                self.resizeFuck(size)
+                return
+            if globalconfig["top_align"] == 0:
+                # 太抖了，不要动画了。
+                self.smooth_resizing3(size)
             else:
-                self.smooth_resizer.setStartValue(self.height())
-                self.smooth_resizer.setEndValue(newHeight)
-                self.smooth_resizer.start()
+                if newW > self.width():
+                    self.resizeFuck(size)
+                else:
+                    self.smooth_resizer4.setStartValue(self.width())
+                    self.smooth_resizer4.setEndValue(newW)
+                    self.smooth_resizer4.start()
         else:
-            if newHeight > self.height():
-                self.smooth_resizing2(size)
+            limit = min(size.height(), self.screen().geometry().height())
+            newHeight = limit + self.dynamicextraheight()
+            size = QSize(self.width(), newHeight)
+            self.smooth_resizer.stop()
+            self.smooth_resizer2.stop()
+            if self.isdoingsomething():
+                self.resizeFuck(size)
+                return
+            if globalconfig["top_align"] == 0:
+                if newHeight > self.height():
+                    self.resizeFuck(size)
+                else:
+                    self.smooth_resizer.setStartValue(self.height())
+                    self.smooth_resizer.setEndValue(newHeight)
+                    self.smooth_resizer.start()
             else:
-                self.smooth_resizer2.setStartValue(self.size())
-                self.smooth_resizer2.setEndValue(size)
-                self.smooth_resizer2.start()
+                if newHeight > self.height():
+                    self.smooth_resizing2(size)
+                else:
+                    self.smooth_resizer2.setStartValue(self.size())
+                    self.smooth_resizer2.setEndValue(size)
+                    self.smooth_resizer2.start()
 
     def clickRange(self):
         if globalconfig["sourcestatus2"]["ocr"]["use"] == False:
             return
         self.showhidestate = False
 
-        rangeselct_function(functools.partial(self.afterrange, False), False)
+        rangeselct_function(functools.partial(self.afterrange, False))
 
     def clickRangeclear(self):
         if globalconfig["sourcestatus2"]["ocr"]["use"] == False:
             return
         self.showhidestate = False
-        rangeselct_function(functools.partial(self.afterrange, True), False)
+        rangeselct_function(functools.partial(self.afterrange, True))
 
     @tryprint
     def afterrange(self, clear, rect, img=None):

@@ -1,13 +1,22 @@
-# Download & Launch & Update
+# Software Download & FAQ
 
 ## Download
 
-| OS | 32-bit | 64-bit | Description |
-| - | - | - | - |
-| Windows 10 & 11 |  | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> | This version only supports newer operating system versions to achieve higher performance, updated system features, and lower virus false positives.
-| Windows 7 or later | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> | |
-| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | | This version only supports text extraction from very old games that can only run in XP VMs. It has limited functionality, is unstable, and runs slowly. Not recommended for regular use.
+| OS | 64-bit |
+| - | - |
+| Windows 10 & 11 | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win10?doc=1"/> |
 
+::: details Legacy OS Compatibility Version  
+
+>[!WARNING]  
+These versions have poorer performance, run less stably, lack some features and functions, and are more prone to false positives from antivirus software. They are not recommended for use unless there is a specific need.
+
+| OS | 32-bit | 64-bit |
+| - | - | - |
+| Windows 7 or later | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_win7?doc=1"/> | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x64_win7?doc=1"/> |
+| Windows XP & Vista | <downloadbtn href="https://lunatranslator.org/Resource/DownloadLuna/x86_winxp?doc=1"/> | |
+
+:::
 
 ## Launch
 
@@ -34,15 +43,17 @@ If you want to delete and re-download, be careful not to delete the userconfig f
 
 
 
-## Common Errors
+## Common Errors {#anchor-commonerros}
+
+### Missing Important Components / Missing embedded Python3
 
 ::: danger
 Sometimes it may be flagged by antivirus software. Please add it to the trust list and re-download and extract.
 :::
 
-### Missing Important Components
-
 ![img](https://image.lunatranslator.org/zh/cantstart/2.jpg) 
+
+![img](https://image.lunatranslator.org/zh/missingpython.png) 
 
 Solution: Close antivirus software. If it cannot be closed (such as Windows Defender), add it to the trust list and then re-download.
 

@@ -11,11 +11,14 @@ hero:
   #   alt: LunaTranslator  
   actions:  
     - theme: brand  
-      text: ダウンロード ＆ 起動 ＆ 更新
+      text: ソフトウェアダウンロード & よくある質問
       link: ./README  
     - theme: alt  
-      text: 基本的な使い方  
+      text: 基本の使い方  
       link: ./basicuse  
+    - theme: alt
+      text: 作者を支援する
+      link: ./support
     - theme: alt  
       text: Github  
       link: https://github.com/HIllya51/LunaTranslator  
@@ -35,7 +38,7 @@ features:
     link: ./useapis/ocrapi
   - title: 豊富な翻訳API  
     details: ほとんどすべての翻訳エンジンをサポートし、大規模言語モデル翻訳、オフライン翻訳などを含みます。
-    link: ./useapis/tsapi
+    link: ./guochandamoxing
   - title: 言語学習
     details: 日本語の分かち書きと仮名振りをサポート、AnkiConnectに対応、Yomitanプラグインをサポート
     link: ./qa1

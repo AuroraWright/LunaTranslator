@@ -34,7 +34,9 @@ def getcomparelayout(self):
     fromtext = QPlainTextEdit()
     totext = QPlainTextEdit()
     solvebutton = getIconButton(
-        callback=lambda: totext.setPlainText(POSTSOLVE(fromtext.toPlainText(), useAll=True)),
+        callback=lambda: totext.setPlainText(
+            POSTSOLVE(fromtext.toPlainText(), useAll=True)
+        ),
         icon="fa.chevron-right",
     )
 
@@ -113,8 +115,7 @@ def setTab7_lazy(self, basel: QLayout):
     for i, post in enumerate(sortlist):
         if post == "_11":
             config = D_getIconButton(
-                callback=lambda: selectdebugfile("userconfig/mypost.py"),
-                icon="fa.edit",
+                callback=lambda: selectdebugfile("mypost.py"), icon="fa.edit"
             )
         else:
             if "args" in postprocessconfig[post]:
@@ -163,7 +164,7 @@ def setTab7_lazy(self, basel: QLayout):
         )
 
         l = [
-            D_getdoclink("/textprocess.html#anchor-" + post),
+            D_getdoclink("textprocess.html#anchor-" + post),
             ((postprocessconfig[post]["name"]), 5),
             D_getsimpleswitch(postprocessconfig[post], "use"),
             config,
@@ -181,7 +182,7 @@ def setTab7_lazy(self, basel: QLayout):
         if checkpostlangmatch(name):
             grids2.append(
                 [
-                    D_getdoclink("/transoptimi.html#anchor-" + name),
+                    D_getdoclink("transoptimi.html#anchor-" + name),
                     ((visname), 5),
                     D_getsimpleswitch(globalconfig["transoptimi"], name),
                 ]

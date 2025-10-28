@@ -373,7 +373,7 @@
     "transoptimi": [
         {
             "name": "vndbnamemap",
-            "visname": "专有名词翻译_翻译前替换"
+            "visname": "翻译前替换"
         },
         {
             "name": "noundict",
@@ -391,6 +391,10 @@
             "name": "arabic_reshaper",
             "visname": "arabic reshaper",
             "languageuse": "ar"
+        },
+        {
+            "name": "skiponlypunctuations",
+            "visname": "跳过仅包含标点的句子"
         }
     ],
     "codepage_real": [
@@ -459,12 +463,10 @@
         ]
     },
     "main_server": [
-        "https://lunatranslator.org",
-        "https://lunatranslator.star.is"
+        "https://lunatranslator.org"
     ],
     "docs_server": [
         "https://docs.lunatranslator.org",
-        "https://docs.lunatranslator.star.is",
         "http://localhost:5173"
     ],
     "bangumi_oauth": {
@@ -510,7 +512,7 @@
         {
             "vis": "硅基流动",
             "value": "https://api.siliconflow.cn",
-            "icon": "files/static/llm_icons/siliconflow.svg"
+            "icon": "files/static/llm_icons/siliconflow_Single graphic LOGO.svg"
         },
         {
             "vis": "cohere",

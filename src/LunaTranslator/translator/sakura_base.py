@@ -1,17 +1,16 @@
-from translator.basetranslator import basetrans
+from translator.basetranslator import basetrans, GptTextWithDict, GptDict
 import requests
-import json, zhconv
+import json
 from myutils.utils import urlpathjoin
 from language import Languages
 from translator.gptcommon import list_models
 
 
 class TS(basetrans):
-    _compatible_flag_is_sakura_less_than_5_52_3 = False
     needzhconv = True
 
     @property
-    def using_gpt_dict(self):
+    def is_version_new(self):
         return self.config["prompt_version"] in [1, 2, 3]
 
     def __init__(self, typename):
@@ -31,13 +30,13 @@ class TS(basetrans):
         # OpenAI
         # self.client = OpenAI(api_key="114514", base_url=api_url)
 
-    def make_gpt_dict_text(self, gpt_dict: "list[dict]"):
+    def make_gpt_dict_text(self, gpt_dict: GptDict):
         gpt_dict_text_list = []
         for gpt in gpt_dict:
-            src = gpt["src"]
+            src = gpt.src
 
-            dst = self.checklangzhconv(self.srclang, gpt["dst"])
-            info = self.checklangzhconv(self.srclang, gpt.get("info"))
+            dst = self.checklangzhconv(self.srclang, gpt.dst)
+            info = self.checklangzhconv(self.srclang, gpt.info)
 
             if info:
                 single = "{}->{} #{}".format(src, dst, info)
@@ -49,10 +48,10 @@ class TS(basetrans):
         return gpt_dict_raw_text
 
     def _gpt_common_parse_context_2(
-        self, messages, context, contextnum, query, ja=False, native=False
+        self, messages: list, context, contextnum, ja=False, native=False
     ):
-        msgs = []
-        self._gpt_common_parse_context(msgs, context, contextnum, query)
+        msgs: "list[str]" = []
+        self._gpt_common_parse_context(msgs, context, contextnum)
         __ja, __zh = [], []
         for i, _ in enumerate(msgs):
             [__zh, __ja][i % 2 == 0].append(_.strip())
@@ -67,7 +66,7 @@ class TS(basetrans):
                 )
             messages.append({"role": "assistant", "content": "\n".join(__zh)})
 
-    def make_messages(self, query, gpt_dict=None):
+    def make_messages(self, query, gpt_dict: GptDict = None):
         contextnum = (
             self.config["append_context_num"] if self.config["use_context"] else 0
         )
@@ -79,7 +78,7 @@ class TS(basetrans):
                     "content": "你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。",
                 }
             ]
-            self._gpt_common_parse_context_2(messages, self.context, contextnum, query)
+            self._gpt_common_parse_context_2(messages, self.context, contextnum)
             messages.append(
                 {"role": "user", "content": "将下面的日文文本翻译成中文：" + query}
             )
@@ -90,7 +89,7 @@ class TS(basetrans):
                     "content": "你是一个轻小说翻译模型，可以流畅通顺地使用给定的术语表以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的代词，也不要擅自增加或减少换行。",
                 }
             ]
-            self._gpt_common_parse_context_2(messages, self.context, contextnum, query)
+            self._gpt_common_parse_context_2(messages, self.context, contextnum)
             gpt_dict_raw_text = self.make_gpt_dict_text(gpt_dict)
             content = (
                 "根据以下术语表（可以为空）：\n"
@@ -107,9 +106,7 @@ class TS(basetrans):
                     "content": "你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。",
                 }
             ]
-            self._gpt_common_parse_context_2(
-                messages, self.context, contextnum, query, True
-            )
+            self._gpt_common_parse_context_2(messages, self.context, contextnum, True)
             if gpt_dict:
                 content = (
                     "根据以下术语表（可以为空）：\n"
@@ -129,17 +126,25 @@ class TS(basetrans):
                 }
             ]
             __gptdict = self.make_gpt_dict_text(gpt_dict)
-            if __gptdict:
-                __gptdict += "\n"
             __msg = []
             self._gpt_common_parse_context_2(
-                __msg, self.context, contextnum, query, True, True
+                __msg, self.context, contextnum, True, True
             )
+            __msg = __msg[1]["content"] if __msg else ""
             content = (
-                (("历史翻译：" + __msg[1]["content"] + "\n") if __msg else "")
-                + "参考以下术语表（可为空，格式为src->dst #备注）\n"
-                + __gptdict
-                + "根据以上术语表的对应关系和备注，结合历史剧情和上下文，将下面的文本从日文翻译成简体中文：\n"
+                (("历史翻译：" + __msg + "\n\n") if __msg else "")
+                + (
+                    (
+                        "参考以下术语表（可为空，格式为src->dst #备注）\n"
+                        + __gptdict
+                        + "\n\n"
+                    )
+                    if __gptdict
+                    else ""
+                )
+                + ("根据以上术语表的对应关系和备注，" if __gptdict else "")
+                + ("结合历史剧情和上下文，" if __msg else "")
+                + "将下面的文本从日文翻译成简体中文：\n"
                 + query
             )
             messages.append({"role": "user", "content": content})
@@ -173,7 +178,7 @@ class TS(basetrans):
             )
 
         except requests.RequestException as e:
-            raise ValueError("连接到Sakura API超时：" + self.api_url)
+            raise ValueError("无法连接Sakura API，可能未正确部署Sakura模型")
         try:
             yield output.json()
         except:
@@ -208,7 +213,7 @@ class TS(basetrans):
                 stream=True,
             )
         except requests.RequestException:
-            raise ValueError("连接到Sakura API超时：" + self.api_url)
+            raise ValueError("无法连接Sakura API，可能未正确部署Sakura模型")
 
         if (not output.headers["Content-Type"].startswith("text/event-stream")) and (
             output.status_code != 200
@@ -230,12 +235,11 @@ class TS(basetrans):
 
             yield res
 
-    def translate(self, query):
-        if isinstance(query, dict):
-            gpt_dict = query["gpt_dict"]
-            query: str = query["contentraw"]
-        else:
-            gpt_dict = None
+    def translate(self, query: GptTextWithDict):
+
+        gpt_dict = query.dictionary
+        query: str = query.rawtext if self.is_version_new else query.parsedtext
+
         self.checkempty(["API接口地址"])
         self.get_client(self.config["API接口地址"])
         frequency_penalty = float(self.config["frequency_penalty"])
@@ -246,7 +250,7 @@ class TS(basetrans):
             completion_tokens = 0
             output_text = ""
             for o in output:
-                if o["choices"][0]["finish_reason"] == None:
+                if o["choices"] and (not o["choices"][0]["finish_reason"]):
                     text_partial = o["choices"][0]["delta"].get("content")
                     if not text_partial:
                         continue

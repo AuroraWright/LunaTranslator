@@ -139,7 +139,7 @@ namespace
     void FSLPM66302(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strAW();
-        s = strSplit(s, L"\");")[0];
+        s = strSplit(s, L");")[0];
         s = re::sub(s, LR"((\\n)+)", L" ");
         s = re::sub(s, LR"(\\d$|^\@[a-z]+|#.*?#|\$)");
         s = re::sub(s, LR"(@w|\\c)");
@@ -193,9 +193,9 @@ namespace
         CharFilter(buffer, L'\r');
         CharFilter(buffer, L'\n');
     }
-    void SLPM65396(TextBuffer *buffer, HookParam *hp)
+    void SLPS25283(TextBuffer *buffer, HookParam *hp)
     {
-        CharFilter(buffer, '\n');
+        StringFilter(buffer, TEXTANDLEN("\\n"));
     }
     void SLPM66543(TextBuffer *buffer, HookParam *hp)
     {
@@ -255,7 +255,7 @@ namespace
         if (last == s)
             return buffer->clear();
         last = s;
-        s = re::sub(s, "\r\n(\x81\x40)*");
+        s = re::sub(s, "[\r\n]+(\x81\x40)*");
         buffer->from(s);
     }
     void SLPM55159(TextBuffer *buffer, HookParam *hp)
@@ -309,6 +309,15 @@ namespace
         StringFilter(buffer, TEXTANDLEN("/L"));
         StringFilter(buffer, TEXTANDLEN("\x81\x40"));
     }
+    void SLPS25766(TextBuffer *buffer, HookParam *hp)
+    {
+        SLPM62343(buffer, hp);
+        static std::string last;
+        auto s = buffer->strA();
+        if (last == s)
+            return buffer->clear();
+        last = s;
+    }
     void SLPL25871(TextBuffer *buffer, HookParam *hp)
     {
         if (buffer->size <= 4)
@@ -324,6 +333,7 @@ namespace
     void SLPS25809(TextBuffer *buffer, HookParam *hp)
     {
         StringFilter(buffer, TEXTANDLEN("/K"));
+        StringFilter(buffer, TEXTANDLEN("\n\x81\x40"));
         CharFilter(buffer, '\n');
         auto s = buffer->strA();
         static std::string last;
@@ -406,6 +416,11 @@ namespace
         }
         last = s;
     }
+    void FSLPM66127(TextBuffer *buffer, HookParam *hp)
+    {
+        StringReplacer(buffer, TEXTANDLEN("\x81\x91"), TEXTANDLEN("!!")); //"――"
+        StringReplacer(buffer, TEXTANDLEN("\x81\x90"), TEXTANDLEN("!?")); //"――"
+    }
     void SLPS25801(TextBuffer *buffer, HookParam *hp)
     {
         CharFilter(buffer, '\n');
@@ -422,16 +437,6 @@ namespace
                 name = u8"【" + name + u8"】";
             buffer->from(name + buffer->strA());
         }
-        last = s;
-    }
-    void SLPS25902(TextBuffer *buffer, HookParam *hp)
-    {
-        CharFilter(buffer, '\n');
-        StringFilter(buffer, TEXTANDLEN("/K"));
-        auto s = buffer->strA();
-        static std::string last;
-        if (last == s)
-            return buffer->clear();
         last = s;
     }
     void FSLPM66332(TextBuffer *buffer, HookParam *hp)
@@ -542,6 +547,15 @@ namespace
         if (last == s)
             return buffer->clear();
         last = s;
+    }
+    void SLPM65535(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("#cr0\x81\x40"));
+        StringFilter(buffer, TEXTANDLEN("#cr0"));
+    }
+    void SLPM65634(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("#cr0"));
     }
     void FSLPM66293(TextBuffer *buffer, HookParam *hp)
     {
@@ -663,6 +677,22 @@ namespace
             buffer->from((char *)emu_addr(0xFA73EC) + collect);
         }
         last1 = collect;
+    }
+    void SLPM66127X(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        auto str = (char *)PCSX2_REG(a1);
+        std::string collect;
+        while (*str)
+        {
+            std::string __ = str;
+            str += __.size() + 1;
+            if (startWith(__, "\x81\x40"))
+            {
+                __ = __.substr(2);
+            }
+            collect += __;
+        }
+        buffer->from(strReplace(collect, "\n"));
     }
     template <int a, int b, int c>
     void SLPM66344(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
@@ -875,6 +905,13 @@ namespace
 
         buffer->from(s);
     }
+    void SLPM65607(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        const int val = PCSX2_REG(v1);
+        if (val != 0x80000000)
+            return;
+        buffer->from((char *)PCSX2_REG(t0));
+    }
     void SLPS25081(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
     {
         const uintptr_t val = PCSX2_REG(a0);
@@ -1017,7 +1054,7 @@ namespace
         last = s;
         if (startWith(s, "*"))
             buffer->from(s.substr(1));
-        SLPM65396(buffer, hp);
+        NewLineCharFilterA(buffer, hp);
     }
     void SLPM62207(TextBuffer *buffer, HookParam *hp)
     {
@@ -1354,6 +1391,13 @@ namespace
         }
         buffer->from(s);
     }
+    void SLPS25278(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(%[A-Z]+\d*)");
+        s = re::sub(s, R"((\x81\x40)*\x87\x53)");
+        buffer->from(s);
+    }
     void SLPM55197(TextBuffer *buffer, HookParam *hp)
     {
         static std::string last;
@@ -1529,6 +1573,7 @@ namespace
     {
         auto s = buffer->strAW();
         s = re::sub(s, L"%[a-zA-Z0-9]+");
+        strReplace(s, L"⑳", L"　");
         buffer->fromWA(s);
     }
     void SLPM66146(TextBuffer *buffer, HookParam *hp)
@@ -1647,6 +1692,14 @@ namespace
         strReplace(sw, L"\xff");
         buffer->fromWA(sw);
     }
+    void SLPM65585(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        auto _ = *(WORD *)PCSX2_REG(a1);
+        if (_ <= 0xff || _ == 0x815b)
+            return;
+        buffer->from_t(_);
+        *split = PCSX2_REG(v0);
+    }
     void SLPM65785(TextBuffer *buffer, HookParam *hp)
     {
         if (*(WORD *)buffer->buff < 0x100)
@@ -1730,6 +1783,282 @@ namespace
         }
         buffer->from(s);
     }
+    void SLPS25433(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, "%", 2);
+    }
+    void SLPM67003(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        if (s.size() == 1)
+            return buffer->clear();
+        if (all_ascii(s))
+            return buffer->clear();
+        if (s[0] == L'"')
+            return buffer->clear();
+        static std::wstring last;
+        if (last == s)
+            return buffer->clear();
+        last = s;
+        buffer->fromWA(strReplace(s, L"//"));
+    }
+    void SLPM62122(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        static std::string last;
+        if (last == s)
+            return buffer->clear();
+        last = s;
+        buffer->from(strReplace(s, "CR"));
+    }
+    void SLPM65639(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        if (all_ascii(s))
+            return buffer->clear();
+        static std::string last;
+        if (last == s)
+            return buffer->clear();
+        last = s;
+        StringFilter(buffer, TEXTANDLEN("\\n"));
+    }
+    void SLPM65448(TextBuffer *buffer, HookParam *hp)
+    {
+        static lru_cache<std::string> cache(4);
+        auto s = buffer->strA();
+        if (cache.touch(s))
+            return buffer->clear();
+        CharFilter(buffer, '\n');
+    }
+    void SLPM65764(TextBuffer *buffer, HookParam *hp)
+    {
+        if (buffer->size == 1)
+            return buffer->clear();
+    }
+    void SLPM62509(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        std::string name = (char *)emu_addr(0x22BE80);
+        if (name.size())
+        {
+            s = "\x81\x79" + name + "\x81\x7a" + s;
+        }
+        buffer->from(s);
+    }
+    void SLPM65671(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        strReplace(s, L"ｫ");
+        strReplace(s, L"ｩ");
+        buffer->fromWA(s);
+    }
+    void SLPS25392(TextBuffer *buffer, HookParam *hp)
+    {
+        static INT IDX;
+        if (IDX++ % 2)
+            return buffer->clear();
+        StringReplacer(buffer, TEXTANDLEN("\xe9\x85"), TEXTANDLEN("\x81\x79"));
+        StringReplacer(buffer, TEXTANDLEN("\xe9\x86"), TEXTANDLEN("\x81\x7a"));
+    }
+    void SLPS025221(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        if ((DWORD)PCSX2_REG(at) != 0x50210000)
+            return;
+        std::string s = (char *)PCSX2_REG(a1);
+        if (all_ascii(s))
+            return;
+        static std::string last;
+        if (s == last)
+            return;
+        last = s;
+        buffer->from(strReplace(s, "\x81\x40") + "\n");
+    }
+    void SLPS25219(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        auto s = (char *)PCSX2_REG(a0);
+        if ((WORD)PCSX2_REG(v1) == 0x91fc || (WORD)PCSX2_REG(v1) == 0x8f10)
+            buffer->from(s);
+    }
+    void SLPM65559(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        static unsigned char last;
+        unsigned char c = PCSX2_REG(a0);
+        if (last)
+        {
+            WORD x = c << 8 | last;
+            if (x != 0x4081)
+                buffer->from_t(x);
+            last = 0;
+        }
+        else
+        {
+            if (IsShiftjisLeadByte(c))
+                last = c;
+        }
+    }
+    void SLPM66847(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        buffer->from(re::sub(s, "\\$\\w"));
+    }
+    void SLPM65676(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        if (s == "\xff" || s == "\x03" || s == "\x01" || s == "&" || s == "@")
+            return buffer->clear();
+    }
+    void SLPS25294(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        if (all_ascii(s))
+            return buffer->clear();
+        if (startWith(s, "["))
+            return buffer->clear();
+        NewLineCharFilterA(buffer, hp);
+    }
+    void SLPM65282(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        auto ss = strSplit(s, "#cr0");
+        if (ss.size() > 1 && ss[0].size() < 10)
+        {
+            ss[0] = "\x81\x79" + ss[0] + "\x81\x7a";
+        }
+        s.clear();
+        for (auto &&_ : ss)
+        {
+            s += _;
+        }
+        buffer->from(s);
+    }
+    void SLPS25248(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        if (all_ascii(s) || s == "\x81\x40")
+            buffer->clear();
+    }
+    void SLPM65306(TextBuffer *buffer, HookParam *hp)
+    {
+        buffer->size -= 7;
+        auto s = buffer->strAW();
+        strReplace(s, L"@");
+        buffer->fromWA(s);
+    }
+    void SLPS25245(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        strReplace(s, L"／");
+        s = re::sub(s, LR"(%?[ A-Z]+\d+)");
+        buffer->fromWA(s);
+    }
+    void SLPM65255(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        s = re::sub(s, LR"([・\u0001-\u007f\uf8f3])");
+        buffer->fromWA(s);
+    }
+    void SLPM65275(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(\n(\x81\x40)*)");
+        if ((s[0] == 'B' && s[s.size() - 1] == 'B') || (s[0] == 'W' && s[s.size() - 1] == 'W'))
+        {
+            s = s.substr(1, s.size() - 2);
+        }
+        buffer->from(s);
+    }
+    void SLPS25235(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        strReplace(s, L"@");
+        buffer->fromWA(s);
+    }
+    void SLPM65400(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"([\n\r]+(\x81\x40)*)");
+        s = re::sub(s, R"(\x81\x6f(.*?)\x81\x5e(.*?)\x81\x70)", "$2");
+        buffer->from(s);
+    }
+    void SLPM65301(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(#cr0(\x81\x40)*)");
+        buffer->from(s);
+    }
+    void SLPM65295(TextBuffer *buffer, HookParam *hp)
+    {
+        static bool last = false;
+        if (IsShiftjisLeadByte(*(BYTE *)buffer->buff))
+        {
+            last = true;
+        }
+        else
+        {
+            if (!last)
+            {
+                buffer->clear();
+            }
+            last = false;
+        }
+    }
+    void SLPS25238(TextBuffer *buffer, HookParam *hp)
+    {
+        static int i = 0;
+        i++;
+        if (i % 2 == 1)
+            return buffer->clear();
+        auto s = buffer->strA();
+        s = re::sub(s, R"(%[A-Z])");
+        buffer->from(s);
+    }
+    void SLPM65154(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(\\[a-z])");
+        buffer->from(s);
+    }
+    void SLPS25256(TextBuffer *buffer, HookParam *hp)
+    {
+        static int i = 0;
+        i++;
+        if (i % 2 == 1)
+            return buffer->clear();
+        SLPM65154(buffer, hp);
+    }
+    void SLPS25223(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("$n"));
+        auto s = buffer->strA();
+        if (all_ascii(s))
+            buffer->clear();
+    }
+    void SLPM65239(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, "^(.*?)#cr0", "\x81\x79$1\x81\x7a");
+        strReplace(s, "#cr0");
+        strReplace(s, "\x81\x79\x81\x40\x81\x40\x81\x40\x81\x40\x81\x7a");
+        buffer->from(s);
+    }
+    void SLPM65910(TextBuffer *buffer, HookParam *hp)
+    {
+        if (buffer->buff[0] == '&')
+            return buffer->clear();
+        auto s = buffer->strAW();
+        s = s.substr(0, s.rfind(L"fV"));
+        s = re::sub(s, L"@　*");
+        buffer->fromWA(s);
+    }
+    void SLPM66980(TextBuffer *buffer, HookParam *hp)
+    {
+        if (buffer->buff[0] == '&')
+            return buffer->clear();
+        auto s = buffer->strAW();
+        s = s.substr(0, s.rfind(L"E\""));
+        s = re::sub(s, L"@　*");
+        buffer->fromWA(s);
+    }
 }
 struct emfuncinfoX
 {
@@ -1737,6 +2066,116 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 銀のエクリプス
+    {0x112858, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM66980, "SLPM-66980"}},
+    // カフェ・リンドバーグ -summer season-
+    {0x211e08, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65910, "SLPM-65910"}},
+    // 裏切りは僕の名前を知っている ～黄昏に堕ちた祈り～
+    {0xB424B6, {DIRECT_READ, 0, 0, 0, SLPS25809, "SLPM-55274"}},
+    // きみスタ ～きみとスタディ～
+    {0x1A37A4, {DIRECT_READ, 0, 0, 0, 0, "SLPM-66376"}},
+    // オレンジハニー 僕はキミに恋してる
+    {0x6FC7FA, {DIRECT_READ, 0, 0, 0, SLPS25766, "SLPS-25766"}},
+    // 紫の焔
+    {0xD68412, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-55053"}},
+    // ヘルミーナとクルス
+    {0x12E374, {0, PCSX2_REG_OFFSET(s1), 0, 0, SLPM62122, "SLPM-62122"}},
+    // 君が望む永遠 ～Rumbling hearts～
+    {0x230d00, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65154, "SLPM-65154"}},
+    // エンジェリック・コンサート
+    {0xA2B038, {DIRECT_READ, 0, 0, 0, SLPM65239, "SLPM-65239"}},
+    // Canvas～セピア色のモチーフ～
+    {0x1940c8, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPS25223, "SLPS-25223"}},
+    // Never7 ～the end of infinity～
+    {0x1a0dd0, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPS25256, "SLPS-25256"}},
+    // カナリア～この想いを歌に乗せて～
+    {0x1c6be4, {0, PCSX2_REG_OFFSET(a0), 0, SLPS25219, 0, "SLPS-25219"}},
+    // 探偵学園Q ～奇翁館の殺意～
+    {0x158040, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM67003, "SLPM-65450"}},
+    // トライアングルアゲイン2
+    {0x16598c, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65255, "SLPM-65273"}},
+    // EVE burst error PLUS
+    {0x49B590, {DIRECT_READ, 0, 0, 0, 0, "SLPM-65320"}},
+    // あいかぎ ～ぬくもりとひだまりの中で～
+    {0x4F263C, {DIRECT_READ, 0, 0, 0, 0, "SLPS-25274"}},
+    // My Merry Maybe
+    {0x1598b0, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPS25238, "SLPS-25238"}},
+    // とらかぷっ！だーっしゅ！！でらっくすぱっく
+    {0xA5E964, {DIRECT_READ, 0, 0, 0, SLPM65301, "SLPM-65301"}},
+    // カフェ・リトルウィッシュ ～魔法のレシピ～
+    {0x11a9b8, {0, PCSX2_REG_OFFSET(v0), 0, 0, SLPM65295, "SLPM-65295"}},
+    // ゆめりあ
+    {0x227374, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPS25235, "SLPS-25235"}},
+    // 最終兵器彼女
+    {0xAF4351, {DIRECT_READ, 0, 0, 0, SLPM65275, "SLPM-65275"}},
+    // D→A:BLACK [通常版]
+    {0x177298, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(v0), 0, 0, 0, "SLPS-25292"}},
+    // ビストロ・きゅーぴっと2 特別版
+    {0x14A3FC, {0, PCSX2_REG_OFFSET(v1), 0, 0, SLPM65255, "SLPM-65255"}},
+    // ファンタスティックフォーチュン2 ☆☆☆
+    {0x36DA10, {DIRECT_READ, 0, 0, 0, SLPM66458, "SLPS-25396"}},
+    // ビストロ・きゅーぴっと2 特別版
+    {0xF61D20, {DIRECT_READ, 0, 0, 0, SLPM65535, "SLPM-65347"}},
+    // トゥルーラブストーリー サマーデイズ アンド イエット...
+    {0x168B1C, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPS25245, "SLPS-25245"}},
+    // SAKURA～雪月華～ [初回限定版]
+    {0x25B5C0, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65306, "SLPM-65306"}},
+    // キノの旅 -the Beautiful World-
+    {0x12920c, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s1), 0, 0, SLPS25248, "SLPS-25248"}},
+    // グリーングリーン ～鐘の音ロマンティック～
+    {0x94B318, {DIRECT_READ, 0, 0, 0, SLPM65282, std::vector<const char *>{"SLPM-65281", "SLPM-65282"}}},
+    // カンブリアンQTS ～化石になっても～
+    {0x159e10, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65448, "SLPM-65448"}},
+    // アラビアンズ・ロスト ～The engagement on desert～
+    {0x3A2F70, {DIRECT_READ, 0, 0, 0, SLPM66847, "SLPM-66847"}},
+    // INTERLUDE
+    {0x572040, {DIRECT_READ, 0, 0, 0, SLPS25283, "SLPS-25283"}},
+    // てんたま -1st Sunny Side-
+    {0x1DFD630, {DIRECT_READ, 0, 0, 0, SLPM66352, "SLPS-25298"}},
+    // てんたま2wins [限定版]
+    {0x4A3A60, {DIRECT_READ, 0, 0, 0, SLPM66352, "SLPM-65520"}},
+    // Remember11 ～the age of infinity～ [通常版]
+    {0xAFCF80, {DIRECT_READ, 0, 0, 0, 0, "SLPM-65550"}},
+    // 宇宙のステルヴィア
+    {0x4CDE54, {0, PCSX2_REG_OFFSET(s1), 0, 0, SLPS25294, "SLPS-25294"}},
+    // ステディ×スタディ [限定版]
+    {0x194EA40, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-65557"}},
+    // ロスト・アヤ・ソフィア
+    {0x1992960, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-65592"}},
+    // ふぁいなる・アプローチ [通常版]
+    {0x21298C, {USING_CHAR | CODEC_ANSI_BE, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65676, "SLPM-65676"}},
+    // W ～ウィッシュ～ [初回限定版]
+    {0x1107C0, {0, PCSX2_REG_OFFSET(s4), 0, 0, SLPM65671, "SLPM-65671"}},
+    // D→A:WHITE [通常版]
+    {0x1769bc, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(v0), 0, 0, 0, "SLPS-25438"}},
+    // Princess Holiday～転がるりんご亭千夜一夜～
+    {0x13c208, {0, PCSX2_REG_OFFSET(a1), 0, SLPM65585, 0, "SLPM-65585"}},
+    // おしえて！ ぽぽたん
+    {0xB116A4, {DIRECT_READ, 0, 0, 0, SLPM65535, "SLPM-65535"}},
+    // メンアットワーク！3 愛と青春のハンター学園 [初回限定版]
+    {0x16fd1c, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s0), 0, 0, SLPM65764, "SLPM-65764"}},
+    // DESIRE
+    {0x1072D0, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPS25392, "SLPS-25392"}},
+    // セイント・ビースト ～螺旋の章～ [限定版]
+    {0x1056DC, {0, PCSX2_REG_OFFSET(s0), 0, 0, 0, "SLPS-25807"}},
+    // てのひらをたいように ～永久の絆～ [初回限定版]
+    {0x211590, {0, 0, 0, SLPM65559, 0, "SLPM-65559"}},
+    // パティシエなにゃんこ ～初恋はいちご味～ [限定版]
+    {0x147A70, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65639, "SLPM-65639"}},
+    // 水月 ～迷心～
+    {0x1e6a20, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM55170, "SLPM-65751"}},
+    // 夏少女 Promised Summer
+    {0xBBBA70, {DIRECT_READ, 0, 0, 0, SLPM65634, "SLPM-65634"}},
+    // 十六夜れんか ～かみふるさと～
+    {0x112F2C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(v1), 0, 0, 0, "SLPM-65545"}},
+    // オレンジポケット -リュート- [初回限定版]
+    {0x12AF28, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(v0), 0, 0, 0, "SLPM-65524"}},
+    // 3LDK ～幸せになろうよ～ [初回限定版]
+    {0x15562C, {0, 0, 0, SLPM65607, SLPM66861, "SLPM-65607"}},
+    // 帝国千戦記 [初回限定版]
+    {0x1DB228, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPS25433, "SLPS-25433"}},
+    // サクラ大戦 ～熱き血潮に～
+    {0x1f1420, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM67003, "SLPM-67003"}},
     // サクラ大戦Ⅴ ～さらば愛しき人よ～
     {0x1F6E550, {DIRECT_READ, 0, 0, 0, SLPM67009, "SLPM-67009"}},
     // 月は東に日は西に -Operation Sanctuary-
@@ -1745,16 +2184,24 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x122A60, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65641, "SLPM-65641"}},
     // CROSS+CHANNEL ～To all people～ [限定版]
     {0x198500, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM55170, "SLPM-65546"}},
+    // THE 恋愛ホラーアドベンチャー～漂流少女～
+    {0x1A1640, {DIRECT_READ, 0, 0, 0, SLPM62343, "SLPM-62343"}},
+    // THE 外科医
+    {0x22BF40, {DIRECT_READ, 0, 0, SLPM66344<0x22BF40, 0x22BF6F, 0x22BF9E>, SLPM62509, "SLPM-62509"}},
     // THE 娘育成シミュレーション
     {0x132234, {0, 0, 0, SLPM62375, 0, "SLPM-62375"}},
+    // THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～
+    {0x16C798, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM62207, "SLPM-62207"}},
+    // THE 呪いのゲーム
+    {0x128D58, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s1), 0, 0, 0, "SLPS-25581"}}, //@mills
     // ドラゴンクエストⅤ 天空の花嫁
     {0x745A7C, {DIRECT_READ, 0, 0, 0, SLPM65555, "SLPM-65555"}},
     // プリンセスナイトメア
-    {0x3E1960, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66973"}},
+    {0x3E1960, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-66973"}},
     // Routes PE
     {0x175D48, {USING_CHAR, PCSX2_REG_OFFSET(a1), 0, 0, 0, "SLPS-25727"}},
-    // Drastic Killer (Excellent Box)
-    {0x1AC6040, {DIRECT_READ, 0, 0, 0, SLPS25870, "SLPS-25870"}},
+    // Drastic Killer
+    {0x1AC6040, {DIRECT_READ, 0, 0, 0, SLPS25870, std::vector<const char *>{"SLPS-25870", "SLPS-25871"}}},
     // カラフルBOX ～to LOVE～ [通常版]
     {0xD1A970, {DIRECT_READ, 0, 0, 0, SLPM65589, "SLPM-65589"}},
     // PIZZICATO POLKA ～縁鎖現夜～
@@ -1785,6 +2232,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x141A80, {0, PCSX2_REG_OFFSET(t7), 0, 0, SLPS25468, "SLPS-25468"}},
     // IZUMO コンプリート
     {0x12DD1C, {0, PCSX2_REG_OFFSET(v1), 0, 0, SLPM65832, "SLPM-65832"}},
+    // 新世紀エヴァンゲリオン 綾波育成計画 with アスカ補完計画
+    {0xF2AA20, {DIRECT_READ, 0, 0, 0, 0, "SLPM-65334"}},
     // 新世紀エヴァンゲリオン 鋼鉄のガールフレンド2nd
     {0x126BC4, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65867, "SLPM-65867"}},
     // 何処へ行くの、あの日 ～光る明日へ…～
@@ -1826,8 +2275,6 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x1DB1A60, {DIRECT_READ, 0, 0, 0, SLPM66352, "SLPM-66086"}},
     // しろがねの鳥籠 [通常版]
     {0x424710, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, SLPM66150, "SLPM-66150"}},
-    // D.C.F.S. ～ダ・カーポ～ フォーシーズンズ DXパック
-    {0x112A98, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM66225, "SLPM-66225"}},
     // 星界の戦旗
     {0x60300C, {DIRECT_READ, 0, 0, SLPM66344<0x60300C, 0x6030EC, 0x6031CC>, SLPM65937, "SLPM-65937"}},
     // ふしぎの海のナディア [通常版]
@@ -1835,7 +2282,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ルーンプリンセス 初回限定版
     {0x11AA2C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(t5), 0, 0, SLPM66157, "SLPM-66157"}},
     // 式神の城 七夜月幻想曲
-    {0x1722E8, {0, PCSX2_REG_OFFSET(s4), 0, 0, SLPM65396, "SLPM-66069"}},
+    {0x1722E8, {0, PCSX2_REG_OFFSET(s4), 0, 0, NewLineCharFilterA, "SLPM-66069"}},
     // ふぁいなりすと [通常版]
     {0x167428, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s2), 0, 0, SLPM66254, "SLPM-66254"}},
     // メタルウルフREV [初回限定版]
@@ -1863,7 +2310,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 桜華 ～心輝かせる桜～
     {0x16AABC, {0, PCSX2_REG_OFFSET(s1), 0, 0, SLPM66406, "SLPM-66406"}},
     // ギャラクシーエンジェルⅡ ～絶対領域の扉～ [通常版]
-    {0x1529DC3, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66243"}},
+    {0x1529DC3, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-66243"}},
     // 魂響 ～御霊送りの詩～ [通常版]
     {0x1D344D0, {DIRECT_READ, 0, 0, 0, SLPM66757, "SLPM-66433"}},
     // あそびにいくヨ！ ～ちきゅうぴんちのこんやくせんげん～
@@ -1891,7 +2338,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 神様家族 応援願望
     {0x1293AC, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM66499, "SLPM-66499"}},
     // Gift -prism- [通常版]
-    {0x4B5A50, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-66530"}},
+    {0x4B5A50, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-66530"}},
     // 女子高生 GAME'S-HIGH！
     {0x12A5445, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66495"}},
     // 世界ノ全テ ～two of us～
@@ -1923,7 +2370,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // お嬢様組曲 -Sweet Concert- [通常版]
     {0x116E34, {0, PCSX2_REG_OFFSET(t5), 0, 0, SLPM66726, "SLPM-66726"}},
     // まじしゃんず・あかでみい
-    {0x2DB307, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPS-25775"}},
+    {0x2DB307, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPS-25775"}},
     // 許嫁 [初回限定版]
     {0x1B22E4, {DIRECT_READ, 0, 0, 0, SLPM66861, "SLPM-66732"}},
     // 魔女っ娘ア・ラ・モードⅡ ～魔法と剣のストラグル～ [通常版]
@@ -1952,7 +2399,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x114128, {0, PCSX2_REG_OFFSET(s2), 0, 0, SLPM55016, "SLPM-66890"}},
     // 最終試験くじら−Alive− //SLPM-66809
     // 水夏A.S+ Eternal Name [通常版] //SLPM-66787
-    {0x1FFE8C0, {DIRECT_READ, 0, 0, 0, SLPM65396, std::vector<const char *>{"SLPM-66809", "SLPM-66787"}}},
+    {0x1FFE8C0, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, std::vector<const char *>{"SLPM-66809", "SLPM-66787"}}},
     // プリンセスメーカー5
     {0x19B5D4, {0, PCSX2_REG_OFFSET(v0), 0, 0, SLPM66918, "SLPM-66918"}},
     // School Days L×H
@@ -1992,7 +2439,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // シークレットゲーム -KILLER QUEEN-
     {0x1BC90C0, {DIRECT_READ, 0, 0, 0, 0, "SLPM-55028"}},
     // レッスルエンジェルス サバイバー2
-    {0xEAC080, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-55058"}},
+    {0xEAC080, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-55058"}},
     // 夢見白書 ～Second Dream～ [通常版]
     {0x1B3EC4, {DIRECT_READ, 0, 0, 0, 0, "SLPM-55071"}},
     // Scarlett ～日常の境界線～ [通常版]
@@ -2003,12 +2450,18 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x1BF050, {0, 0, 0, SLPM66441, 0, "SLPM-66441"}},
     // Piaキャロットへようこそ！！G.P. ～学園プリンセス～
     {0x23AF40, {DIRECT_READ, 0, 0, 0, SLPM55102, "SLPM-55102"}},
+    // Piaキャロットへようこそ！！3 ～round summer～
+    {0x11f960, {0, 0, 0, SLPS025221, 0, "SLPS-25221"}},
     // Clear ～新しい風の吹く丘で～
     {0x1D0C580, {DIRECT_READ, 0, 0, 0, 0, "SLPM-55136"}},
     // ヒャッコ よろずや事件簿！
     {0x17B6D4, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM55159, "SLPM-55159"}},
     // トリガーハート エグゼリカ エンハンスド
     {0x324694, {0, PCSX2_REG_OFFSET(s0), 0, 0, SLPM55052, "SLPM-55052"}},
+    // Memories Off Duet ～1st & 2nd Stories～
+    {0xA929BC, {DIRECT_READ, 0, 0, 0, SLPM66352, "SLPS-25226"}},
+    // Memories Off ～それから～ [通常版]
+    {0xB9B400, {DIRECT_READ, 0, 0, 0, SLPM66352, "SLPM-65610"}},
     // Memories Off ～それから again～ [限定版]
     {0x1E03CF0, {DIRECT_READ, 0, 0, 0, SLPM66352, "SLPM-66352"}},
     // Memories Off AfterRain vol.1 折鶴 [SPECIAL EDITION]
@@ -2023,6 +2476,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x1A1528, {0, PCSX2_REG_OFFSET(s3), 0, 0, SLPM55197, "SLPM-66988"}},
     // Memories Off 6 Next Relation
     {0x17F334, {0, PCSX2_REG_OFFSET(v1), 0, 0, SLPM55197, "SLPM-55197"}},
+    // メモオフみっくす
+    {0x1943860, {DIRECT_READ, 0, 0, 0, SLPS25278, "SLPS-25278"}},
     // メルティブラッド アクトレスアゲイン [通常版]
     {0x853710, {DIRECT_READ, 0, 0, 0, SLPM55184, "SLPM-55184"}},
     // つよきす2学期 ～Swift Love～ [通常版]
@@ -2040,7 +2495,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 萌え萌え2次大戦（略）☆デラックス
     {0x1ACF30, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM55156, "SLPS-25896"}},
     // 萌え萌え2次大戦(略)2[chu～♪] [通常版]
-    {0x1A2690, {0, PCSX2_REG_OFFSET(t4), 0, 0, SLPM65396, "SLPS-25956"}},
+    {0x1A2690, {0, PCSX2_REG_OFFSET(t4), 0, 0, NewLineCharFilterA, "SLPS-25956"}},
     // ストライクウィッチーズ あなたとできること [通常版]
     {0x10A948, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(a0), 0, 0, 0, "SLPM-55174"}},
     // 恋姫†夢想 ～ドキッ☆乙女だらけの三国志演義～ [通常版]
@@ -2065,8 +2520,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x109C5C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65786, "SLPM-55263"}},
     // Monochrome (モノクローム)
     {0x4B7A60, {DIRECT_READ, 0, 0, 0, SLPM55170, "SLPM-65682"}},
-    // Missing Blue [通常版]
-    {0x12A80C, {0, 0, 0, SLPS25051, 0, "SLPS-25051"}}, //@mills
+    // Missing Blue
+    {0x12A80C, {0, 0, 0, SLPS25051, 0, std::vector<const char *>{"SLPS-25039", "SLPS-25051"}}}, //@mills
     // 四八 （仮）
     {0x17529C, {0, 0, 0, SLPS25759, 0, "SLPS-25759"}}, //@mills
     // かまいたちの夜2 ～監獄島のわらべ唄～ [通常版]
@@ -2076,11 +2531,11 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 桃華月憚 ～光風の陵王～
     {0x29AB3C, {0, 0, 0, 0, 0, "SLPM-55200"}},
     // 夏色の砂時計
-    {0x205554, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(v1), 0, 0, 0, "SLPS-25026"}},
+    {0x205554, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(v1), 0, 0, 0, std::vector<const char *>{"SLPM-65136", "SLPM-65125", "SLPS-25026"}}},
     // なついろ ～星屑のメモリー～
     {0x16D230, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s0), 0, 0, SLPM65786, "SLPM-65786"}},
     // 夏色小町【一日千夏】
-    {0x2AB318, {DIRECT_READ, 0, 0, 0, SLPM65355, "SLPM-65355"}},
+    {0x2AB318, {DIRECT_READ, 0, 0, 0, SLPM65355, std::vector<const char *>{"SLPM-65355", "SLPM-65356"}}},
     // SDガンダム - G GENERATION WARS
     {0x4BF474, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPS25941, "SLPS-25941"}},
     {0x51B59C, {0, PCSX2_REG_OFFSET(v1), 0, 0, SLPS25941_2, "SLPS-25941"}},
@@ -2088,12 +2543,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x1FFACA0, {DIRECT_READ, 0, 0, 0, SLPM66458, "SLPM-66458"}},
     // 風雨来記2
     {0x2AC77C, {0, 0, 0, SLPM66163, 0, "SLPM-66163"}}, //@mills
-    // THE 恋愛アドベンチャー ～BITTERSWEET FOOLS～
-    {0x16C798, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM62207, "SLPM-62207"}},
     // あかね色に染まる坂 ぱられる
     {0x126660, {0, PCSX2_REG_OFFSET(v1), 0, 0, SLPM55006, "SLPM-55006"}},
-    // SIMPLE 2000シリーズ Vol.92 THE 呪いのゲーム
-    {0x128D58, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s1), 0, 0, 0, "SLPS-25581"}}, //@mills
     // 赤川次郎ミステリー月の光　 ～沈める鐘の殺人～
     {0x118150, {USING_CHAR | CODEC_ANSI_BE, PCSX2_REG_OFFSET(a0), 0, 0, 0, "SLPS-20196"}}, //@mills
     // 最終電車
@@ -2131,8 +2582,6 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x53FA10, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, FSLPM66332, "SLPM-66332"}},
     // 銀魂 銀さんと一緒！ボクのかぶき町日記
     {0x8DA13A, {DIRECT_READ, 0, 0, 0, SLPS25809, "SLPS-25809"}},
-    // THE 恋愛ホラーアドベンチャー～漂流少女～
-    {0x1A1640, {DIRECT_READ, 0, 0, 0, SLPM62343, "SLPM-62343"}},
     // 好きなものは好きだからしょうがない！！ -FIRST LIMIT & TARGET†NIGHTS- Sukisho！ Episode ＃01+＃02
     {0x268CE9, {DIRECT_READ, 0, 0, SLPS20394<0x268CE9, 0x268D2A, 0x268D6B, 0x268DAC>, 0, "SLPS-20352"}}, //[ディスク 1]
     {0x2690EA, {DIRECT_READ, 0, 0, SLPS20394<0x2690EA, 0x26912A, 0x26916B, 0x2691AC>, 0, "SLPS-20353"}}, //[ディスク 2]
@@ -2145,14 +2594,18 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x50574C, {DIRECT_READ, 0, 0, 0, SLPS25679, std::vector<const char *>{"SLPS-25678", "SLPS-25679"}}},
     // Only you リベルクルス ドラマCD付き
     {0x461F38, {DIRECT_READ, 0, 0, SLPS25150, 0, "SLPS-25150"}},
+    // D.C.P.S. ～ダ・カーポ～ プラスシチュエーション
+    {0x114384, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65400, "SLPM-65400"}},
     // D.C. ～ダ・カーポ～ the Origin
     {0x517688, {DIRECT_READ, 0, 0, 0, SLPM66905, "SLPM-66905"}},
     // D.C.I.F. ～ダ・カーポ～イノセント・フィナーレ～ [通常版]
     {0x114068, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM55156, "SLPM-55156"}},
+    // D.C.F.S. ～ダ・カーポ～ フォーシーズンズ DXパック
+    {0x112A98, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM66225, "SLPM-66225"}},
     // Soul Link EXTENSION
     {0x1E14A3C, {DIRECT_READ, 0, 0, 0, SLPM66437, "SLPM-66437"}},
     // デ・ジ・キャラット ファンタジー エクセレント
-    {0x10E2C80, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-65396"}},
+    {0x10E2C80, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-65396"}},
     // I/O
     {0xF0BF80, {DIRECT_READ, 0, 0, 0, SLPM66272, "SLPM-66272"}},
     // シークレット・オブ・エヴァンゲリオン
@@ -2169,7 +2622,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ゼロの使い魔 迷子の終止符と幾千の交響曲
     {0x1FFD934, {DIRECT_READ, 0, 0, 0, SLPS25897_1, "SLPS-25897"}},
     // ゼロの使い魔 小悪魔と春風の協奏曲 [通常版]
-    {0x1C0E38, {0, 0, 0, SLPS25709, SLPM65396, "SLPS-25709"}},
+    {0x1C0E38, {0, 0, 0, SLPS25709, NewLineCharFilterA, "SLPS-25709"}},
     // スキップ・ビート
     {0x1CF70F0, {DIRECT_READ, 0, 0, 0, SLPM55170, "SLPM-55170"}},
     // Myself;Yourself
@@ -2188,7 +2641,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // ゲームになったよ！ドクロちゃん～健康診断大作戦～
     {0x1B9Bbec, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66186"}},
     // 地獄少女 澪縁
-    {0x2A078F, {DIRECT_READ, 0, 0, 0, SLPM65396, "SLPM-55213"}},
+    {0x2A078F, {DIRECT_READ, 0, 0, 0, NewLineCharFilterA, "SLPM-55213"}},
     // エーデルブルーメ
     {0x46631C, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66975"}},
     // セキレイ ～未来からのおくりもの～
@@ -2216,17 +2669,25 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // エリュシオン～永遠のサンクチュアリ～
     {0x312FDC, {DIRECT_READ, 0, 0, SLPS25220, 0, "SLPS-25220"}},
     // 純情ロマンチカ ～恋のドキドキ大作戦
-    {0x83907A, {DIRECT_READ, 0, 0, 0, SLPS25902, "SLPS-25902"}},
+    {0x83907A, {DIRECT_READ, 0, 0, 0, SLPS25809, "SLPS-25902"}},
     // 今日からマ王！はじマりの旅 [プレミアムBOX]
     {0x356FB0, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, SLPS25662, "SLPS-25662"}},
     // 今日からマ王！ 眞マ国の休日
     {0x3428D0, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, SLPS25801, "SLPS-25801"}},
-    // 遙かなる時空の中で3 運命の迷宮 [Triple Pack]
-    {0x1FFE9D8, {DIRECT_READ, 0, 0, SLPM66344<0x1FFE9D8, 0x1FFE9F4, 0x1FFEA10>, 0, "SLPM-66344"}},
+    // 遙かなる時空の中で3 運命の迷宮
+    {0x1FD73C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(t7), 0, 0, FSLPM66127, std::vector<const char *>{"SLPM-66344", "SLPM-66347", "SLPM-66348"}}}, // 开场
+    {0x1FD6A0, {0, PCSX2_REG_OFFSET(a1), 0, SLPM66127X, FSLPM66127, std::vector<const char *>{"SLPM-66344", "SLPM-66347", "SLPM-66348"}}},
+    // 遙かなる時空の中で3 十六夜記 Harukanaru Toki no Naka de 3 - Izayoiki
+    {0x25882C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(t7), 0, 0, FSLPM66127, "SLPM-66127"}},
+    {0x258790, {0, PCSX2_REG_OFFSET(a1), 0, SLPM66127X, FSLPM66127, "SLPM-66127"}},
+    // 遙かなる時空の中で4
+    {0x1B043C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s1), 0, 0, FSLPM66127, "SLPM-66952"}},
+    {0x1B0360, {0, PCSX2_REG_OFFSET(a1), 0, SLPM66127X, FSLPM66127, "SLPM-66952"}},
     // Angel's Feather
     {0x31B880, {DIRECT_READ, 0, 0, SLPS20394<0x31B480, 0x31B880, 0x31BC80, 0x31C080>, 0, std::vector<const char *>{"SLPM-65512", "SLPM-65513"}}},
     // 空色の風琴 ～Remix～
     {0x1A9238, {DIRECT_READ, 0, 0, 0, SLPM65843, "SLPM-65848"}},
+    {0x10c324, {FULL_STRING, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65843, "SLPM-65848"}},
 };
 
 extern void pcsx2_load_functions(std::unordered_map<DWORD, emfuncinfo> &m)

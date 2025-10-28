@@ -19,9 +19,7 @@ from ctypes import (
     byref,
     cast,
 )
-import os
 from ctypes.wintypes import (
-    MAX_PATH,
     LPVOID,
     RECT,
     POINT,
@@ -94,6 +92,7 @@ HWND_TOP = 0
 SW_HIDE = 0
 SWP_NOACTIVATE = 16
 SWP_NOMOVE = 2
+SWP_NOZORDER = 0x0004
 SW_MAXIMIZE = 3
 SW_SHOWNORMAL = 1
 WS_EX_TOOLWINDOW = 128
@@ -181,6 +180,7 @@ _kernel32 = windll.Kernel32
 _psapi = windll.Psapi
 _Advapi32 = windll.Advapi32
 _Shlwapi = windll.Shlwapi
+_Ole32 = windll.Ole32
 
 CloseHandle = _kernel32.CloseHandle
 CloseHandle.argtypes = (HANDLE,)
@@ -229,6 +229,10 @@ _GetCursorPos = _user32.GetCursorPos
 _GetCursorPos.argtypes = (POINTER(POINT),)
 
 
+SetCursorPos = _user32.SetCursorPos
+SetCursorPos.argtypes = (c_int, c_int)
+
+
 GetDeviceCaps = _gdi32.GetDeviceCaps
 GetDeviceCaps.argtypes = HDC, c_int
 GetDeviceCaps.restype = c_int
@@ -262,6 +266,8 @@ _SendMessage = _user32.SendMessageW
 _SendMessage.argtypes = HWND, UINT, c_void_p, c_void_p
 _keybd_event = _user32.keybd_event
 _keybd_event.argtypes = c_byte, c_byte, c_uint, c_void_p
+_mouse_event = _user32.mouse_event
+_mouse_event.argtypes = DWORD, DWORD, DWORD, DWORD, c_void_p
 RegisterWindowMessage = _user32.RegisterWindowMessageW
 RegisterWindowMessage.argtypes = (LPCWSTR,)
 RegisterWindowMessage.restype = UINT
@@ -575,6 +581,17 @@ def keybd_event(bVk, bScan, dwFlags, _):
     _keybd_event(bVk, bScan, dwFlags, _)
 
 
+def mouse_event(dwFlags, dx, dy, dwData, dwExtraInfo=None):
+    _mouse_event(dwFlags, dx, dy, dwData, dwExtraInfo)
+
+
+MOUSEEVENTF_LEFTDOWN = 2
+MOUSEEVENTF_LEFTUP = 4
+MOUSEEVENTF_MIDDLEDOWN = 0x20
+MOUSEEVENTF_MIDDLEUP = 0x40
+MOUSEEVENTF_RIGHTDOWN = 8
+MOUSEEVENTF_RIGHTUP = 0x10
+
 _WaitForSingleObject = _kernel32.WaitForSingleObject
 _WaitForSingleObject.argtypes = HANDLE, DWORD
 _WaitForSingleObject.restype = DWORD
@@ -815,8 +832,18 @@ class HRESULT_ERROR(Exception):
     pass
 
 
+def FAILED(hr):
+    hr = HRESULT(hr).value
+    return hr < 0
+
+
+def SUCCEEDDED(hr):
+    hr = HRESULT(hr).value
+    return hr >= 0
+
+
 def CHECK_FAILURE(hr, module=None):
-    if hr < 0:
+    if FAILED(hr):
         raise HRESULT_ERROR(FormatMessage(hr, module))
 
 
@@ -875,3 +902,27 @@ def LCIDToLocaleName(lcid: int) -> str:
     if not _LCIDToLocaleName(lcid, buff, LOCALE_NAME_MAX_LENGTH, 0):
         raise Exception(GetLastError())
     return buff.value
+
+
+CoInitialize = _Ole32.CoInitialize
+CoInitialize.argtypes = (LPVOID,)
+CoInitialize.restype = HRESULT
+
+
+CoUninitialize = _Ole32.CoUninitialize
+
+
+class CO_INIT:
+    def __init__(self):
+        self.hr = CoInitialize(None)
+
+    def __del__(self):
+        if SUCCEEDDED(self.hr):
+            CoUninitialize()
+
+
+WM_APP = 0x8000
+WM_DESTROY = 0x2
+
+DestroyWindow = _user32.DestroyWindow
+DestroyWindow.argtypes = (HWND,)

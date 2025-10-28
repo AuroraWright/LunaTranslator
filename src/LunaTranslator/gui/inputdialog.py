@@ -4,7 +4,7 @@ from traceback import print_exc
 import os, gobject, requests, sys, uuid
 from myutils.commonbase import maybejson
 from myutils.config import globalconfig, _TR, static_data
-from myutils.utils import makehtml, selectdebugfile
+from myutils.utils import selectdebugfile
 from myutils.wrapper import Singleton
 from gui.usefulwidget import (
     MySwitch,
@@ -634,9 +634,11 @@ class autoinitdialog(LDialog):
             if not isinstance(dd[key], str):
                 return
             lineW = QLineEdit(dd[key])
+            lineW.setPlaceholderText(line.get("placeholder", ""))
             self.regist[key] = lineW.text
         elif line["type"] == "multiline":
             lineW = QPlainTextEdit(dd[key])
+            lineW.setPlaceholderText(line.get("placeholder", ""))
             self.regist[key] = lineW.toPlainText
         elif line["type"] == "file":
             __temp = {"k": dd[key]}
@@ -670,7 +672,7 @@ class autoinitdialog(LDialog):
                 __temp,
                 "k",
                 line["type"] == "spin",
-                line.get("step", 0.1),
+                line.get("step", (1, 0.1)[line["type"] == "spin"]),
             )
             self.regist[key] = lineW.value
         elif line["type"] == "split":
@@ -700,7 +702,11 @@ class autoinitdialog(LDialog):
         maybehasextrainfo=None,
         exec_=False,
     ) -> None:
-        super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
+        super().__init__(
+            parent,
+            Qt.WindowType.WindowCloseButtonHint
+            | Qt.WindowType.WindowMaximizeButtonHint,
+        )
         self.setWindowTitle(title)
         self.resize(QSize(width, 10))
         formLayout = VisLFormLayout(self)
@@ -834,8 +840,7 @@ class autoinitdialog(LDialog):
             self.show()
 
 
-@Singleton
-class postconfigdialog_(LDialog):
+class postconfigdialog_1(LDialog):
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.setFocus()
         self.apply()
@@ -926,6 +931,11 @@ class postconfigdialog_(LDialog):
         formLayout.addLayout(button)
         self.resize(QSize(600, 400))
         self.show()
+
+
+@Singleton
+class postconfigdialog_(postconfigdialog_1):
+    pass
 
 
 def postconfigdialog(parent, configdict, title, header):

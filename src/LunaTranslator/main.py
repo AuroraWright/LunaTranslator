@@ -103,7 +103,6 @@ def loadmainui(startwithgameuid):
 
     gobject.base = BASEOBJECT()
     gobject.base.loadui(startwithgameuid)
-    # gobject.base.urlprotocol()
 
 
 def checklang():
@@ -121,9 +120,8 @@ def checklang():
 
 def checkintegrity():
     from myutils.config import _TR
-    from qtsymbols import QMessageBox
-    from gobject import runtime_for_xp, runtime_for_win10, runtime_bit_64
-    import platform, gobject
+    from gobject import runtime_for_xp, runtime_for_win10, runtime_bit_64, GetDllpath
+    from myutils.utils import dynamiclink
 
     dll3264 = [
         "NativeUtils.dll",
@@ -140,7 +138,7 @@ def checkintegrity():
     flist = []
     for f in dll3264:
         if f:
-            flist.append(gobject.GetDllpath(f))
+            flist.append(GetDllpath(f))
 
     dllshared = [
         "LunaHook/" + ("LunaHost32.dll", "LunaHost64.dll")[runtime_bit_64],
@@ -158,13 +156,30 @@ def checkintegrity():
         if not os.path.exists(f):
             collect.append(os.path.normpath(os.path.abspath(f)))
     if len(collect):
-        QMessageBox.critical(
-            None,
+        return (
             _TR("错误"),
             _TR("找不到重要组件：\n{modules}\n请重新下载并关闭杀毒软件后重试").format(
                 modules="\n".join(collect)
+            )
+            + '\n<a href="{}">{}</a>'.format(
+                dynamiclink("README.html#anchor-commonerros", docs=True), _TR("说明")
             ),
         )
+    return None
+
+
+def __checkintegrity(error=None):
+    from gui.usefulwidget import RichMessageBox
+
+    if error:
+        error, error_t = error
+        RichMessageBox(None, *error_t, iserror=error)
+        if error:
+            os._exit(0)
+
+    args = checkintegrity()
+    if args:
+        RichMessageBox(None, *args)
         os._exit(0)
 
 
@@ -172,13 +187,12 @@ def switchdir():
     dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     os.chdir(dirname)
     sys.path.insert(1, ".")
-    sys.path.insert(1, "userconfig")
     # 0 是当前目录
     # 后面的是系统库或runtime
     # 由于自动更新不会删除，runtime下可能有历史遗留的同名文件被优先导入
 
 
-def urlprotocol():
+def _parseargs():
     import argparse, gobject
     from urllib.parse import urlsplit
     from traceback import print_exc
@@ -187,11 +201,14 @@ def urlprotocol():
     parser.add_argument("--URLProtocol", required=False)
     parser.add_argument("--Exec", required=False)
     parser.add_argument("--test", required=False, action="store_true")
+    parser.add_argument("--userconfig", required=False)
     try:
         args = parser.parse_args()
         URLProtocol: str = args.URLProtocol
         Exec: str = args.Exec
         gobject.istest = args.test
+        userconfig = args.userconfig
+        gobject.thisuserconfig = userconfig if userconfig else gobject.thisuserconfig
         if URLProtocol:
             print(URLProtocol)
             result = urlsplit(URLProtocol)
@@ -205,21 +222,94 @@ def urlprotocol():
             elif netloc == "exec":
                 # lunatranslator://Exec?{gameuid}
                 return result.query
+            elif netloc == "llmapi":
+                return 2, result
         if Exec:
-            return Exec
+            return 1, Exec
     except Exception:
         print_exc()
 
 
+def parseargs():
+    import gobject
+
+    _ = _parseargs()
+    sys.path.insert(1, gobject.thisuserconfig)
+    return _
+
+
+def parsellmapi(result):
+    import json, uuid, base64
+    from urllib.parse import parse_qsl, SplitResult
+    from myutils.config import copyllmapi
+
+    # lunatranslator://llmapi/base64?data=……
+    # lunatranslator://llmapi/info?……
+    # name/id [可空]
+    # uid [可空]
+    # apiUrl/baseUrl 必选
+    # apiKey 必选
+    # model [可空]
+    # 其他参数 [随意]
+    result: SplitResult = result
+    query = dict(parse_qsl(result.query))
+    if result.path == "/base64":
+        _args: dict = json.loads(base64.b64decode(query.get("data").encode()).decode())
+    elif result.path == "/info":
+        _args = query
+    args = _args
+    args.update(
+        {
+            "name": _args.get("name", _args.get("id")),
+            "uid": _args.get("uid"),
+            "API接口地址": _args.get("apiUrl", _args.get("baseUrl")),
+            "SECRET_KEY": _args.get("apiKey"),
+            "model": _args.get("model", ""),
+        }
+    )
+    if not (args["API接口地址"] and args["SECRET_KEY"]):
+        raise Exception()
+    if not (args["uid"]):
+        args["uid"] = str(uuid.uuid4())
+    if not (args["name"]):
+        args["name"] = args["uid"]
+    copyllmapi("chatgpt-3rd-party", args["name"], args["uid"], args=args, use=True)
+
+
+def ifhasllmapi(_):
+    import gobject, NativeUtils, windows, io
+    from traceback import format_exc
+    from myutils.config import _TR
+
+    gobject.isRunningMutex = NativeUtils.SimpleCreateMutex("LUNA_IS_RUNNING_MUTEX")
+    startwithgameuid = None
+    error = None
+    if _:
+        if _[0] == 1:
+            startwithgameuid = _[1]
+        elif _[0] == 2:
+            if windows.GetLastError() == windows.ERROR_ALREADY_EXISTS:
+                error = 1, (_TR("错误"), _TR("请先关闭软件，然后再导入！"))
+            else:
+                try:
+                    parsellmapi(_[1])
+                    error = 0, (_TR("成功"), _TR("添加成功"))
+                except:
+                    error = 1, (_TR("错误"), format_exc())
+    return startwithgameuid, error
+
+
 if __name__ == "__main__":
     switchdir()
+    _ = parseargs()
     prepareqtenv()
+    startwithgameuid, error = ifhasllmapi(_)
     from qtsymbols import QApplication
 
     app = QApplication(sys.argv)
     # app.setQuitOnLastWindowClosed(False)
     checklang()
-    checkintegrity()
-    loadmainui(urlprotocol())
+    __checkintegrity(error)
+    loadmainui(startwithgameuid)
     app.exit(app.exec())
     os._exit(0)

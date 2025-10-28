@@ -11,11 +11,14 @@ hero:
   #   alt: LunaTranslator
   actions:
     - theme: brand
-      text: 下载 & 启动 & 更新
+      text: 软件下载 & 常见问题
       link: ./README
     - theme: alt
       text: 基本用法
       link: ./basicuse
+    - theme: alt
+      text: 支持作者
+      link: ./support
     - theme: alt
       text: Github
       link: https://github.com/HIllya51/LunaTranslator
@@ -35,7 +38,7 @@ features:
     link: ./useapis/ocrapi
   - title: 丰富的翻译接口
     details: 支持几乎所有翻译引擎，包括大语言模型翻译、离线翻译等
-    link: ./useapis/tsapi
+    link: ./guochandamoxing
   - title: 语言学习
     details: 支持日语分词及假名注音，支持AnkiConnect，支持Yomitan插件
     link: ./qa1

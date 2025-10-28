@@ -3,7 +3,7 @@ import functools, binascii
 from collections import OrderedDict
 from traceback import print_exc
 import qtawesome, NativeUtils, gobject, os
-from myutils.config import savehook_new_data, globalconfig, _TR, isascii, static_data
+from myutils.config import savehook_new_data, globalconfig, _TR, static_data
 from myutils.utils import get_time_stamp, dynamiclink, is_ascii_control
 from gui.gamemanager.dialog import dialog_setting_game
 from textio.textsource.texthook import texthook
@@ -16,6 +16,7 @@ from gui.usefulwidget import (
     getsimplepatheditor,
     FocusSpin,
     FocusCombo,
+    RichMessageBox,
     TableViewW,
 )
 from gui.dynalang import (
@@ -33,9 +34,9 @@ from gui.dynalang import (
 
 class HOSTINFO:
     Console = 0
-    Warning = 1
+    EmuWarning = 1
     EmuGameName = 2
-    IsEmuNotify = 3
+    Notification = 3
 
 
 def getformlayoutw(w=None, cls=LFormLayout, hide=False):
@@ -428,7 +429,6 @@ class searchhookparam(LDialog):
 
 class hookselect(closeashidewindow):
     addnewhooksignal = pyqtSignal(tuple, bool, bool)
-    getnewsentencesignal = pyqtSignal(str)
     sysmessagesignal = pyqtSignal(int, str)
     removehooksignal = pyqtSignal(tuple)
     getfoundhooksignal = pyqtSignal(dict)
@@ -444,11 +444,11 @@ class hookselect(closeashidewindow):
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | self.windowFlags())
         self.setupUi()
         self.hidesearchhookbuttons()
+        self.is_focus_normal = True
         self.firsttimex = True
         self.searchhookparam = None
         self.removehooksignal.connect(self.removehook)
         self.addnewhooksignal.connect(self.addnewhook)
-        self.getnewsentencesignal.connect(self.getnewsentence)
         self.sysmessagesignal.connect(self.sysmessage)
         self.update_item_new_line.connect(self.update_item_new_line_function)
         self.getfoundhooksignal.connect(self.getfoundhook)
@@ -472,6 +472,8 @@ class hookselect(closeashidewindow):
         row = self.querykeyindex(key)
         if row == -1:
             return
+        if self.is_focus_normal and row == self.tttable.currentIndex().row():
+            self.getnewsentence(output)
         output = output[:200].replace("\n", " ")
         colidx = 2 + int(bool(self.embedablenum))
         self.ttCombomodelmodel.item(row, colidx).setText(output)
@@ -512,7 +514,6 @@ class hookselect(closeashidewindow):
     def changeprocessclear(self):
         # self.ttCombo.clear()
         self.ttCombomodelmodel.clear()
-        self.at1 = 1
         self.textOutput.clear()
         self.allres = OrderedDict()
         self.hidesearchhookbuttons()
@@ -560,6 +561,8 @@ class hookselect(closeashidewindow):
                 self.ttCombomodelmodel.index(rown, 1),
                 checkbtn,
             )
+        if select and self.tttable.currentIndex() == -1:
+            self.tttable.setCurrentIndex(rown)
 
     def _check_tp_using(self, key):
         hc, hn, tp = key
@@ -597,6 +600,14 @@ class hookselect(closeashidewindow):
             for _ in save:
                 savehook_new_data[gobject.base.gameuid]["embedablehook"].remove(_)
 
+    def keyPressEvent__(self, e: QKeyEvent):
+        if e.key() in (Qt.Key.Key_Down, Qt.Key.Key_Up):
+            curr = self.tttable.currentIndex()
+            self.tttable.setCurrentIndex(curr)
+            self.ViewThread(curr)
+        elif e.key() == Qt.Key.Key_Return:
+            self.table1doubleclicked(self.tttable.currentIndex())
+
     def setupUi(self):
         self.widget = QWidget()
 
@@ -621,6 +632,7 @@ class hookselect(closeashidewindow):
 
         self.tttable.doubleClicked.connect(self.table1doubleclicked)
         self.tttable.clicked.connect(self.ViewThread)
+        self.tttable.keyPressed.connect(self.keyPressEvent__)
         # self.tttable.setFont(font)
         self.vboxlayout.addWidget(self.tttable)
         # table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -657,9 +669,7 @@ class hookselect(closeashidewindow):
         userhookinsert.clicked.connect(self.inserthook)
         self.searchtextlayout.addWidget(userhookinsert)
 
-        self.searchtextlayout.addWidget(
-            D_getdoclink("hooksettings.html#特殊码格式")()
-        )
+        self.searchtextlayout.addWidget(D_getdoclink("hooksettings.html#特殊码格式")())
 
         self.userhookfind = LPushButton("搜索特殊码")
         self.userhookfind.clicked.connect(self.findhook)
@@ -710,6 +720,7 @@ class hookselect(closeashidewindow):
         self.tabwidget.setTabPosition(QTabWidget.TabPosition.East)
         self.tabwidget.addTab(self.textOutput, ("文本"))
         self.tabwidget.addTab(self.sysOutput, ("日志"))
+        self.tabwidget.setCurrentIndex(1)
 
     def showmenu(self, p: QPoint):
         index = self.tttable.currentIndex()
@@ -769,7 +780,7 @@ class hookselect(closeashidewindow):
 
     def gethide(self, res: str):
         if self.checkfilt_notascii.isChecked():
-            if isascii(res):
+            if res.isascii():
                 return True
         if self.checkfilt_notshiftjis.isChecked():
             if self.checkchaos(res):
@@ -938,43 +949,42 @@ class hookselect(closeashidewindow):
             self.textbrowappendandmovetoend(
                 self.sysOutput, get_time_stamp() + " " + sentence
             )
-        elif info == HOSTINFO.Warning:
-            QMessageBox.warning(self, _TR("警告"), sentence)
+        elif info == HOSTINFO.EmuWarning:
+            RichMessageBox(
+                self,
+                _TR("警告"),
+                sentence
+                + '\n<a href="{}">{}</a>'.format(
+                    dynamiclink("emugames.html", docs=True), _TR("使用说明")
+                ),
+                iserror=False,
+                iswarning=True,
+            )
         elif info == HOSTINFO.EmuGameName:
             gobject.base.displayinfomessage(sentence, "<msg_info_refresh>")
-        elif info == HOSTINFO.IsEmuNotify:
-            t = _TR("检测到模拟器")
-            t += ": "
-            t += sentence
-            t += "\n"
-            t += _TR(
-                "请在模拟器加载游戏之前，先让翻译器HOOK模拟器，否则将无法识别模拟器内加载的游戏"
-            )
-            gobject.base.displayinfomessage(t, "<msg_info_append>")
+        elif info == HOSTINFO.Notification:
+            gobject.base.displayinfomessage(sentence, "<msg_info_refresh>")
 
     def getnewsentence(self, sentence):
-        if self.at1 == 2:
-            return
-
         self.textbrowappendandmovetoend(self.textOutput, sentence)
 
     def ViewThread2(self, index: QModelIndex):
+        self.is_focus_normal = False
         self.tabwidget.setCurrentIndex(0)
-        self.at1 = 2
         key = list(self.allres.keys())[index.row()]
         self.userhook.setText(key)
         self.textOutput.setPlainText("\n".join(self.allres[key]))
 
     def ViewThread(self, index: QModelIndex):
         self.tabwidget.setCurrentIndex(0)
-        self.at1 = 1
         try:
-            self.textsource.selectinghook = _, _, tp = self.querykeyofrow(index)
+            _, _, tp = self.querykeyofrow(index)
             self.textOutput.setPlainText(self.textsource.QueryThreadHistory(tp))
             self.textOutput.moveCursor(QTextCursor.MoveOperation.End)
-
         except:
             print_exc()
+        self.is_focus_normal = True
 
     def table1doubleclicked(self, index: QModelIndex):
-        self.tttable.indexWidgetX(index.row(), 0).click()
+        if index.isValid():
+            self.tttable.indexWidgetX(index.row(), 0).click()

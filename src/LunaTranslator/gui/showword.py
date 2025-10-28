@@ -11,6 +11,7 @@ from myutils.utils import (
     loopbackrecorder,
     selectdebugfile,
     parsekeystringtomodvkcode,
+    dynamiclink,
     getimageformatlist,
     getimagefilefilter,
     checkmd5reloadmodule,
@@ -23,6 +24,7 @@ from myutils.wrapper import threader, tryprint
 from myutils.ocrutil import imageCut, ocr_run
 from gui.rangeselect import rangeselct_function
 from gui.usefulwidget import (
+    RichMessageBox,
     closeashidewindow,
     auto_select_webview,
     WebviewWidget,
@@ -323,17 +325,11 @@ class AnkiWindow(QWidget):
         model_htmlfront = self.fronttext.toPlainText()
         model_htmlback = self.backtext.toPlainText()
         model_css = self.csstext.toPlainText()
-        with open(
-            gobject.getuserconfigdir("anki_2/back.html"), "w", encoding="utf8"
-        ) as ff:
+        with open(gobject.getconfig("anki_2/back.html"), "w", encoding="utf8") as ff:
             ff.write(model_htmlback)
-        with open(
-            gobject.getuserconfigdir("anki_2/front.html"), "w", encoding="utf8"
-        ) as ff:
+        with open(gobject.getconfig("anki_2/front.html"), "w", encoding="utf8") as ff:
             ff.write(model_htmlfront)
-        with open(
-            gobject.getuserconfigdir("anki_2/style.css"), "w", encoding="utf8"
-        ) as ff:
+        with open(gobject.getconfig("anki_2/style.css"), "w", encoding="utf8") as ff:
             ff.write(model_css)
 
     def creatsetdtab(self, baselay: QVBoxLayout):
@@ -361,9 +357,7 @@ class AnkiWindow(QWidget):
                 [
                     getsimpleswitch(globalconfig, "usecustomankigen"),
                     getIconButton(
-                        callback=functools.partial(
-                            selectdebugfile, "userconfig/myanki_v2.py"
-                        ),
+                        callback=functools.partial(selectdebugfile, "myanki_v2.py"),
                         icon="fa.edit",
                     ),
                     0,
@@ -401,7 +395,6 @@ class AnkiWindow(QWidget):
             "例句中加粗单词",
             getsimpleswitch(globalconfig["ankiconnect"], "boldword"),
         )
-        layout.addRow("不添加辞书", getIconButton(self.vistranslate_rank))
         layout.addRow(
             "成功添加后关闭窗口",
             getsimpleswitch(globalconfig["ankiconnect"], "addsuccautoclose"),
@@ -443,16 +436,6 @@ class AnkiWindow(QWidget):
             getspinbox(6, 256, globalconfig, "opusbitrate"),
         )
         __(globalconfig["audioformat"])
-
-    def vistranslate_rank(self):
-        listediter(
-            self,
-            "不添加辞书",
-            globalconfig["ignoredict"],
-            candidates=cishusX(),
-            namemapfunction=dynamiccishuname,
-            exec=True,
-        )
 
     @threader
     def simulate_key(self, i):
@@ -580,11 +563,15 @@ class AnkiWindow(QWidget):
 
         self.example.textChanged.connect(__)
         self.remarks = ctrlbedit()
-        recordbtn1 = IconButton(icon=["fa.microphone", "fa.stop"], checkable=True, tips="录音")
+        recordbtn1 = IconButton(
+            icon=["fa.microphone", "fa.stop"], checkable=True, tips="录音"
+        )
         recordbtn1.clicked.connect(
             functools.partial(self.startorendrecord, recordbtn1, 1, self.audiopath)
         )
-        recordbtn2 = IconButton(icon=["fa.microphone", "fa.stop"], checkable=True, tips="录音")
+        recordbtn2 = IconButton(
+            icon=["fa.microphone", "fa.stop"], checkable=True, tips="录音"
+        )
         recordbtn2.clicked.connect(
             functools.partial(
                 self.startorendrecord, recordbtn2, 2, self.audiopath_sentence
@@ -744,7 +731,11 @@ class AnkiWindow(QWidget):
         self.currentword = text
         if text and len(text):
             _hs = gobject.base.parsehira(text)
-            self.zhuyinedit.setPlainText(mecab.makerubyhtml(_hs))
+            if len(_hs) == 1:
+                # 分成多个词的，不要填入，错误率太高了容易误导人
+                self.zhuyinedit.setPlainText(mecab.makerubyhtml(_hs))
+            else:
+                self.zhuyinedit.clear()
         else:
             self.zhuyinedit.clear()
 
@@ -778,7 +769,17 @@ class AnkiWindow(QWidget):
                 self.window().close()
             QToolTip.showText(QCursor.pos(), _TR("添加成功"), self)
         except requests.RequestException:
-            QMessageBox.critical(self, _TR("错误"), _TR("无法连接到anki"))
+            t = _TR(
+                "无法连接到anki\n请打开anki，并安装AnkiConnect插件"
+            ) + '\n<a href="{}">{}</a>'.format(
+                dynamiclink("qa2.html", docs=True), _TR("使用说明")
+            )
+            RichMessageBox(self, _TR("错误"), t)
+        except anki.AnkiUnknownException:
+            t = _TR(
+                "无法连接到anki\nAnkiConnect端口可能被占用，请检查并终止占用端口的进程"
+            )
+            RichMessageBox(self, _TR("错误"), t)
         except anki.AnkiException as e:
             QMessageBox.critical(self, _TR("错误"), str(e))
         except:
@@ -786,11 +787,17 @@ class AnkiWindow(QWidget):
 
     def tryloadankitemplates(self):
         try:
-            with open("userconfig/anki_2/back.html", "r", encoding="utf8") as ff:
+            with open(
+                gobject.getconfig("anki_2/back.html"), "r", encoding="utf8"
+            ) as ff:
                 model_htmlback = ff.read()
-            with open("userconfig/anki_2/front.html", "r", encoding="utf8") as ff:
+            with open(
+                gobject.getconfig("anki_2/front.html"), "r", encoding="utf8"
+            ) as ff:
                 model_htmlfront = ff.read()
-            with open("userconfig/anki_2/style.css", "r", encoding="utf8") as ff:
+            with open(
+                gobject.getconfig("anki_2/style.css"), "r", encoding="utf8"
+            ) as ff:
                 model_css = ff.read()
         except:
             with open(
@@ -825,7 +832,9 @@ class AnkiWindow(QWidget):
         anki.Deck.create(DeckName)
         fields = static_data["model_fileds"]
         if globalconfig["usecustomankigen"]:
-            module = checkmd5reloadmodule("userconfig/myanki_v2.py", "myanki_v2")[1]
+            module = checkmd5reloadmodule(
+                gobject.getconfig("myanki_v2.py"), "myanki_v2"
+            )
             if module:
                 try:
                     fields = module.AnkiFields(fields)
@@ -895,7 +904,9 @@ class AnkiWindow(QWidget):
 
     def custompass(self, text_fields: dict, audios: list, pictures: list):
         if globalconfig["usecustomankigen"]:
-            module = checkmd5reloadmodule("userconfig/myanki_v2.py", "myanki_v2")[1]
+            module = checkmd5reloadmodule(
+                gobject.getconfig("myanki_v2.py"), "myanki_v2"
+            )
             if module:
                 try:
                     text_fields, audios, pictures = module.ParseFieldsData(
@@ -991,6 +1002,53 @@ class kpQTreeView(QTreeView):
             self.enterpressed.emit(self.currentIndex())
         else:
             super().keyPressEvent(e)
+
+
+class HistoryViewer(QWidget):
+    SentenceRole = Qt.ItemDataRole.UserRole + 100
+    IndexRole = Qt.ItemDataRole.UserRole + 101
+
+    def keyPressEvent(self, e: QKeyEvent):
+        if e.key() == Qt.Key.Key_Delete:
+            index = self.listview.currentIndex()
+            if index.isValid():
+                item = self.model.itemFromIndex(index)
+                id_ = item.data(self.IndexRole)
+                self.model.removeRow(index.row())
+                gobject.base.somedatabase.removewhich(id_)
+        return super().keyPressEvent(e)
+
+    def __init__(self, parent: "searchwordW"):
+        super(HistoryViewer, self).__init__(parent)
+        listview = QListView()
+        self.listview = listview
+        listview.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.model = QStandardItemModel(listview)
+        listview.setModel(self.model)
+        listview.doubleClicked.connect(self.selectwhich)
+        v = QHBoxLayout(self)
+        v.addWidget(listview)
+        v.setContentsMargins(0, 0, 0, 0)
+        self.ref = parent
+
+    def selectwhich(self, index: QModelIndex):
+        item = self.model.itemFromIndex(index)
+        w = item.text()
+        s = item.data(self.SentenceRole)
+        self.ref.search_function(w, s, False, isfromhist=True)
+
+    def refresh(self):
+        self.model.clear()
+        for _, w, s, t, __ in gobject.base.somedatabase.allwords():
+            print(_, w, s, t)
+            item = QStandardItem(w)
+            t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+            if s:
+                t = t + "\n" + s
+            item.setToolTip(t)
+            item.setData(s, self.SentenceRole)
+            item.setData(_, self.IndexRole)
+            self.model.appendRow([item])
 
 
 class showdiction(QWidget):
@@ -1273,6 +1331,26 @@ class WordViewer(QWidget):
     internalsizechanged = pyqtSignal(QSize)
     internalmoved = pyqtSignal(QPoint)
 
+    def tabmenu(self, idx):
+        menu = QMenu(self)
+        openinbrowser = LAction("在浏览器中查词", menu)
+        isinsert = LAction("不添加到Anki", menu)
+        isinsert.setCheckable(True)
+        caninsert = self.tabks[idx] in globalconfig["ignoredict"]
+        isinsert.setChecked(caninsert)
+        cishu = gobject.base.cishus.get(self.tabks[idx])
+        if cishu and cishu.canGetUrl:
+            menu.addAction(openinbrowser)
+        menu.addAction(isinsert)
+        action = menu.exec(QCursor.pos())
+        if action == isinsert:
+            if isinsert.isChecked():
+                globalconfig["ignoredict"].append(self.tabks[idx])
+            else:
+                globalconfig["ignoredict"].remove(self.tabks[idx])
+        elif action == openinbrowser:
+            os.startfile(cishu.getUrl(self.currWord))
+
     def __init__(self, parent=None, tabonehide=False, transp=False):
         super().__init__(parent)
         self.tabonehide = tabonehide
@@ -1290,6 +1368,7 @@ class WordViewer(QWidget):
         self.tab = CustomTabBar()
         self.__show_dict_result.connect(self.__show_dict_result_function)
         self.tab.tabBarClicked.connect(self.tabclicked)
+
         self.tabcurrentindex = -1
 
         self.tab.currentChanged.connect(self.__tabcurrentChanged)
@@ -1319,6 +1398,21 @@ class WordViewer(QWidget):
             lambda: _TR("在新窗口中查词"),
             threader(self.from_webview_search_word_in_new_window.emit),
         )
+
+        def __():
+            _ = gobject.base.cishus.get(self.tabks[self.tab.currentIndex()])
+            return _ and _.canGetUrl
+
+        nexti = self.textOutput.add_menu(
+            nexti,
+            lambda: _TR("在浏览器中查词"),
+            lambda word: os.startfile(
+                gobject.base.cishus.get(self.tabks[self.tab.currentIndex()]).getUrl(
+                    word
+                )
+            ),
+            getuse=__,
+        )
         nexti = self.textOutput.add_menu(
             nexti, lambda: _TR("翻译"), gobject.base.textgetmethod
         )
@@ -1335,7 +1429,6 @@ class WordViewer(QWidget):
             0,
             lambda: _TR("加亮模式"),
             lambda: self.textOutput.eval("switch_hightlightmode()"),
-            checkable=True,
             getchecked=lambda: self.callvalue(),
         )
         nexti = self.textOutput.add_menu_noselect(
@@ -1389,6 +1482,11 @@ class WordViewer(QWidget):
             self.cache_results_highlighted.pop(k)
 
     def tabclicked(self, idx):
+        buttons = QApplication.mouseButtons()
+
+        if buttons == Qt.MouseButton.RightButton:
+            return self.tabmenu(idx)
+
         self.tab.setCurrentIndex(idx)
         self.hasclicked = True
         try:
@@ -1513,12 +1611,27 @@ class searchwordW(closeashidewindow):
             act = QAction(word, menu)
             __.append(act)
             menu.addAction(act)
+        if __:
+            menu.addSeparator()
+        hists = menu.addAction("更多……")
+        hists.setCheckable(True)
+
+        def __():
+            try:
+                return self.showhistwidget.isVisible()
+            except:
+                return False
+
+        hists.setChecked(__())
         action = menu.exec(QCursor.pos())
-        if action:
+        if action == hists:
+            self.onceaddshowhistwidget(hists.isChecked())
+        elif action:
             self.searchtext.setText(action.text())
             self.search(action.text())
 
     def setupUi(self):
+        self.historys = []
         self.setWindowTitle("查词")
         self.ankiwindow = AnkiWindow(self)
         self.setWindowIcon(qtawesome.icon("fa.search"))
@@ -1529,14 +1642,13 @@ class searchwordW(closeashidewindow):
         self.searchtext = FQLineEdit()
         self.searchtext.textChanged.connect(self.ankiwindow.maybereset)
 
-        self.dictbutton = IconButton(icon="fa.book", checkable=True, tips="MDict")
-        self.historys = []
-        self.history_btn = IconButton(icon="fa.history")
-        self.history_btn.setEnabled(False)
-        self.history_btn.clicked.connect(self.historymenu)
+        dictbutton = IconButton(icon="fa.book", checkable=True, tips="MDict")
+        dictbutton.clicked.connect(self.onceaddshowdictwidget)
+        history_btn = IconButton(icon="fa.history")
+        history_btn.clicked.connect(self.historymenu)
 
-        self.searchlayout.addWidget(self.dictbutton)
-        self.searchlayout.addWidget(self.history_btn)
+        self.searchlayout.addWidget(dictbutton)
+        self.searchlayout.addWidget(history_btn)
         self.searchlayout.addWidget(self.searchtext)
         searchbutton = getIconButton(
             icon="fa.search",
@@ -1577,7 +1689,7 @@ class searchwordW(closeashidewindow):
             self.search_word_in_new_window
         )
         self.vboxlayout.addWidget(self.spliter)
-        self.isfirstshowdictwidget = True
+        self.isfirstshowleftwidgets = True
         self.spliter.setOrientation(
             Qt.Orientation.Vertical
             if globalconfig["anki_Orientation_V"]
@@ -1587,7 +1699,6 @@ class searchwordW(closeashidewindow):
         self.dict_textoutput_spl = QSplitter()
         self.dict_textoutput_spl.addWidget(self.wordviewer)
         self.spliter.addWidget(self.dict_textoutput_spl)
-        self.dictbutton.clicked.connect(self.onceaddshowdictwidget)
         self.spliter.addWidget(self.ankiwindow)
         self.ankiwindow.setVisible(False)
 
@@ -1601,24 +1712,54 @@ class searchwordW(closeashidewindow):
         self.ankiwindow.setMinimumHeight(1)
         self.ankiwindow.setMinimumWidth(1)
 
+    def maybecreateleftsplitter(self):
+        if self.isfirstshowleftwidgets:
+            self._leftwidgets = QSplitter()
+            self._leftwidgets.setOrientation(Qt.Orientation.Vertical)
+            self.dict_textoutput_spl.insertWidget(0, self._leftwidgets)
+            self.dict_textoutput_spl.setStretchFactor(0, 0)
+            self.dict_textoutput_spl.setStretchFactor(1, 1)
+
+            def __(_):
+                globalconfig["mdictsplit"] = self.dict_textoutput_spl.sizes()
+
+            self.dict_textoutput_spl.setSizes(globalconfig["mdictsplit"])
+            self.dict_textoutput_spl.splitterMoved.connect(__)
+        self.isfirstshowleftwidgets = False
+
+    def maybehidehide(self):
+        if all(
+            not self._leftwidgets.widget(i).isVisible()
+            for i in range(self._leftwidgets.count())
+        ):
+            self._leftwidgets.hide()
+
     def onceaddshowdictwidget(self, idx):
         if idx:
-            if self.isfirstshowdictwidget:
-                self.showdictwidget = showdiction(self)
-                self.dict_textoutput_spl.insertWidget(0, self.showdictwidget)
-                self.dict_textoutput_spl.setStretchFactor(0, 0)
-                self.dict_textoutput_spl.setStretchFactor(1, 1)
-
-                def __(_):
-                    globalconfig["mdictsplit"] = self.dict_textoutput_spl.sizes()
-
-                self.dict_textoutput_spl.setSizes(globalconfig["mdictsplit"])
-                self.dict_textoutput_spl.splitterMoved.connect(__)
-            else:
+            self.maybecreateleftsplitter()
+            try:
                 self.showdictwidget.show()
+            except:
+                self.showdictwidget = showdiction(self)
+                self._leftwidgets.insertWidget(0, self.showdictwidget)
+            self._leftwidgets.show()
         else:
             self.showdictwidget.hide()
-        self.isfirstshowdictwidget = False
+            self.maybehidehide()
+
+    def onceaddshowhistwidget(self, idx):
+        if idx:
+            self.maybecreateleftsplitter()
+            try:
+                self.showhistwidget.show()
+            except:
+                self.showhistwidget = HistoryViewer(self)
+                self._leftwidgets.addWidget(self.showhistwidget)
+            self._leftwidgets.show()
+            self.showhistwidget.refresh()
+        else:
+            self.showhistwidget.hide()
+            self.maybehidehide()
 
     def onceaddankiwindow(self, idx):
         if idx:
@@ -1633,10 +1774,17 @@ class searchwordW(closeashidewindow):
         word = word.strip()
         if append:
             word = self.searchtext.text() + word
+        self.search_function(word, sentence, append, readydata=readydata)
+
+    def search_function(
+        self, word: str, sentence, append, readydata=None, isfromhist=False
+    ):
         self.searchtext.setText(word)
         self.activate()
-        self.search(word, sentence, append, readydata)
-        self.ankiwindow.example.setPlainText(gobject.base.currenttext)
+        self.search(word, sentence, append, readydata, isfromhist=isfromhist)
+        self.ankiwindow.example.setPlainText(
+            sentence if sentence else gobject.base.currenttext
+        )
         if globalconfig["ankiconnect"]["autoruntts"]:
             self.ankiwindow.langdu()
         if globalconfig["ankiconnect"]["autoruntts2"]:
@@ -1650,19 +1798,27 @@ class searchwordW(closeashidewindow):
                 ),
             )
 
-    def __parsehistory(self, word, append):
+    def __parsehistory(self, word, append, sentence, isfromhist):
         if append and self.historys:
             self.historys.pop(0)
         if word in self.historys:
             self.historys.remove(word)
         self.historys.insert(0, word)
-        self.history_btn.setEnabled(True)
+        if not isfromhist:
+            gobject.base.somedatabase.append_word(word, sentence)
 
-    def search(self, word: str, sentence: str = None, append=False, readydata=None):
+    def search(
+        self,
+        word: str,
+        sentence: str = None,
+        append=False,
+        readydata=None,
+        isfromhist=False,
+    ):
         word = word.strip()
         if not word:
             return
-        self.__parsehistory(word, append)
+        self.__parsehistory(word, append, sentence, isfromhist)
         if globalconfig["is_search_word_auto_tts"]:
             gobject.base.read_text(self.searchtext.text())
         self.ankiwindow.maybereset(word)
