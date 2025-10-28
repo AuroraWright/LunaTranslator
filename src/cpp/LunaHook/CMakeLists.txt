@@ -19,6 +19,7 @@ add_definitions(-DUNICODE -D_UNICODE)
 if(MSVC)
 add_compile_options(/MP)
 endif()
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 include(FetchContent)
 
 if(NOT CMAKE_BUILD_TYPE)
