@@ -12,12 +12,12 @@ if len(sys.argv) and sys.argv[1] == "merge":
     os.mkdir("builds")
 
     shutil.copytree(
-        f"build/64/Release",
+        f"build/64/Release_win10",
         f"../build/Release",
         dirs_exist_ok=True,
     )
     shutil.copytree(
-        f"build/winxp/Release_winxp",
+        f"build/winxp/Release_win10",
         f"../build/Release",
         dirs_exist_ok=True,
     )

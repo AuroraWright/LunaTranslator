@@ -8,7 +8,47 @@
 #include "textthread.h"
 #include "LunaHost.h"
 #include "http.hpp"
-extern std::vector<std::tuple<SUPPORT_LANG, std::wstring, std::vector<std::string>>> lang_map;
+
+std::unordered_map<std::wstring, std::wstring> translationMap = {
+    {L"最大允许输出文本长度", L"Maximum allowed output text length"},
+    {L"已经注入", L"Already injected"},
+    {L"注入失败", L"Injection failed"},
+    {L"无法转换文本 (无效的代码页?)", L"Unable to convert text (invalid code page?)"},
+    {L"进程 %d 已连接", L"Process %d is connected"},
+    {L"进程 %d 已断开连接", L"Process %d has disconnected."},
+    {L"文件版本无法匹配，可能无法正常工作，请重新下载！", L"The file version does not match and may not function properly. Please download it again!"},
+    {L"注入钩子: %s %p", L"Inject hook: %s %p"},
+    {L"移除钩子: %s", L"Remove hook: %s"},
+    {L"钩子数量已达上限: 无法注入", L"Maximum number of hooks reached: Unable to inject"},
+    {L"开始搜索钩子", L"Start searching for hooks"},
+    {L"初始化钩子搜索 (%f%%)", L"Initializing hook search (%f%%)"},
+    {L"文本长度不足, 无法精确搜索", L"The text length is insufficient for an accurate search."},
+    {L"搜索初始化完成, 创建了 %zd 个钩子", L"Search initialization completed, created %zd hooks."},
+    {L"请点击游戏区域, 在接下来的 %d 秒内使游戏强制处理文本", L"Please click on the game area to force the game to process text within the next %d seconds."},
+    {L"钩子搜索完毕, 找到了 %d 条结果", L"Hook search completed, found %d results."},
+    {L"搜索结果已达上限, 如果结果不理想, 请重试(默认最大记录数增加)", L"Search results have reached the limit. If the results are unsatisfactory, please try again (default maximum record count increased)."},
+    {L"函数不存在", L"Function does not exist"},
+    {L"模块不存在", L"Module does not exist"},
+    {L"内存一直在改变，无法有效读取", L"The memory is constantly changing, making it impossible to read effectively."},
+    {L"Sender 错误 (可能是由于错误或不稳定的 H-code) ： %s", L"Sender error (possibly due to incorrect or unstable H-code): %s"},
+    {L"Reader 错误 (可能是由于错误或不稳定的 R-code) ： %s", L"Reader error (possibly due to incorrect or unstable R-code): %s"},
+    {L"搜索钩子错误 : 内存溢出，尝试重新分配 %d", L"Search hook error: Out of memory, attempting to reallocate %d"},
+    {L"%d 个结果被找到", L"%d results found"},
+    {L"无法找到文本", L"Unable to find the text."},
+    {L"可能存在错误 (无效的文本长度 %d 出现在 %s)", L"Possible error (invalid text length %d found in %s)"},
+    {L"钩子注入失败 %s", L"Hook injection failed %s"},
+    {L"匹配 %s 引擎时发生错误", L"Error occurred while matching the %s engine"},
+    {L"连接到 %s 引擎时发生错误", L"An error occurred while connecting to the %s engine."},
+    {L"匹配到 %s 引擎", L"Matched to %s engine"},
+    {L"确认是 %s 引擎", L"Confirmed as %s engine"},
+    {L"成功连接到 %s 引擎", L"Successfully connected to the %s engine"},
+    {L"获取到进程内存地址范围 0x%p 到 0x%p", L"Obtained process memory address range from 0x%p to 0x%p"},
+    {L"警告，注入的进程内存很小，可能是无用进程!", L"Warning: The injected process has very little memory and may be a useless process!"},
+    {L"不支持ryujinx，请使用yuzu/sudachi/Citron/Eden", L"Not compatible with Ryujinx, please use Yuzu/Sudachi/Citron/Eden."},
+    {L"模拟器版本过旧，请使用新版模拟器", L"The simulator version is outdated, please use the new version of the simulator."},
+    {L"检测到模拟器: %s\n请在模拟器加载游戏之前，先让翻译器HOOK模拟器，否则将无法识别模拟器内加载的游戏", L"Detected emulator: %s\nPlease let the translator HOOK the emulator before loading the game in the emulator, otherwise it will not recognize the game loaded in the emulator."}
+};
+
 bool sendclipboarddata_i(const std::wstring &text, HWND hwnd)
 {
     if (!OpenClipboard((HWND)hwnd))
@@ -62,9 +102,10 @@ void LunaHost::savesettings()
     configs->set("fontsize", uifont.fontsize);
     configs->set("font_italic", uifont.italic);
     configs->set("font_bold", uifont.bold);
-    configs->set("Language", map_from_support_lang(curr_lang));
+    // configs->set("Language", map_from_support_lang(curr_lang));
 }
 
+/*
 std::string getdefaultlang()
 {
     LANGID langid = GetUserDefaultUILanguage();
@@ -77,9 +118,11 @@ std::string getdefaultlang()
     lang += szLang;
     return lang;
 }
+*/
+
 void LunaHost::loadsettings()
 {
-    curr_lang = map_to_support_lang(configs->get("Language", getdefaultlang()).c_str());
+    // curr_lang = map_to_support_lang(configs->get("Language", getdefaultlang()).c_str());
     uifont.italic = configs->get("font_italic", false);
     uifont.bold = configs->get("font_bold", false);
     uifont.fontsize = configs->get("fontsize", 14);
@@ -264,21 +307,24 @@ LunaHost::LunaHost()
         std::bind(&LunaHost::on_thread_create, this, std::placeholders::_1),
         std::bind(&LunaHost::on_thread_delete, this, std::placeholders::_1),
         std::bind(&LunaHost::on_text_recv, this, std::placeholders::_1, std::placeholders::_2),
-        [=](HOSTINFO type, const std::wstring &output)
-        { on_info(type, output); },
+        [=](HOSTINFO type, const std::wstring& output) { on_info(type, output); },
         {},
-        {});
+        {},
+        std::bind(&LunaHost::i18nQueryCallback, this, std::placeholders::_1)
+    );
+
+    Host::ResetLanguage();
 
     mainlayout = new gridlayout();
     mainlayout->addcontrol(g_selectprocessbutton, 0, 0);
     mainlayout->addcontrol(btndetachall, 0, 1);
     mainlayout->addcontrol(btnshowsettionwindow, 0, 2);
-    // mainlayout->addcontrol(btnplugin, 0, 3);
-    mainlayout->addcontrol(g_hEdit_userhook, 1, 0, 1, 2);
-    mainlayout->addcontrol(g_hButton_insert, 1, 2);
+    mainlayout->addcontrol(btnplugin, 0, 3);
+    mainlayout->addcontrol(g_hEdit_userhook, 1, 0, 1, 3);
+    mainlayout->addcontrol(g_hButton_insert, 1, 3);
 
-    mainlayout->addcontrol(g_hListBox_listtext, 2, 0, 1, 3);
-    mainlayout->addcontrol(g_showtexts, 3, 0, 1, 3);
+    mainlayout->addcontrol(g_hListBox_listtext, 2, 0, 1, 4);
+    mainlayout->addcontrol(g_showtexts, 3, 0, 1, 4);
 
     mainlayout->setfixedheigth(0, 30);
     mainlayout->setfixedheigth(1, 30);
@@ -297,7 +343,7 @@ LunaHost::LunaHost()
 
     WCHAR vs[32];
 
-    wsprintf(vs, L" | %s v%d.%d.%d", TR[VersionCurrent], LUNA_VERSION[0], LUNA_VERSION[1], LUNA_VERSION[2]);
+    wsprintf(vs, L" | %s v%d.%d.%d.%d", TR[VersionCurrent], LUNA_VERSION[0], LUNA_VERSION[1], LUNA_VERSION[2], LUNA_VERSION[3]);
     title += vs;
     settext(title);
     std::thread([&]()
@@ -342,6 +388,16 @@ void LunaHost::on_text_recv_checkissaved(TextThread &thread)
             }
         }
     }
+}
+
+std::wstring LunaHost::i18nQueryCallback(const std::wstring &original)
+{
+    auto it = translationMap.find(original);
+    if (it != translationMap.end()) {
+        return it->second;
+    }
+
+    return original;
 }
 
 std::wstring sanitize(const std::wstring &s1)
@@ -527,6 +583,8 @@ Settingwindow::Settingwindow(LunaHost *host) : mainwindow(host)
             showfont->settext(f.fontfamily);
             host->setfont(f); });
     };
+
+    /*
     language = new combobox(this);
     for (auto &&[_, l, __] : lang_map)
     {
@@ -537,28 +595,31 @@ Settingwindow::Settingwindow(LunaHost *host) : mainwindow(host)
     {
         curr_lang = (decltype(curr_lang))idx;
     };
+    */
+    
     mainlayout = new gridlayout();
-    mainlayout->addcontrol(new label(this, TR[LblLanguage]), 0, 0);
-    mainlayout->addcontrol(language, 0, 1);
-    mainlayout->addcontrol(new label(this, TR[LblFlushDelay]), 1, 0);
-    mainlayout->addcontrol(g_timeout, 1, 1);
+    // mainlayout->addcontrol(new label(this, TR[LblLanguage]), 0, 0);
+    // mainlayout->addcontrol(language, 0, 1);
+    
+    mainlayout->addcontrol(new label(this, TR[LblFlushDelay]), 0, 0);
+    mainlayout->addcontrol(g_timeout, 0, 1);
 
-    mainlayout->addcontrol(new label(this, TR[LblCodePage]), 2, 0);
-    mainlayout->addcontrol(g_codepage, 2, 1);
+    mainlayout->addcontrol(new label(this, TR[LblCodePage]), 1, 0);
+    mainlayout->addcontrol(g_codepage, 1, 1);
 
-    mainlayout->addcontrol(new label(this, TR[LblMaxBuff]), 3, 0);
-    mainlayout->addcontrol(spinmaxbuffsize, 3, 1);
+    mainlayout->addcontrol(new label(this, TR[LblMaxBuff]), 2, 0);
+    mainlayout->addcontrol(spinmaxbuffsize, 2, 1);
 
-    mainlayout->addcontrol(new label(this, TR[LblMaxHist]), 4, 0);
-    mainlayout->addcontrol(spinmaxhistsize, 4, 1);
+    mainlayout->addcontrol(new label(this, TR[LblMaxHist]), 3, 0);
+    mainlayout->addcontrol(spinmaxhistsize, 3, 1);
 
-    mainlayout->addcontrol(ckbfilterrepeat, 5, 0, 1, 2);
-    mainlayout->addcontrol(g_check_clipboard, 6, 0, 1, 2);
-    mainlayout->addcontrol(autoattach, 7, 0, 1, 2);
-    mainlayout->addcontrol(autoattach_so, 8, 0, 1, 2);
-    mainlayout->addcontrol(readonlycheck, 9, 0, 1, 2);
-    mainlayout->addcontrol(showfont, 10, 1);
-    mainlayout->addcontrol(selectfont, 10, 0);
+    mainlayout->addcontrol(ckbfilterrepeat, 4, 0, 1, 2);
+    mainlayout->addcontrol(g_check_clipboard, 5, 0, 1, 2);
+    mainlayout->addcontrol(autoattach, 6, 0, 1, 2);
+    mainlayout->addcontrol(autoattach_so, 7, 0, 1, 2);
+    mainlayout->addcontrol(readonlycheck, 8, 0, 1, 2);
+    mainlayout->addcontrol(showfont, 9, 1);
+    mainlayout->addcontrol(selectfont, 9, 0);
 
     setlayout(mainlayout);
     setcentral(600, 500);

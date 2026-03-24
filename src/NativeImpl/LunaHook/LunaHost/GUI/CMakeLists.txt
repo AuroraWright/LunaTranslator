@@ -10,5 +10,5 @@ FetchContent_Declare(json
 )
 FetchContent_MakeAvailable(json)
 
-target_link_libraries(LunaHost comctl32 winhttp pch host nlohmann_json::nlohmann_json ${YY_Thunks} lang_ui)
+target_link_libraries(LunaHost comctl32 winhttp pch host nlohmann_json::nlohmann_json ${YY_Thunks})
 endif()
