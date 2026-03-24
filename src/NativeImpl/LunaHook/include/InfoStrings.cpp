@@ -65,3 +65,52 @@ std::unordered_map<LANG_STRINGS_HOOK, i18nString<char>> _internal_lang_strings_h
 
 DEFINEFUNCTION(LANG_STRINGS_HOOK, _internal_lang_strings_hook, char, get_hook)
 #endif
+
+std::unordered_map<LANG_STRINGS_UI, i18nString<wchar_t>>
+    _internal_lang_strings_ui = {
+        {WndSelectProcess, L"SelectProcess"},
+        {WndLunaHostGui, L"LunaTranslator Hook Simple GUI"},
+        {TSetting, L"Settings"},
+        {TPlugins, L"Plugins"},
+        {NotifyInvalidHookCode, L"Invalid HookCode"},
+        {BtnDetach, L"Detach"},
+        {BtnSaveHook, L"Save hook"},
+        {BtnAttach, L"Attach"},
+        {BtnRefresh, L"Refresh"},
+        {BtnToClipboard, L"Copy To Clipboard"},
+        {BtnReadOnly, L"Text box Read only"},
+        {BtnInsertUserHook, L"Insert UserHook"},
+        {LblFlushDelay, L"Flush delay"},
+        {LblFilterRepeat, L"Filter repetition"},
+        {LblLanguage, L"Language"},
+        {LblCodePage, L"Default codepage"},
+        {LblMaxBuff, L"Max buffer size"},
+        {LblMaxHist, L"Max history size"},
+        {LblAutoAttach, L"Auto attach"},
+        {LblAutoAttach_savedonly, L"Auto attach (saved only)"},
+        {MenuCopyHookCode, L"CopyHookCode"},
+        {MenuRemoveHook, L"RemoveHook"},
+        {MenuDetachProcess, L"DetachProcess"},
+        {MenuRemeberSelect, L"Remeber Hook Selection"},
+        {MenuForgetSelect, L"Forget Hook Selection"},
+        {MenuAddPlugin, L"Add Plugin"},
+        {MenuRemovePlugin, L"Remove Plugin"},
+        {MenuPluginRankUp, L"Up"},
+        {MenuPluginRankDown, L"Down"},
+        {MenuPluginEnable, L"Enable"},
+        {MenuPluginVisSetting, L"Show Setting"},
+        {DefaultFont, L"Arial"},
+        {InvalidPlugin, L"Invalid Plugin!"},
+        {InvalidDll, L"Invalid Dll!"},
+        {InvalidDump, L"Dumplicated!"},
+        {MsgError, L"Error"},
+        {BtnOk, L"OK"},
+        {HS_TEXT, L"Text"},
+        {VersionLatest, L"Latest version"},
+        {VersionCurrent, L"Current version"},
+        {LIST_HOOK, L"Hook"},
+        {COPYSELECTION, L"auto send selected text in textbox to clipboard"},
+        {FONTSELECT, L"Select Font"},
+};
+
+DEFINEFUNCTION(LANG_STRINGS_UI, _internal_lang_strings_ui, wchar_t, get_ui)

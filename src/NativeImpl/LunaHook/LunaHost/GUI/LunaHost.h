@@ -105,6 +105,7 @@ class LunaHost : public mainwindow
     void on_proc_connect(DWORD pid);
     void on_proc_disconnect(DWORD pid);
     void on_info(HOSTINFO type, const std::wstring &);
+    std::wstring i18nQueryCallback(const std::wstring& original);
 
     void showtext(const std::wstring &text, bool clear);
     void updatelisttext(const std::wstring &text, LONG_PTR data);
