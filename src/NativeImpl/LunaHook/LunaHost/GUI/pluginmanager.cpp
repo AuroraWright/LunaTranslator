@@ -464,7 +464,7 @@ std::array<InfoForExtension, 20> Pluginmanager::GetSentenceInfo(TextThread &thre
         {"HostHWND", (int64_t)host->winId},
         {"toclipboard", host->check_toclipboard},
         {"current select", &thread == currthread},
-        {"text number", thread.handle},
+        {"text number", thread.handle + 2}, // cheat since textractor had two extra reserved threads
         {"process id", thread.tp.processId},
         {"hook address", (int64_t)thread.tp.addr},
         {"text handle", thread.handle},

@@ -23,6 +23,7 @@ if(MSVC)
   endif()
   add_compile_options(/utf-8)
 endif()
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 include(FetchContent)
 
 if(NOT CMAKE_BUILD_TYPE)

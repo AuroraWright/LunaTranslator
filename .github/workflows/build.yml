@@ -11,5 +11,4 @@ on:
 
 jobs:
   buildluna:
-    uses: ./.github/workflows/buildluna.yml
-    secrets: inherit
+    uses: ./.github/workflows/buildlunahook.yml
