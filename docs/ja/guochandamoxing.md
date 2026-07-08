@@ -52,7 +52,7 @@
     カスタムシステムプロンプトとユーザーメッセージ内では、いくつかの情報をフィールドを使って参照できます：
     - `{sentence}`：現在翻訳するテキスト
     - `{srclang}`と`{tgtlang}`：ソース言語とターゲット言語。プロンプトで英語のみが使用されている場合、これらは言語名の英語訳に置き換えられます。それ以外の場合は、現在のUI言語の言語名訳に置き換えられます。
-    - `{contextOriginal[N]}` と `{contextTranslation[N]}` と `{contextBoth[N]}`：N件の履歴原文、翻訳文、両方。Nは「付随するコンテキストの数」とは関係なく、入力時に整数に置き換えてください。
+    - `{contextOriginal[N]}` と `{contextTranslation[N]}` と `{contextBoth[N]}`：N件の履歴原文、翻訳文、両方。入力が `contextBoth[N]` の場合、`附带上下文个数` の値が参照されます。入力が `contextBoth[10]` の場合、入力された 10 件の数が使用されます。
     - `{DictWithPrompt[XXXXX]}`: このフィールドは「固有名詞翻訳」のエントリを参照できます。**一致するエントリがない場合、翻訳内容を破壊しないようにこのフィールドはクリアされます**。`XXXXX`は、LLMに与えられたエントリを使用して翻訳を最適化するように導くプロンプトであり、ユーザーが定義することも、カスタムユーザーメッセージを無効にしてデフォルトのプロンプトを使用することもできます。
 
 
@@ -60,11 +60,15 @@
 
     一部のプラットフォームの一部のモデルでは、`top p` や `frequency penalty` などのパラメータがインターフェースで受け入れられない場合があります。また、`max tokens` パラメータが廃止され、代わりに `max completion tokens` に変更されている場合もあります。これらの問題は、スイッチをオンまたはオフにすることで解決できます。
 
-1. #### reasoning effort  
+1. #### reasoning effort
+    一部のプラットフォームでサポートされている推論強度の制御設定です。
 
-    Geminiプラットフォームでは、このオプションをGeminiの`thinkingBudget`に自動的にマッピングします。マッピングルールは次の通りです：
+    Geminiプラットフォームの場合、各オプションは自動的にGeminiの`thinkingBudget`にマッピングされます。マッピングルールは以下の通りです：
     
-    none/minimal->0（思考無効、ただしGemini-2.5-Proモデルでは適用不可）、low->512、medium->-1（動的思考を有効）、high/xhigh->24576。  
+    none/minimal -> 0 (推論を無効化、ただしGemini-2.5-Proモデルには適用されません), low -> 512, medium -> -1 (動的推論を有効化), high/xhigh -> 24576。
+
+1. #### thinking.type
+    一部のプラットフォームでサポートされている推論モードの切り替えスイッチです。
 
 1. #### その他のパラメータ  
 
@@ -120,18 +124,9 @@
 
 `{endpoint}`と`{deployName}`をあなたのendpointとdeployNameに置き換えてください。
 
-== Deepinfra
-
-
-**API Key** https://deepinfra.com/dash/api_keys
-
 == Cerebras
 
 **API Key** https://cloud.cerebras.ai/  ->  API Keys
-
-== Chutes
-
-**API Key** https://chutes.ai/app/api
 
 
 :::
@@ -143,6 +138,10 @@
 == DeepSeek
 
 **API Key** https://platform.deepseek.com/api_keys
+
+== Xiaomi MiMo
+
+**API Key** https://platform.xiaomimimo.com/#/console/api-keys
 
 == 阿里雲百煉大模型
 
@@ -167,14 +166,6 @@
 **API Key** https://bigmodel.cn/usercenter/apikeys
 
 **model** https://bigmodel.cn/dev/howuse/model
-
-== 零一万物
-
-**API Key** https://platform.lingyiwanwu.com/apikeys
-
-== 硅基流動
-
-**API Key** https://cloud-hk.siliconflow.cn/account/ak
 
 == 訊飛星火大模型
 
@@ -209,7 +200,17 @@
 
 使用方法については、[この記事](https://www.newapi.ai/ja/docs/apps/luna-translator)を参照してください。
 
-### オフラインデプロイモデル
+## 特定オフライン翻訳モデル
 
-[llama.cpp](https://github.com/ggerganov/llama.cpp)、[ollama](https://github.com/ollama/ollama)などのツールを使用してモデルをデプロイし、アドレスとモデルを入力することができます。
+オフライン翻訳用に設計された、または特定のシナリオ向けにファインチューニングされたオフライン翻訳大規模モデルが存在します。
 
+ほとんどのモデルはデプロイ後、**大規模モデル用汎用インターフェース**を直接使用して呼び出すことができます。ただし、一部のモデルでは、より優れた翻訳効果を発揮するために、専用のプロンプト形式を使用する必要がある場合があります。
+
+このインターフェースは、このような専用プロンプト形式を必要とするモデル向けに設計されています。そのため、このインターフェースではユーザーがカスタマイズしたプロンプト設定は提供せず、モデル公開者が提供するプロンプト形式を使用します。
+
+現在、このインターフェースは以下のモデルをサポートしています：
+
+| 作者 | モデル | 言語 |
+| ---- | ---------- | ---------- | 
+| tencent | Hy-MT2 | 汎用 |
+| SakuraLLM | SakuraLLM & GalTransl | 日本語 -> 中国語 |

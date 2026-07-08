@@ -1,6 +1,7 @@
 // https://github.com/microsoft/PowerToys/tree/main/src/modules/FileLocksmith/FileLocksmithLibInterop
 #include <FileLocksmith.h>
 #include <base64.h>
+#include "../NativeUtils/dllanalysis.hpp"
 
 std::wstring readfile(const wchar_t *fname)
 {
@@ -43,6 +44,23 @@ void autoexitafter1min()
     Sleep(1000 * 60);
     ExitProcess(0); })
         .detach();
+}
+void keeponnxruntimeopenvino()
+{
+    auto exports = exportAnalysis(LR"(.\files_old\DLL64\onnxruntime.dll)");
+    bool found = false;
+    for (auto &f : exports)
+    {
+        if (f == "OrtSessionOptionsAppendExecutionProvider_OpenVINO")
+        {
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        return;
+    std::filesystem::copy(LR"(.\files_old\DLL64)", LR"(.\files\DLL64)", std::filesystem::copy_options::recursive | std::filesystem::copy_options::skip_existing);
+    std::filesystem::copy(LR"(.\files_old\DLL64\onnxruntime.dll)", LR"(.\files\DLL64\onnxruntime.dll)", std::filesystem::copy_options::overwrite_existing);
 }
 int updatewmain(int argc, wchar_t *argv[])
 {
@@ -93,7 +111,7 @@ int updatewmain(int argc, wchar_t *argv[])
             result += L"\n";
         }
         result = (text_failed_occupied) + L"\n\n" + result;
-        auto checked = MessageBoxW(NULL, result.c_str(), text_error.c_str(), MB_YESNO | MB_ICONQUESTION | MB_SYSTEMMODAL);
+        auto checked = IDNO; // MessageBoxW(NULL, result.c_str(), text_error.c_str(), MB_YESNO | MB_ICONQUESTION | MB_SYSTEMMODAL);
         if (checked != IDYES)
             return 0;
         for (auto &&proc : processes)
@@ -111,6 +129,13 @@ int updatewmain(int argc, wchar_t *argv[])
         std::filesystem::copy(argv[2], L".\\", std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
         try
         {
+            keeponnxruntimeopenvino();
+        }
+        catch (...)
+        {
+        }
+        try
+        {
             std::filesystem::remove_all(L".\\files_old");
         }
         catch (...)
@@ -126,7 +151,7 @@ int updatewmain(int argc, wchar_t *argv[])
         catch (...)
         {
         }
-        MessageBoxW(NULL, (std::wstring(text_update_failed) + L"\n\n" + StringToWideString(e.what(), CP_ACP)).c_str(), text_error.c_str(), MB_SYSTEMMODAL);
+        // MessageBoxW(NULL, (std::wstring(text_update_failed) + L"\n\n" + StringToWideString(e.what(), CP_ACP)).c_str(), text_error.c_str(), MB_SYSTEMMODAL);
         return 0;
     }
     try

@@ -208,7 +208,7 @@ enum class JITTYPE
 struct TextBuffer;
 struct HookParam
 {
-	// address和emu_addr需要在host和hook之间传递，因此不能用uintptr_t
+	// address需要在host和hook之间传递，因此不能用uintptr_t
 	uint64_t address; // absolute or relative address
 	int offset,		  // offset of the data in the memory
 		index,		  // deref_offset1
@@ -234,7 +234,7 @@ struct HookParam
 	{
 		ZeroMemory(this, sizeof(HookParam));
 	}
-	uint64_t emu_addr;
+	uint32_t emu_addr;
 	JITTYPE jittype;
 };
 
@@ -312,11 +312,30 @@ struct HostInfoI18NReq
 	LANG_STRINGS_HOOK enum_;
 	char key[MESSAGE_SIZE] = {};
 };
+struct EmuGameInfoNotif
+{
+	EmuGameInfoNotif(const char *_id, const char *_title, const char *_version)
+	{
+		strncpy_s(this->id, _id, MESSAGE_SIZE - 1);
+		strncpy_s(this->title, _title, MESSAGE_SIZE - 1);
+		strncpy_s(this->version, _version, MESSAGE_SIZE - 1);
+	}
+	HostNotificationType command = HOST_NOTIFICATION_EMUINFO;
+	HOSTINFO type = HOSTINFO::EmuWarning;
+	char id[MESSAGE_SIZE] = {};
+	char title[MESSAGE_SIZE] = {};
+	char version[MESSAGE_SIZE] = {};
+};
 struct HostInfoNotif
 {
-	HostInfoNotif(std::string message = "") { strncpy_s(this->message, message.c_str(), MESSAGE_SIZE - 1); }
+	HostInfoNotif(std::string message = "", UINT _codepage = CP_UTF8)
+	{
+		codepage = _codepage;
+		strncpy_s(this->message, message.c_str(), MESSAGE_SIZE - 1);
+	}
 	HostNotificationType command = HOST_NOTIFICATION_TEXT;
 	HOSTINFO type;
+	UINT codepage;
 	char message[MESSAGE_SIZE] = {};
 };
 struct HostInfoNotifW
@@ -445,6 +464,7 @@ struct CommonSharedMem
 	UINT codepage;
 	bool fastskipignore;
 	bool clearText;
+	bool tryvehhook = false;
 	struct
 	{
 		bool use;

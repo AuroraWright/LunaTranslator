@@ -1,12 +1,15 @@
 {
     "local": {
         "args": {
+            "model": "PP-OCRv5_mobile",
             "thread": 4,
             "gpu": false,
             "luid": 0,
-            "accfirst": true,
             "device_type": "CPU"
         }
+    },
+    "SnippingTool": {
+        "args": {}
     },
     "youdaodictocr": {
         "args": {
@@ -37,7 +40,8 @@
                     3,
                     4
                 ],
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "Secret Key": {
                 "refcombo": "接口",
@@ -48,19 +52,22 @@
                     3,
                     4
                 ],
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "app_key": {
                 "name": "密钥",
                 "refcombo": "接口",
                 "refcombo_i": 5,
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "app_id": {
                 "name": "APP ID",
                 "refcombo": "接口",
                 "refcombo_i": 5,
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "接口": {
                 "rank": 0,
@@ -86,15 +93,18 @@
         },
         "argstype": {
             "SecretId": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "SecretKey": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "ProjectId": {
                 "refcombo": "interface",
                 "refcombo_i": 1,
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "Region": {
                 "rank": 1,
@@ -128,11 +138,13 @@
         "argstype": {
             "APP_SECRET": {
                 "name": "应用密钥",
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "APP_KEY": {
                 "name": "应用ID",
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "interface1": {
                 "rank": 0,
@@ -152,7 +164,8 @@
         },
         "argstype": {
             "apikey": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "interface": {
                 "rank": 0,
@@ -171,10 +184,12 @@
         },
         "argstype": {
             "Access Key ID": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "Secret Access Key": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             }
         }
     },
@@ -184,7 +199,8 @@
         },
         "argstype": {
             "key": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             }
         }
     },
@@ -195,7 +211,7 @@
             "SECRET_KEY": "",
             "use_custom_prompt": false,
             "custom_prompt": "",
-            "Temperature": 0.3,
+            "Temperature": 0,
             "max_tokens": 1024,
             "top_p": 0.3,
             "top_p_use": true,
@@ -203,26 +219,44 @@
             "frequency_penalty_use": false,
             "reasoning_effort": "medium",
             "reasoning_effort_use": false,
+            "thinking.type": "disabled",
+            "thinking.type.use": false,
             "modellistcache": [],
             "s": "",
             "use_max_completion_tokens": false,
             "customparams": []
         },
         "argstype": {
+            "thinking.type": {
+                "type": "combo",
+                "refswitch": "thinking.type.use",
+                "internal": [
+                    "disabled",
+                    "enabled"
+                ],
+                "list": [
+                    "disabled",
+                    "enabled"
+                ]
+            },
             "reasoning_effort": {
                 "type": "combo",
                 "refswitch": "reasoning_effort_use",
                 "internal": [
+                    "none",
                     "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhign"
                 ],
                 "list": [
+                    "none",
                     "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhign"
                 ]
             },
             "customparams": {
@@ -234,7 +268,8 @@
             "SECRET_KEY": {
                 "rank": 0.5,
                 "name": "API Key",
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "s": {
                 "type": "split",
@@ -243,7 +278,7 @@
             "apiurl": {
                 "name": "API接口地址",
                 "rank": 0,
-                "type": "listedit_with_name"
+                "type": "llm_api_urls"
             },
             "model": {
                 "rank": 1,
@@ -307,13 +342,16 @@
         },
         "argstype": {
             "APPId": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "APISecret": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "APIKey": {
-                "type": "textlist"
+                "type": "textlist",
+                "issecret": true
             },
             "interface": {
                 "rank": 0,

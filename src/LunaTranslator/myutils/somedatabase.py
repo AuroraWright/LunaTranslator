@@ -41,6 +41,7 @@ class somedatabase:
 
     def __init__(self):
         self._cache = {}
+        self._cache2 = {}
         self.wordcountqueue = Queue()
         self.locked = threading.Lock()
         self.sqlsavegameinfo = sqlite3.connect(
@@ -64,14 +65,12 @@ class somedatabase:
             self.sqlsavegameinfo.execute(
                 "CREATE TABLE trace_strict(gameinternalid INT,timestart BIGINT,timestop BIGINT);"
             )
-            self.sqlsavegameinfo.commit()
         except:
             pass
         try:
             self.sqlsavegameinfo.execute(
                 "CREATE TABLE game_word_count(gameinternalid INT,time BIGINT,wordcount BIGINT);"
             )
-            self.sqlsavegameinfo.commit()
         except:
             pass
 
@@ -95,7 +94,6 @@ class somedatabase:
                 "INSERT INTO {} VALUES(?,?,?)".format(table),
                 (gameinternalid, s, e),
             )
-        self.sqlsavegameinfo.commit()
 
     def querytraceplaytime(
         self, gameuid: "str | None"
@@ -151,6 +149,8 @@ class somedatabase:
         return self._cache[internalid]
 
     def __get_gameinternalid(self, gameuid):
+        if gameuid in self._cache2:
+            return self._cache2[gameuid]
         while True:
             ret = self.sqlsavegameinfo.execute(
                 "SELECT * FROM gameinternalid_v2 WHERE gameuid = ?",
@@ -160,8 +160,8 @@ class somedatabase:
                 self.sqlsavegameinfo.execute(
                     "INSERT INTO gameinternalid_v2 VALUES(NULL,?)", (gameuid,)
                 )
-                self.sqlsavegameinfo.commit()
             else:
+                self._cache2[gameuid] = ret[0]
                 return ret[0]
 
     def stricttraceexe(self):
@@ -181,10 +181,21 @@ class somedatabase:
     def finduids(self, exes):
         uids = []
         for exe in exes:
-            uid, _ = findgameuidofpath(exe)
-            if not uid:
-                continue
-            uids.append(uid)
+            uids.extend(findgameuidofpath(exe, True))
+        isemus = False
+        for uid in uids:
+            if savehook_new_data[uid].get("emugameid"):
+                isemus = True
+                break
+        try:
+            cureumgameid = gobject.base.textsource.emugameid
+        except:
+            cureumgameid = None
+        if isemus:
+            for uid in uids.copy():
+                _emugameid = savehook_new_data[uid].get("emugameid")
+                if _emugameid and (_emugameid != cureumgameid):
+                    uids.remove(uid)
         return uids
 
     def tracex(self, _t: float, uids: list, dic: dict, table: str):
@@ -217,7 +228,7 @@ class somedatabase:
             with self.locked:
                 tlast = t
                 t = time.time()
-                if t - tlast > 10:
+                if t - tlast > 20:
                     # 虚拟机暂停
                     self.trace_strict.clear()
                     continue
@@ -227,8 +238,7 @@ class somedatabase:
                     self.trace_strict,
                     "trace_strict",
                 )
-                self.sqlsavegameinfo.commit()
-            time.sleep(5)
+            time.sleep(10)
 
     @threader
     def wordcountthread(self):

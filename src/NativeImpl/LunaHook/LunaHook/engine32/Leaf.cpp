@@ -439,7 +439,6 @@ bool InsertLeafHook()
   hp.filter_fun = LeafFilter; // remove two characters
   auto succ = NewHook(hp, "Leaf");
 
-  // ConsoleOutput("Leaf: disable GDI hooks");
   //  0045165E   8B8497 14080000  MOV EAX,DWORD PTR DS:[EDI+EDX*4+0x814]  ; jichi: text in eax, hook1 hook after here to replace eax
   //  0045169D   8B8C97 14080000  MOV ECX,DWORD PTR DS:[EDI+EDX*4+0x814]  ; jichi: text in ecx, hook2 hook after here to replace ecx
   const uint8_t bytes1[] = {0x8b, 0x84, 0x97, 0x14, 0x08, 0x00, 0x00},
@@ -874,7 +873,6 @@ namespace
       {
         hp->text_fun = nullptr;
         auto _ = (char *)context->esi;
-        ConsoleOutput("%p", _);
         auto f = fopen("./1.bin", "wb");
         fwrite(_, 1, 72 * 0x1000, f);
         fclose(f);
@@ -893,7 +891,7 @@ namespace
     BYTE sig2[] = {
         0xe8, XX4,
         0x83, 0xc4, 0x04,
-        0xa3, 0xf0, 0xba, 0x41, 0x00,
+        0xa3, XX, XX, XX, 0x00,
         0x0f, 0xbf, 0xce,
         0xc1, 0xe1, 0x03,
         0x83, 0xc0, 0x28,
@@ -907,7 +905,7 @@ namespace
         0xe8, XX4,
         0x83, 0xc4, 0x04,
         0xa3, XX, XX, XX, 0x00,
-        0x0f, 0xbf, 0xcb,
+        0x0f, 0xbf, XX,
         0xc1, 0xe1, 0x03,
         0x83, 0xc0, 0x28,
         0x0f, 0xbf, 0xde,

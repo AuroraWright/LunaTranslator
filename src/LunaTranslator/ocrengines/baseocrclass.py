@@ -121,7 +121,7 @@ class OCRBlock:
     def json(self):
         _ = dict(text=self.text)
         if self.box:
-            (x1, y1, x2, y1, x2, y2, x1, y2) = self.box
+            x1, y1, x2, y1, x2, y2, x1, y2 = self.box
             box = [
                 dict(x=x1, y=y1),
                 dict(x=x2, y=y1),
@@ -190,7 +190,7 @@ class OCRResult:
             self.blocks.append(OCRBlock(texts[i], boxs[i] if boxs else None))
         self.isocrtranslate = isocrtranslate
 
-        vertical = int(globalconfig["verticalocr"])
+        vertical = int(globalconfig.get("verticalocr", 2))
         if self.hasboxs:
             if vertical == 2:
                 vertical = self.__guessvertial(self.blocks)
@@ -204,7 +204,7 @@ class OCRResult:
         if self.blocks and scale != 1:
             for block in self.blocks:
                 block.box = tuple(_ / scale for _ in block.box)
-        if globalconfig["ocrmergelines"] and self.hasboxs:
+        if globalconfig.get("ocrmergelines", True) and self.hasboxs:
             self.__nearmergeboxs(space)
 
     def __bool__(self):
@@ -233,7 +233,7 @@ class OCRResult:
 
     def __nearmergeboxs(self, space: str):
         blocksX = list(_OCRBlockS([_]) for _ in self.blocks)
-        ocrmergelines_distance = globalconfig["ocrmergelines_distance"]
+        ocrmergelines_distance = globalconfig.get("ocrmergelines_distance", 0.4)
         n = len(blocksX)
 
         dist_matrix = [[0.0] * n for _ in range(n)]
@@ -337,7 +337,7 @@ class OCRResultParsed:
                 continue
             else:
                 if fil.isascii():
-                    line = re.sub(r"\b{}\b".format(re.escape(fil)), fil, line)
+                    line = re.sub(r"\b{}\b".format(re.escape(fil)), lambda m: filters[fil], line)
                 else:
                     line = line.replace(fil, filters[fil])
         return line

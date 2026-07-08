@@ -128,6 +128,19 @@ namespace
         strReplace(s, L"%n");
         buffer->fromWA(s);
     }
+    void ULJM06040_1(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("%K"));
+        StringFilter(buffer, TEXTANDLEN("%P"));
+        // StringFilterBetween(buffer, "\x81k", 2, "\x81l", 2);//〔ちなつ？〕〔直樹☆〕，人名，但可能不全，甚至包含剧透。想了一下还是留下吧
+        StringFilter(buffer, TEXTANDLEN("\x81\x99")); // ☆
+
+        StringReplacer(buffer, TEXTANDLEN("\x84\xa5"), TEXTANDLEN("\x81\x5b"));
+        StringReplacer(buffer, TEXTANDLEN("\x84\xa7"), TEXTANDLEN("\x81\x5b"));
+        auto s = buffer->strA();
+        s = re::sub(s, R"(\{(.*?)\}\[(.*?)\])", "$1");
+        buffer->from(s);
+    }
     void FSLPM66045(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
@@ -204,6 +217,12 @@ namespace
         auto s = buffer->strA();
         s = re::sub(s, R"(\n(\x81\x40)*)");
         buffer->from(s);
+    }
+    void SLPS25228(TextBuffer *buffer, HookParam *hp)
+    {
+        if ((WORD)PCSX2_REG(t0) != 1)
+            return buffer->clear();
+        SLPS25887(buffer, hp);
     }
     void SLPM66543(TextBuffer *buffer, HookParam *hp)
     {
@@ -451,7 +470,13 @@ namespace
         StringReplacer(buffer, TEXTANDLEN("\x81\x91"), TEXTANDLEN("!!")); //"――"
         StringReplacer(buffer, TEXTANDLEN("\x81\x90"), TEXTANDLEN("!?")); //"――"
     }
-
+    void SLPM65957(TextBuffer *buffer, HookParam *hp)
+    {
+        FSLPM66127(buffer, hp);
+        auto s = buffer->strA();
+        s = re::sub(s, "k\x01(.*?)k", "$1"); // 颜色
+        buffer->from(s);
+    }
     void SLPM55138F(TextBuffer *buffer, HookParam *hp)
     {
         static std::string last;
@@ -615,9 +640,27 @@ namespace
     void FSLPM65997(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        s = re::sub(s, R"(#\w+?\[[\.\d]*\])");
-        strReplace(s, "#n");
+        if (s == u8"　")
+            return buffer->clear();
+        s = re::sub(s, R"(#Ruby\[(.*?),(.*?)\])", "$1");
+        if (hp->type & CODEC_UTF8)
+            s = re::sub(s, u8R"((　)*#n(　)*)");
+        else
+            s = re::sub(s, R"((\x81\x40)*#n(\x81\x40)*)");
+        s = re::sub(s, R"(#[A-Za-z]+\[[\d\-,\.]*\])");
         buffer->from(s);
+    }
+    void FSLPM65997X(TextBuffer *buffer, HookParam *hp)
+    {
+        StringCharReplacer(buffer, TEXTANDLEN("#n\x81\x40#n"), '\n');
+        FSLPM65997(buffer, hp);
+    }
+    void FSLPM55216(TextBuffer *buffer, HookParam *hp)
+    {
+        if ((WORD)PCSX2_REG(a2) != 0)
+            return buffer->clear();
+        FSLPM65997X(buffer, hp);
+        all_ascii_Filter(buffer, hp);
     }
     void SLPM66437(TextBuffer *buffer, HookParam *hp)
     {
@@ -782,7 +825,7 @@ namespace
     }
     void SLPM66127X(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
     {
-        auto str = (char *)PCSX2_REG(a1);
+        auto str = (char *)((hp1->offset == PCSX2_REG_OFFSET(a1)) ? PCSX2_REG(a1) : PCSX2_REG(a0));
         std::string collect;
         while (*str)
         {
@@ -1623,6 +1666,22 @@ namespace
         WORD _ = PCSX2_REG(v0) | (PCSX2_REG(a0) << 8);
         buffer->from_t(_);
     }
+    void SLPM65016(TextBuffer *buffer, HookParam *hp)
+    {
+        if ((WORD)PCSX2_REG(a0) > 3)
+            return buffer->clear();
+
+        static std::map<WORD, std::string> lasts;
+        auto s = buffer->strA();
+        auto &last = lasts[(WORD)PCSX2_REG(a0)];
+        if (startWith(s, last))
+        {
+            buffer->from(s.substr(last.size()));
+            last = s;
+            return;
+        }
+        last = s;
+    }
     void SLPM65762(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strAW();
@@ -1633,7 +1692,6 @@ namespace
     }
     void SLPM65736(TextBuffer *buffer, HookParam *hp)
     {
-        StringFilter(buffer, TEXTANDLEN("#n\x81\x40"));
         FSLPM65997(buffer, hp);
         auto s = buffer->strA();
         static std::string last;
@@ -1650,6 +1708,40 @@ namespace
         strReplace(s, L"s");
         strReplace(s, L"n");
         buffer->fromWA(s);
+    }
+    void SLPM65054(TextBuffer *buffer, HookParam *hp)
+    {
+        static char last = 0;
+        auto s = buffer->strA();
+        if (last)
+        {
+            s = last + s;
+            last = 0;
+
+            s = strReplace(s, "\x81\xa4");
+            s = strReplace(s, "\x81\x8a");
+            s = strReplace(s, "\x84\x8d", "\x81\x48");
+            s = strReplace(s, "\x81\x80", "\x81\x40");
+            s = strReplace(s, "\x84\x8c", "!!");
+            return buffer->from(s);
+        }
+        if (IsDBCSLeadByteEx(932, (s[0])))
+        {
+            last = s[0];
+            return buffer->clear();
+        }
+        else
+        {
+            last = 0;
+            return buffer->clear();
+        }
+    }
+    void SLPM66779(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        if (all_ascii(s))
+            return buffer->clear();
+        buffer->from(strReplace(s, "\n"));
     }
     void SLPM65641(TextBuffer *buffer, HookParam *hp)
     {
@@ -1998,13 +2090,6 @@ namespace
         else
             buffer->from(buffer->strA().substr(1));
     }
-    void FSLPM62597(TextBuffer *buffer, HookParam *hp)
-    {
-        if ((DWORD)PCSX2_REG(t0))
-            return buffer->clear();
-        StringFilter(buffer, TEXTANDLEN("$t"));
-        StringFilter(buffer, TEXTANDLEN("$d"));
-    }
     void SLPM66845(TextBuffer *buffer, HookParam *hp)
     {
         CharFilter(buffer, '\\');
@@ -2024,6 +2109,56 @@ namespace
         last = s;
         CharFilter(buffer, '\\');
     }
+    void SLPM66856F(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strAW();
+        s = remapkatakana(s);
+        s = re::sub(s, LR"(([^！])r)", L"$1\n");                 // 换行
+        s = re::sub(s, LR"(([^！])k)", L"$1");                   // 需要按键
+        s = re::sub(s, LR"(([^！])b(.*?)\.<(.*?)>\.)", L"$1$3"); // 注音
+        s = re::sub(s, LR"(！([\u0000-\u007F]))", L"$1");
+        strReplace(s, L"\uf8f0"); // 行起始
+        strReplace(s, L"w80.");
+        buffer->fromWA(s);
+    }
+    void SLPM66737(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        if (all_ascii(s))
+            return buffer->clear();
+        if ((WORD)PCSX2_REG(a2) != 0 && (WORD)PCSX2_REG(a2) != 0xec78)
+            return buffer->clear();
+        FSLPM65997(buffer, hp);
+    }
+    void SLPS25693(hook_context *_, HookParam *hp, TextBuffer *buffer, uintptr_t *role)
+    {
+        auto s = std::string((char *)PCSX2_REG(a1));
+        if (s.size() <= 2)
+            return;
+        s = re::split(s, "[\r\n;]{3}")[0];
+        if (!startWith(s, "WINDOW NAME"))
+            return;
+        static std::string last;
+        if (endWith(last, s))
+        {
+            last = s;
+            return;
+        }
+        last = s;
+        s = re::sub(s, R"(WINDOW NAME=\"(.*?)\">)", "\x81\x79$1\x81\x7a");
+        s = re::sub(s, R"(<.*?>)");
+        s = re::sub(s, R"([\r\n])");
+        buffer->from(s);
+    }
+    void SLPM62597(hook_context *_, HookParam *hp, TextBuffer *buffer, uintptr_t *role)
+    {
+        *role = (WORD)PCSX2_REG(v0);
+        std::string s = (char *)PCSX2_REG(a2);
+        s = re::sub(s, "^(\x81\x40)+");
+        s = re::sub(s, "(\x81\x40)+$");
+        s = re::sub(s, "[\r\n]");
+        buffer->from(s);
+    }
 }
 struct emfuncinfoX
 {
@@ -2031,19 +2166,44 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 暴れん坊プリンセス
+    {0x2D6490, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, SLPM65054, "SLPM-65054"}},
+    // 緋色の欠片 ～玉依姫奇譚～
+    {0x16C960, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, FSLPM65997, std::vector<const char *>{"SLPM-66453", "SLPM-66454"}}},
+    // 緋色の欠片 愛蔵版 ～玉依姫奇譚～
+    {0x12BBC0, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, FSLPM55216, "SLPM-55216"}},
+    // ギャラクシーエンジェルⅡ 無限回廊の鍵
+    {0x284D08, {0, PCSX2_REG_OFFSET(a1), 0, 0, SLPM66779, std::vector<const char *>{"SLPM-66779", "SLPM-66780"}}},
+    // 漢のためのバイブル THE 友情アドベンチャー ～炎多留・魂～
+    {0x12fc50, {FULL_STRING, PCSX2_REG_OFFSET(v0), 0, 0, 0, "SLPM-65393"}},
+    {0x12fe80, {FULL_STRING, PCSX2_REG_OFFSET(v0), 0, 0, 0, "SLPM-65393"}},
+    // 学園ヘヴン おかわりっ！
+    {0x138950, {0, 0, 0, SLPM62597, 0, "SLPM-62597"}},
+    // プリンセス・プリンセス 姫たちのアブナい放課後
+    {0x14F0C8, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, SLPS25693, 0, "SLPS-25693"}},
+    // モノクローム・ファクター cross road
+    {0x1B9120, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, ULJM06040_1, "SLPM-55103"}},
+    // 桜蘭高校ホスト部
+    {0x1056F8, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, SLPM66737, "SLPM-66737"}},
+    // Love Songs アイドルがクラスメ～ト
+    {0x14A4E8, {0, PCSX2_REG_OFFSET(s2), 0, 0, SLPM65016, std::vector<const char *>{"SLPM-65016", "SLPM-65017"}}},
+    // S.Y.K ～新説西遊記～
+    {0x1d8f90, {FULL_STRING, PCSX2_REG_OFFSET(a3), 0, 0, FSLPM65997, "SLPM-55206"}},
+    // 咎狗の血 True Blood
+    {0x1424F8, {FULL_STRING, PCSX2_REG_OFFSET(v0), 0, 0, SLPM66856F, std::vector<const char *>{"SLPM-66855", "SLPM-66856"}}}, //@mills
     // 風色サーフ
     {0x10a328, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(a0), 0, 0, 0, "SLPM-55166"}},
     // 悠久ノ桜
     {0x13DDC0, {FULL_STRING, PCSX2_REG_OFFSET(s2), 0, 0, SLPM66845, "SLPM-66845"}},
     {0x12a630, {FULL_STRING, PCSX2_REG_OFFSET(s2), 0, 0, SLPM668452, "SLPM-66845"}},
-    // 学園ヘヴン おかわりっ！
-    {0x1DD89C, {FULL_STRING, PCSX2_REG_OFFSET(a0), 0, 0, FSLPM62597, "SLPM-62597"}},
     // WHITE CLARITY ～And The tears became you.～
     {0x16AC58, {0, PCSX2_REG_OFFSET(v0), 0, 0, SLPM66214, "SLPM-66214"}},
     // 学園ヘヴン BOY'S LOVE SCRAMBLE！
     {0x1d39b4, {FULL_STRING, PCSX2_REG_OFFSET(a0), 0, 0, all_ascii_Filter, "SLPS-25282"}},
     // 不確定世界の探偵紳士 ～悪行双麻の事件ファイル～
     {0x114128, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s2), 0, 0, SLPM55121, "SLPM-55121"}},
+    // 第2次スーパーロボット大戦α
+    {0x1C3a2c, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, SLPS25228, "SLPS-25228"}},
     // スーパーロボット大戦Ｚ
     {0x1a0d88, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, SLPS25887, "SLPS-25887"}},
     // スーパーロボット大戦Z スペシャルディスク
@@ -2065,6 +2225,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x134A6C, {0, 0, 0, SLPM65971, FSLPM65971, "SLPM-65971"}},
     // Apocripha/0
     {0x1222c8, {FULL_STRING, PCSX2_REG_OFFSET(a0), 0, SLPM65710, 0, "SLPM-65710"}},
+    // Angel's Feather
+    {0x31B880, {DIRECT_READ, 0, 0, SLPS20394<0x31B480, 0x31B880, 0x31BC80, 0x31C080>, 0, std::vector<const char *>{"SLPM-65512", "SLPM-65513"}}},
     // Angel's Feather −黒の残影−
     {0x12D940, {0, PCSX2_REG_OFFSET(t7), 0, 0, SLPM65943, "SLPM-65943"}},
     // 銀のエクリプス
@@ -2601,6 +2763,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x461F38, {DIRECT_READ, 0, 0, SLPS25150, 0, "SLPS-25150"}},
     // D.C.P.S. ～ダ・カーポ～ プラスシチュエーション
     {0x114384, {0, PCSX2_REG_OFFSET(a0), 0, 0, SLPM65400, "SLPM-65400"}},
+    // D.C.Ⅱ P.S. ～ダ・カーポⅡ～ プラスシチュエーション DXパック
+    {0x10daf8, {FULL_STRING, PCSX2_REG_OFFSET(a1), 0, 0, 0, "SLPM-66922"}},
     // D.C. ～ダ・カーポ～ the Origin
     {0x517688, {DIRECT_READ, 0, 0, 0, SLPM66905, "SLPM-66905"}},
     // D.C.I.F. ～ダ・カーポ～イノセント・フィナーレ～ [通常版]
@@ -2679,6 +2843,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x356FB0, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, SLPS25662, "SLPS-25662"}},
     // 今日からマ王！ 眞マ国の休日
     {0x3428D0, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, SLPS25801, "SLPS-25801"}},
+    // 遙かなる時空の中で ～八葉抄～
+    {0x1AD28C, {FULL_STRING, PCSX2_REG_OFFSET(a0), 0, SLPM66127X, SLPM65957, "SLPM-65957"}},
     // 遙かなる時空の中で 夢の浮橋
     {0x1ECF7C, {0, PCSX2_REG_OFFSET(s4), 0, 0, SLPM55138F, "SLPM-55138"}},
     // 遙かなる時空の中で 舞一夜
@@ -2695,8 +2861,6 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 遙かなる時空の中で4
     {0x1B043C, {USING_CHAR | DATA_INDIRECT, PCSX2_REG_OFFSET(s1), 0, 0, FSLPM66127, "SLPM-66952"}},
     {0x1B0360, {0, PCSX2_REG_OFFSET(a1), 0, SLPM66127X, FSLPM66127, "SLPM-66952"}},
-    // Angel's Feather
-    {0x31B880, {DIRECT_READ, 0, 0, SLPS20394<0x31B480, 0x31B880, 0x31BC80, 0x31C080>, 0, std::vector<const char *>{"SLPM-65512", "SLPM-65513"}}},
     // 空色の風琴 ～Remix～
     {0x1A9238, {DIRECT_READ, 0, 0, 0, SLPS25395, "SLPM-65848"}},
     {0x10c324, {FULL_STRING, PCSX2_REG_OFFSET(a0), 0, 0, SLPS25395, "SLPM-65848"}},

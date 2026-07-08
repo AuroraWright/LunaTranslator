@@ -1,4 +1,5 @@
 import os, re
+from collections import defaultdict
 
 os.chdir(os.path.dirname(__file__))
 
@@ -62,21 +63,37 @@ def psv():
     return ret
 
 
+def extract_game_info_robust(cpp_code):
+    result = defaultdict(list)
+    game_positions = []
+    for match in re.finditer(r"//\s*([^\n]+?)$", cpp_code, re.MULTILINE):
+        game_name = match.group(1).strip()
+        start_pos = match.end()
+        next_comment = re.search(r"//", cpp_code[start_pos:])
+        if next_comment:
+            end_pos = start_pos + next_comment.start()
+        else:
+            end_pos = len(cpp_code)
+
+        game_positions.append((game_name, start_pos, end_pos))
+    for game_name, start, end in game_positions:
+        section = cpp_code[start:end]
+        ids = re.findall(r'"(\w+)"', section)
+        vector_ids = re.findall(r"vector<[^>]+>\s*\{([^}]+)\}", section)
+        for vector_section in vector_ids:
+            ids.extend(re.findall(r'"([^"]+)"', vector_section))
+        if ids:
+            result[game_name] = list(dict.fromkeys(ids))
+    return dict(result)
+
+
 def rpcs3():
-    with open("rpcs3.cpp", "r", encoding="utf8") as ff:
+    with open("rpcs3_1.cpp", "r", encoding="utf8") as ff:
         content = ff.read()
     ret = []
-    for match in re.finditer(r"^            // (.*?)\n", content, re.MULTILINE):
-        game = match.groups()[0]
-        m = re.search("(.*?) //(.*)", game)
-        if m:
-            _id = m.groups()[1]
-            game = m.groups()[0].strip()
-        else:
-            _id = " & ".join(
-                re.findall('"(.*?)"', content[match.span()[1] :].split("\n")[0])
-            )
-        ret.append((_id, game))
+    for name, ids in extract_game_info_robust(content).items():
+        _id = " & ".join(ids)
+        ret.append((_id, name))
     return ret
 
 
@@ -106,54 +123,13 @@ pcsx2 = pcsx2()
 
 
 def maketable(lst):
-    res = """
-|  | ID       | Game                |
+    res = """|  | ID       | Game                |
 | ---- | ---------- | ------------------- |"""
     for i, (_id, game) in enumerate(lst):
         res += "\n" + f"|  | {_id} | {game} |"
     return res
 
 
-append = r"""
-| - | - |
-| NS | ~~yuzu(&ge;1616)~~, ~~sudachi~~, [~~Eden(&le;v0.0.4rc1)~~](https://eden-emu.dev/), [Citron](https://citron-emu.org/)|
-| PSP | [PPSSPP](https://github.com/hrydgard/ppsspp) &ge;v1.15.0 |
-| PSV | [Vita3K](https://github.com/Vita3K/Vita3K) &ge;v0.1.9.3339 |
-| PS2 | [PCSX2](https://github.com/PCSX2/pcsx2) &ge;v1.7.4473 |
-<!-- | PS3 | [RPCS3](https://github.com/RPCS3/rpcs3) |-->
-
-::: tabs
-
-== NS
-
-NS_GAME_LIST
-
-== PSP
-
-PSP_GAME_LIST
-
-== PSV
-
-PSV_GAME_LIST
-
-== PS2
-
-PS2_GAME_LIST
-
-:::"""
-
-for lang in os.listdir("../../../../../docs"):
-    if not os.path.exists(f"../../../../../docs/{lang}/emugames_template.md"):
-        continue
-    with open(
-        f"../../../../../docs/{lang}/emugames_template.md", "r", encoding="utf8"
-    ) as ff:
-        temp = ff.read()
-
-    append = append.replace("NS_GAME_LIST", maketable(ns))
-    append = append.replace("PSP_GAME_LIST", maketable(psp))
-    append = append.replace("PSV_GAME_LIST", maketable(psv))
-    append = append.replace("PS3_GAME_LIST", maketable(rpcs3))
-    append = append.replace("PS2_GAME_LIST", maketable(pcsx2))
-    with open(f"../../../../../docs/{lang}/emugames.md", "w", encoding="utf8") as ff:
-        ff.write(temp + append)
+for k, f in (("ns", ns), ("psp", psp), ("ps2", pcsx2), ("psv", psv), ("ps3", rpcs3)):
+    with open(f"../../../../../docs/emusupportlist/{k}.md", "w", encoding="utf8") as ff:
+        ff.write(maketable(f))

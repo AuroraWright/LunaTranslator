@@ -5,15 +5,19 @@
 #include "engine32/KISS.h"
 #include "engine32/Tarte.h"
 #include "engine32/sakanagl.h"
+#include "engine32/Monochrome.h"
 #include "engine32/H_do_C.h"
 #include "engine32/PixelGameMakerMVplayer.h"
 #include "engine32/LCScript.h"
 #include "engine32/Hug.h"
+#include "engine32/Seraphim.h"
+#include "engine32/ArcSystemWorks.h"
 #include "engine32/InteractiveNovelEngine.h"
 #include "engine32/AZScript.h"
 #include "engine32/Furaiki.h"
 #include "engine32/ZeroEscape.h"
 #include "engine32/Milk.h"
+#include "engine32/ivory.h"
 #include "engine32/Cage.h"
 #include "engine32/MBSTRUTH.h"
 #include "engine32/ONScripterru.h"
@@ -28,6 +32,7 @@
 #include "engine32/Yatagarasu.h"
 #include "engine32/TACTICS.h"
 #include "engine32/For.h"
+#include "engine32/Azurite.h"
 #include "engine32/splushwave.h"
 #include "engine32/GJ.h"
 #include "engine32/ANOS.h"
@@ -489,5 +494,10 @@ std::vector<ENGINE *> check_engines()
         new PinkQuestion,
         new InteractiveNovelEngine,
         new PiAS,
+        new Seraphim,
+        new Azurite,
+        new ArcSystemWorks,
+        new Monochrome,
+        new ivory,
     };
 }

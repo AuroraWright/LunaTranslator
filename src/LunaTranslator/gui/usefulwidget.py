@@ -14,7 +14,8 @@ import NativeUtils
 import gobject
 from NativeUtils import WebView2
 import re
-from gui.qevent import DarkLightChangedEvent
+from myutils.hwnd import getExeIcon, getcurrexe
+from gui.qevent import DarkLightChangedEvent, DarkLightSettingChangedEvent
 from myutils.config import _TR, globalconfig, mayberelpath, dynamiclink
 from myutils.wrapper import Singleton, threader, tryprint
 from myutils.utils import nowisdark
@@ -34,6 +35,18 @@ from gui.dynalang import (
     LMainWindow,
     LToolButton,
 )
+
+
+def load_specific_icon_size(ico_path):
+    reader = QImageReader(ico_path)
+    total_images = reader.imageCount()
+    best_image = None
+    for i in range(total_images):
+        reader.jumpToImage(i)
+        size = reader.size()
+        if best_image is None or size.width() > best_image.size().width():
+            best_image = QPixmap.fromImage(reader.read())
+    return best_image
 
 
 class FocusCombo(QComboBox):
@@ -65,7 +78,7 @@ class SuperCombo(FocusCombo):
         return super().event(e)
 
     def __resizedirect(self):
-        h = QFontMetricsF(self.font()).ascent()
+        h = QFontMetricsF(self.font(), self).ascent()
         sz = QSizeF(h, h).toSize()
         self.setIconSize(sz)
 
@@ -82,10 +95,32 @@ class SuperCombo(FocusCombo):
     def vu(self) -> QListView:
         return self.view()
 
+    def event(self, a0: QEvent):
+        if isinstance(a0, DarkLightChangedEvent):
+            for _ in range(self.mo.rowCount()):
+                item = self.mo.item(_)
+                if a0.isdark():
+                    icon = item.data(Qt.ItemDataRole.UserRole + 11)
+                else:
+                    icon = item.data(Qt.ItemDataRole.UserRole + 10)
+                if icon:
+                    item.setIcon(icon)
+
+        return super().event(a0)
+
     def addItem(self, item, internal=None, icon=None):
         text = _TR(item) if not self.static else item
+        isdark = None
         if icon:
-            item1 = QStandardItem(icon, text)
+            if isinstance(icon, QIcon):
+                item1 = QStandardItem(icon, text)
+            else:
+                item1 = QStandardItem(text)
+                item1.setData(icon["light"], Qt.ItemDataRole.UserRole + 10)
+                item1.setData(icon["dark"], Qt.ItemDataRole.UserRole + 11)
+                if isdark is None:
+                    isdark = nowisdark()
+                item1.setIcon(icon["dark"] if isdark else icon["light"])
         else:
             item1 = QStandardItem(text)
         item1.setData(item, self.Visoriginrole)
@@ -95,7 +130,9 @@ class SuperCombo(FocusCombo):
     def clear(self):
         self.mo.clear()
 
-    def addItems(self, items, internals=None, icons=None):
+    def addItems(
+        self, items, internals=None, icons: "list[QIcon|dict[str:QIcon]]" = None
+    ):
         for i, item in enumerate(items):
             iternal = None
             if internals and i < len(internals):
@@ -136,7 +173,7 @@ class SuperCombo(FocusCombo):
         if not index.isValid():
             return
         item = self.mo.itemFromIndex(index)
-        if not item:
+        if item is None:
             return
         return item.data(self.Internalrole)
 
@@ -691,9 +728,19 @@ class saveposwindow_1(LMainWindow):
         self.__checked_savepos()
 
 
-class saveposwindow(saveposwindow_1):
+class DarkLightAutoResetIconHelper(QWidget):
+    def event(self, a0: QEvent):
+        if isinstance(a0, DarkLightChangedEvent):
+            self.setWindowIcon(self.windowIcon())
+        return super().event(a0)
+
+
+class saveposwindow(saveposwindow_1, DarkLightAutoResetIconHelper):
     def keyPressEvent(self, a0: QKeyEvent):
-        if a0.key() == Qt.Key.Key_Escape:
+        if (a0.key() == Qt.Key.Key_Escape) or (
+            a0.key() == Qt.Key.Key_W
+            and (a0.modifiers() & Qt.KeyboardModifier.ControlModifier)
+        ):
             self.close()
         return super().keyPressEvent(a0)
 
@@ -738,7 +785,7 @@ class MySwitch(QAbstractButton):
         return super().event(a0)
 
     def __loadsize(self):
-        h = QFontMetricsF(self.font()).height()
+        h = QFontMetricsF(self.font(), self).height()
         sz = QSizeF(1.62 * h * gobject.Consts.btnscale, h * gobject.Consts.btnscale)
         self.setFixedSize(sz.toSize())
 
@@ -1103,9 +1150,8 @@ def getsimplecombobox(
         )
     else:
         if len(lst):
-            if (k not in d) or (initvar >= len(lst)):
+            if (default is None and (k not in d)) or (initvar >= len(lst)):
                 initvar = 0
-
             s.setCurrentIndex(initvar)
         s.currentIndexChanged.connect(functools.partial(callbackwrap, d, k, callback))
     if fixedsize:
@@ -1114,10 +1160,18 @@ def getsimplecombobox(
 
 
 def D_getsimplecombobox(
-    lst, d, k, callback=None, fixedsize=False, internal=None, static=False, sizeX=False
+    lst,
+    d,
+    k,
+    callback=None,
+    fixedsize=False,
+    internal=None,
+    static=False,
+    sizeX=False,
+    default=None,
 ):
     return lambda: getsimplecombobox(
-        lst, d, k, callback, fixedsize, internal, static, sizeX=sizeX
+        lst, d, k, callback, fixedsize, internal, static, sizeX=sizeX, default=default
     )
 
 
@@ -1162,9 +1216,18 @@ def getIconButton(
     fix=True,
     tips=None,
     color=None,
+    checkablechangecolor=True,
 ):
 
-    b = IconButton(icon, enable, qicon, fix=fix, tips=tips, color=color)
+    b = IconButton(
+        icon,
+        enable,
+        qicon,
+        fix=fix,
+        tips=tips,
+        color=color,
+        checkablechangecolor=checkablechangecolor,
+    )
     if callback:
         b.clicked_1.connect(callback)
     if callback2:
@@ -1221,10 +1284,10 @@ def D_getIconButton_mousefollow(
     return b
 
 
-def check_grid_append(grids):
-    if len(grids) < 2:
+def check_grid_append(grids: "list[list]", minlen=None):
+    if minlen is None and len(grids) < 2:
         return
-    len0 = len(grids[0])
+    len0 = minlen if minlen else len(grids[0])
     notx = True
     for line in grids:
         if len(line) != len0:
@@ -1240,9 +1303,16 @@ def check_grid_append(grids):
 
 
 def getcolorbutton(
-    parent, d: dict, key, callback=None, alpha=False, tips="颜色", cantzeroalpha=False
+    parent,
+    d: dict,
+    key,
+    callback=None,
+    alpha=False,
+    tips="颜色",
+    cantzeroalpha=False,
+    default=None,
 ):
-    qicon = qtawesome.icon("fa.paint-brush", color=d.get(key))
+    qicon = qtawesome.icon("fa.paint-brush", color=d.get(key, default))
     b = IconButton(None, qicon=qicon, tips=tips)
     cb = functools.partial(
         __selectcolor,
@@ -1253,6 +1323,7 @@ def getcolorbutton(
         callback,
         alpha=alpha,
         cantzeroalpha=cantzeroalpha,
+        default=default,
     )
     b.clicked.connect(cb)
     return b
@@ -1377,14 +1448,15 @@ def getColor(color, parent, alpha=False):
 def __selectcolor(
     parent: QWidget,
     button: QPushButton,
-    configdict,
+    configdict: dict,
     configkey,
     callback=None,
     alpha=False,
     cantzeroalpha=False,
+    default=None,
 ):
 
-    color = getColor(QColor(configdict[configkey]), parent, alpha)
+    color = getColor(QColor(configdict.get(configkey, default)), parent, alpha)
     if not color.isValid():
         return
     if alpha and cantzeroalpha and (color.alpha() == 0):
@@ -1530,22 +1602,18 @@ class AbstractWebviewWidget(QWidget):
 
     def _parsehtml_dark(self, html):
         if nowisdark():
-            html = (
-                """
+            html = """
     <style>
         body 
         { 
             background-color: rgb(44,44,44);
             color: white; 
         }
-    </style>"""
-                + html
-            )
+    </style>""" + html
         return html
 
     def _parsehtml_dark_auto(self, html):
-        return (
-            """
+        return """
 <style>
 @media (prefers-color-scheme: dark) 
 {
@@ -1559,9 +1627,7 @@ class AbstractWebviewWidget(QWidget):
     }
 }
 </style>
-"""
-            + html
-        )
+""" + html
 
 
 SingleExtensionSetting = None
@@ -1897,8 +1963,8 @@ class WebviewWidget(AbstractWebviewWidget):
         )
 
     def event(self, a0: QEvent):
-        if isinstance(a0, DarkLightChangedEvent):
-            self.webview.put_PreferredColorScheme(a0.isdark())
+        if isinstance(a0, DarkLightSettingChangedEvent):
+            self.webview.put_PreferredColorScheme(a0.darklight())
         return super().event(a0)
 
     def __init__(self, parent=None, transp=False, loadext=False) -> None:
@@ -1991,12 +2057,16 @@ class WebviewWidget_for_auto(WebviewWidget):
     reloadx = pyqtSignal()
 
     def appendext(self):
-        globalconfig["webviewLoadExt_cishu"] = not globalconfig["webviewLoadExt_cishu"]
+        globalconfig["webviewLoadExt_cishu"] = not globalconfig.get(
+            "webviewLoadExt_cishu", True
+        )
         auto_select_webview.switchtype()
 
     def __init__(self, parent=None, transp=False) -> None:
         super().__init__(
-            parent, loadext=globalconfig["webviewLoadExt_cishu"], transp=transp
+            parent,
+            loadext=globalconfig.get("webviewLoadExt_cishu", True),
+            transp=transp,
         )
         self.pluginsedit.connect(functools.partial(Exteditor, self))
         self.reloadx.connect(self.appendext)
@@ -2006,13 +2076,13 @@ class WebviewWidget_for_auto(WebviewWidget):
             nexti,
             lambda: _TR("附加浏览器插件"),
             threader(self.reloadx.emit),
-            getchecked=lambda: globalconfig["webviewLoadExt_cishu"],
+            getchecked=lambda: globalconfig.get("webviewLoadExt_cishu", True),
         )
         nexti = self.add_menu_noselect(
             nexti,
             lambda: _TR("浏览器插件"),
             threader(self.pluginsedit.emit),
-            getuse=lambda: globalconfig["webviewLoadExt_cishu"],
+            getuse=lambda: globalconfig.get("webviewLoadExt_cishu", True),
         )
         nexti = self.add_menu_noselect(nexti)
         self.cachezoom = 1
@@ -2405,8 +2475,11 @@ def makegroupingrid(args: dict):
         else:
             setattr(parent, groupname, group)
     if _type == "grid":
-        grid = QGridLayout(group)
-        automakegrid(grid, lis)
+        if hiderows:
+            grid = VisGridLayout(group)
+        else:
+            grid = QGridLayout(group)
+        automakegrid(grid, lis, hiderows=hiderows)
         if internallayoutname:
             setattr(parent, internallayoutname, grid)
     elif _type == "form":
@@ -2417,7 +2490,7 @@ def makegroupingrid(args: dict):
     return group
 
 
-def automakegrid(grid: QGridLayout, lis, savelist=None):
+def automakegrid(grid: "VisGridLayout", lis, savelist=None, hiderows=None):
     save = isinstance(savelist, list)
     maxl = 1
     linecolss = []
@@ -2485,6 +2558,8 @@ def automakegrid(grid: QGridLayout, lis, savelist=None):
         if save:
             savelist.append(ll)
         grid.setRowMinimumHeight(nowr, 25)
+        if nowr in hiderows if hiderows else []:
+            grid.setRowVisible(nowr, False)
 
 
 def makegrid(grid=None, savelist=None, savelay=None, delay=False):
@@ -2583,7 +2658,7 @@ def makesubtab_lazy(
 
 
 @Singleton
-class listediter(LDialog):
+class listediter(LDialog, DarkLightAutoResetIconHelper):
     def showmenu(self, p: QPoint):
         curr = self.hctable.currentIndex()
         if not curr.isValid():
@@ -2817,6 +2892,18 @@ class ClickableLine(QLineEdit):
         self.clicked.emit()
         super().mousePressEvent(e)
 
+    def __init__(self, issecret=False):
+        super().__init__()
+        self.issecret = issecret
+
+    def paintEvent(self, a0):
+        if self.text() and self.issecret and not (self.underMouse() or self.hasFocus()):
+            painter = QPainter(self)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+            painter.fillRect(self.rect(), Qt.GlobalColor.transparent)
+        else:
+            super().paintEvent(a0)
+
 
 class listediterline(QHBoxLayout):
 
@@ -2834,9 +2921,10 @@ class listediterline(QHBoxLayout):
         directedit=False,
         specialklass=None,
         exec=False,
+        issecret=False,
     ):
         super().__init__()
-        self.edit = ClickableLine()
+        self.edit = ClickableLine(issecret=issecret)
         self.reflist = reflist
         self.setText("|".join((str(_) for _ in reflist)))
         self.setContentsMargins(0, 0, 0, 0)
@@ -2911,6 +2999,8 @@ def getsimplepatheditor(
     dirorfile=False,
     clearable=True,
     clearset=None,
+    editable=False,
+    btnatleft=False,
 ):
     if multi:
         lay = listediterline(
@@ -2922,7 +3012,7 @@ def getsimplepatheditor(
         lay = QHBoxLayout()
         lay.setContentsMargins(0, 0, 0, 0)
         e = QLineEdit(text)
-        e.setReadOnly(True)
+        e.setReadOnly(not editable)
         if icons:
             bu = getIconButton(icon=icons[0])
             if clearable:
@@ -2944,12 +3034,16 @@ def getsimplepatheditor(
             callback,
         )
         bu.clicked.connect(_cb)
-        lay.addWidget(e)
+        if callback:
+            e.textEdited.connect(callback)
+        if not btnatleft:
+            lay.addWidget(e)
         lay.addWidget(bu)
         if clearable:
 
             def __(_cb, _e: QLineEdit, t):
-                _cb("")
+                if _cb:
+                    _cb("")
                 if not t:
                     _e.setText("")
                 elif callable(t):
@@ -2957,6 +3051,8 @@ def getsimplepatheditor(
 
             clear.clicked.connect(functools.partial(__, callback, e, clearset))
             lay.addWidget(clear)
+        if btnatleft:
+            lay.addWidget(e)
     return lay
 
 
@@ -2976,12 +3072,17 @@ class threeswitch(QWidget):
         except:
             pass
 
-    def __init__(self, p, icons):
+    def setDirection(self, Direction):
+        self.hv.setDirection(Direction)
+        self._sizechange(self.btns[0].size())
+
+    def __init__(self, p, icons, Direction=QBoxLayout.Direction.LeftToRight):
         super().__init__(p)
         self.btns: "list[QPushButton]" = []
-        hv = QHBoxLayout(self)
+        hv = QBoxLayout(Direction, self)
         hv.setContentsMargins(0, 0, 0, 0)
         hv.setSpacing(0)
+        self.hv = hv
         for i, icon in enumerate(icons):
             btn = IconButton(parent=self, icon=icon, checkable=True)
             btn.clicked.connect(functools.partial(self.selectlayout, i))
@@ -2990,8 +3091,18 @@ class threeswitch(QWidget):
             hv.addWidget(btn)
 
     def sizechange(self, size: QSize):
-        self.setFixedSize(QSize(size.width() * len(self.btns), size.height()))
+        self._sizechange(size)
         self.sizeChanged.emit(self.size())
+
+    def _sizechange(self, size: QSize):
+        if self.hv.direction() in (
+            QBoxLayout.Direction.LeftToRight,
+            QBoxLayout.Direction.RightToLeft,
+        ):
+            size.setWidth(len(self.btns) * size.width())
+        else:
+            size.setHeight(len(self.btns) * size.height())
+        self.setFixedSize(size)
 
 
 class pixmapviewer(QWidget):
@@ -3118,7 +3229,7 @@ class IconButton(LPushButton):
 
     def resizedirect(self):
         if not self._FixedSize:
-            h = QFontMetricsF(self.font()).height()
+            h = QFontMetricsF(self.font(), self).height()
             sz = (
                 QSizeF(int(h * gobject.Consts.IconSizeHW), h) * gobject.Consts.btnscale
             ).toSize()
@@ -3149,8 +3260,9 @@ class IconButton(LPushButton):
         if tips:
             self.setToolTip(tips)
         self._FixedSize = None
+        self.pixmap_ = None
         self._color = color
-        self._icon = icon
+        self._setIconStr(icon)
         self.clicked.connect(self.clicked_1)
         self.clicked.connect(self.__seticon)
         self._qicon = qicon
@@ -3174,14 +3286,38 @@ class IconButton(LPushButton):
         self._color = color
         self.__seticon()
 
+    def _setIconStr(self, icon):
+        if self._is_pixmap_icon(icon):
+            self.pixmap_ = self._load_pixmap(icon)
+            self._icon = None
+        else:
+            self.pixmap_ = None
+            self._icon = icon
+
+    @staticmethod
+    def _is_pixmap_icon(icon) -> bool:
+        return (
+            isinstance(icon, str)
+            and len(icon) > 1
+            and (icon == "luna" or not icon.startswith("fa."))
+        )
+
+    @staticmethod
+    def _load_pixmap(icon: str):
+        if icon == "luna":
+            return getExeIcon(getcurrexe(), icon=False, large=True)
+        return load_specific_icon_size(icon)
+
     def setIconStr(self, icon: str):
-        self._icon = icon
+        self._setIconStr(icon)
         self.__seticon()
 
     def iconStr(self):
         return self._icon
 
     def __seticon(self):
+        if self.pixmap_ is not None:
+            return self.setIcon(QIcon(self.pixmap_))
         if self._qicon:
             icon = self._qicon
         else:
@@ -3225,8 +3361,12 @@ class IconButton(LPushButton):
 class SplitLine(QFrame):
     def __init__(self, *argc):
         super().__init__(*argc)
-        self.setStyleSheet("background-color: gray;")
-        self.setFixedHeight(2)
+        color = QColor(Qt.GlobalColor.gray)
+        color.setAlphaF(0.7)
+        self.setStyleSheet(
+            "background-color: {};".format(color.name(QColor.NameFormat.HexArgb))
+        )
+        self.setFixedHeight(1)
 
 
 def clearlayout(ll: QLayout):
@@ -3263,9 +3403,10 @@ class FQLineEdit(QLineEdit):
 class VisGridLayout(QGridLayout):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ws = {}
+        self.ws: "dict[QWidget, list[tuple[QWidget, int, int, int, int]]]" = {}
         self.wr = {}
         self.rv = {}
+        self.rowheight = {}
 
     def rowVisible(self, r) -> bool:
         return self.rv.get(r, True)
@@ -3275,7 +3416,12 @@ class VisGridLayout(QGridLayout):
             return 0
         return super().rowCount()
 
-    def addWidget(self, w, r, c, rs=1, cs=1):
+    def addLayout(self, l: QLayout, r, c, rs=1, cs=1):
+        w = QWidget()
+        w.setLayout(l)
+        self.addWidget(w, r, c, rs, cs)
+
+    def addWidget(self, w: QWidget, r, c, rs=1, cs=1):
         if r not in self.ws:
             self.ws[r] = []
         self.wr[w] = r
@@ -3286,6 +3432,12 @@ class VisGridLayout(QGridLayout):
         if row_index not in self.ws:
             return
         self.rv[row_index] = visible
+        if not visible:
+            self.rowheight[row_index] = self.rowMinimumHeight(row_index)
+            self.setRowMinimumHeight(row_index, 0)
+        else:
+            self.setRowMinimumHeight(row_index, self.rowheight.get(row_index, 0))
+
         for w, r, c, rs, cs in self.ws[row_index]:
             if not visible:
                 if self.wr.get(w) != r:
@@ -3460,8 +3612,7 @@ class SClickableLabel(QLabel):
             }
             QLabel:hover{
                 background-color: rgba(128,128,128,0.3)
-            }"""
-            ""
+            }""" ""
             if b
             else """QLabel{
                 background:transparent

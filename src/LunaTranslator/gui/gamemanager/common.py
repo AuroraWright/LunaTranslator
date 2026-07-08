@@ -5,7 +5,6 @@ from myutils.wrapper import threader, Singleton
 from myutils.utils import find_or_create_uid, duplicateconfig
 from myutils.hwnd import getExeIcon, getcurrexe
 import gobject, hashlib, NativeUtils, uuid, re
-from gui.inputdialog import autoinitdialog
 from gui.dynalang import LFormLayout, LDialog
 from myutils.localetools import localeswitchedrun
 from myutils.config import (
@@ -20,21 +19,10 @@ from myutils.config import (
 )
 from gui.usefulwidget import (
     getIconButton,
-    getsimplecombobox,
-    getspinbox,
-    getcolorbutton,
     getsimpleswitch,
-    getspinbox,
     SClickableLabel,
     SplitLine,
 )
-
-
-def showcountgame(window: QMainWindow, num):
-    if num:
-        window.setWindowTitle("游戏管理__-__" + str(num))
-    else:
-        window.setWindowTitle("游戏管理")
 
 
 class tagitem(QFrame):
@@ -49,8 +37,7 @@ class tagitem(QFrame):
 
     @staticmethod
     def setstyles(parent: QWidget):
-        parent.setStyleSheet(
-            """
+        parent.setStyleSheet("""
             tagitem#red {
                 border: 1px solid red;
             }
@@ -66,8 +53,7 @@ class tagitem(QFrame):
             tagitem#yellow {
                 border: 1px solid yellow;
             }
-        """
-        )
+        """)
 
     def __init__(self, tag, removeable=True, _type=TYPE_SEARCH, refdata=None) -> None:
         super().__init__()
@@ -280,15 +266,22 @@ def addgamebatch(callback, targetlist):
     addgamebatch_x(callback, targetlist, paths)
 
 
-def loadvisinternal(skipid=False, skipidid=None):
+def loadvisinternal(skipid=False, skipidid=None, recent=True, global_=True):
     __vis = []
     __uid = []
     for _ in savegametaged:
         if _ is None:
-            __vis.append("GLOBAL")
+            if not global_:
+                continue
+            __vis.append("所有游戏")
             __uid.append(None)
+        elif _ == 1:
+            if not recent:
+                continue
+            __vis.append("最近游戏")
+            __uid.append(1)
         else:
-            __vis.append(_["title"])
+            __vis.append("[[{}]]".format(_["title"]))
             __uid.append(_["uid"])
         if skipid:
             if skipidid == __uid[-1]:
@@ -297,52 +290,34 @@ def loadvisinternal(skipid=False, skipidid=None):
     return __vis, __uid
 
 
-def getalistname(parent, callback, skipid=False, skipidid=None, title="添加到列表"):
-    __d = {"k": 0}
-    __vis, __uid = loadvisinternal(skipid, skipidid)
-
-    def __wrap(callback, __d, __uid):
-        if len(__uid) == 0:
-            return
-
-        uid = __uid[__d["k"]]
-        callback(uid)
-
-    if len(__uid) > 1:
-        autoinitdialog(
-            parent,
-            __d,
-            title,
-            600,
-            [
-                {
-                    "type": "combo",
-                    "name": "目标列表",
-                    "k": "k",
-                    "list": __vis,
-                },
-                {
-                    "type": "okcancel",
-                    "callback": functools.partial(__wrap, callback, __d, __uid),
-                },
-            ],
-            exec_=True,
-        )
-    elif len(__uid):
-
-        callback(__uid[0])
-
-
 def calculatetagidx(tagid):
     i = 0
     for save in savegametaged:
         if save is None and tagid is None:
             return i
-        elif save and tagid and save["uid"] == tagid:
+        elif save == 1 and tagid == 1:
+            return i
+        elif (
+            (save not in (None, 1))
+            and (tagid not in (None, 1))
+            and save["uid"] == tagid
+        ):
             return i
         i += 1
 
     return None
+
+
+def loadrecentlist():
+    data = gobject.base.somedatabase.all()
+    datas = {}
+    for uid, tms in data.items():
+        tm = tms[-1][1]
+        datas[uid] = tm
+    ks = list(_ for _ in datas if _ in savehook_new_data and _ in savehook_new_list)
+    ks.sort(key=lambda uid: -datas[uid])
+
+    return ks[: globalconfig.get("recentgamelistnum", 10)]
 
 
 def getreflist(reftagid):
@@ -352,6 +327,8 @@ def getreflist(reftagid):
     tag = savegametaged[_idx]
     if tag is None:
         return savehook_new_list
+    if tag == 1:
+        return 1
     return tag["games"]
 
 
@@ -395,10 +372,7 @@ def getfonteditor(d: dict, k: str, callback=None):
 @Singleton
 class dialog_syssetting(LDialog):
 
-    def closeEvent(self, e):
-        self.parent().callchange()
-
-    def __init__(self, parent, type_=1) -> None:
+    def __init__(self, parent) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
         self.setWindowTitle("其他设置")
         formLayout = LFormLayout(self)
@@ -416,83 +390,5 @@ class dialog_syssetting(LDialog):
         )
 
         formLayout.addRow(SplitLine())
-        if type_ == 2:
-            for i, (key, name) in enumerate(
-                [
-                    ("itemw", "宽度"),
-                    ("itemh", "高度"),
-                    ("margin", "边距_inter"),
-                    ("margin2", "边距_intra"),
-                    ("radius", "圆角"),
-                    ("radius2", "圆角_internal"),
-                    ("textH", "文字区高度"),
-                    ("borderW", "边框宽度"),
-                ]
-            ):
-                minv = 0 if i >= 2 else 32
-                spin = getspinbox(
-                    minv, 1000, globalconfig["dialog_savegame_layout"], key
-                )
-                formLayout.addRow(name, spin)
-                if "radius" == key:
-                    spin.valueChanged.connect(lambda _: self.parent().setstyle())
-                elif "borderW" == key:
-                    spin.valueChanged.connect(
-                        lambda _: (self.parent().setstyle(), self.parent().callchange())
-                    )
-                else:
-                    spin.valueChanged.connect(lambda _: self.parent().callchange())
-            formLayout.addRow(
-                "字体",
-                getfonteditor(
-                    d=globalconfig,
-                    k="savegame_textfont1",
-                    callback=lambda _: self.parent().setstyle(),
-                ),
-            )
-            formLayout.addRow(
-                "缩放",
-                getsimplecombobox(
-                    ["填充", "适应", "拉伸", "居中"],
-                    globalconfig,
-                    "imagewrapmode",
-                    callback=lambda _: self.parent().callchange(),
-                ),
-            )
-        elif type_ == 1:
-            for key, name in [
-                ("listitemheight", "高度"),
-            ]:
-                spin = getspinbox(10, 1000, globalconfig["dialog_savegame_layout"], key)
-                formLayout.addRow(name, spin)
-                spin.valueChanged.connect(lambda _: self.parent().callchange())
-            formLayout.addRow(
-                "字体",
-                getfonteditor(
-                    d=globalconfig,
-                    k="savegame_textfont2",
-                    callback=lambda _: self.parent().setstyle(),
-                ),
-            )
-
-        formLayout.addRow(SplitLine())
-        for key, name in [
-            ("backcolor2", "颜色"),
-            ("onselectcolor2", "颜色_选中时"),
-            ("onfilenoexistscolor2", "游戏不存在时颜色"),
-        ] + (
-            [("borderColor", "边框颜色"), ("borderColor2", "边框颜色_选中时")]
-            if type_ == 2
-            else []
-        ):
-            formLayout.addRow(
-                name,
-                getcolorbutton(
-                    self,
-                    globalconfig["dialog_savegame_layout"],
-                    key,
-                    callback=lambda _: self.parent().setstyle(),
-                    alpha=True,
-                ),
-            )
+        self.parent().createsettings(formLayout)
         self.show()

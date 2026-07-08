@@ -10,31 +10,74 @@ jobs:
     #   createrelease: true
     secrets: inherit
   
+  signandrepack:
+    runs-on: windows-latest
+    needs: [buildluna]
+    permissions:
+      contents: write   
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+            path: build
+      - run: python src/scripts/build_lunatranslator.py exedlls
+
+      - uses: actions/upload-artifact@v7
+        id: upload-artifact
+        with:
+          name: exedlls
+          path: collect
+  
+      - uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: '${{ secrets.SIGNPATH_APITOKEN }}'
+          organization-id: '2e2b9c90-04bb-4b70-8562-0171927d94c6'
+          project-slug: 'LunaTranslator'
+          signing-policy-slug: 'release-signing'
+          github-artifact-id: '${{ steps.upload-artifact.outputs.artifact-id }}'
+          wait-for-completion: true
+          output-artifact-directory: 'signed_exedlls'
+          artifact-configuration-slug: 'exedlls'
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: signed_exedlls
+          path: signed_exedlls
+
+      - run: python src/scripts/build_lunatranslator.py repack
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: signed
+          path: signed
+
   loadversion:
     # if: ${{inputs.createrelease}}
     runs-on: windows-latest
     outputs:
       version: ${{ steps.loadversion.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: loadversion
         run: python src/scripts/build_lunatranslator.py loadversion | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
 
   release:
     runs-on: windows-latest
-    needs: [buildluna,loadversion]
+    needs: [signandrepack,loadversion]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
             path: build
-      - uses: softprops/action-gh-release@v2.2.2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.loadversion.outputs.version }}
           files: |
             build/signed/LunaTranslator_x86_winxp.zip
             build/signed/LunaTranslator_x86_win7.zip
             build/signed/LunaTranslator_x64_win7.zip
-            build/signed/LunaTranslator_x64_win10.zip
+            build/signed/LunaTranslator_x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: curl http://lunatranslator.org/${{ secrets.LUNA_UPDATE_NOTIFY }}

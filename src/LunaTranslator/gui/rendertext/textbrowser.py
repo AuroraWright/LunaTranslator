@@ -7,7 +7,9 @@ from gui.rendertext.texttype import (
     SpecialColor,
     FenciColor,
 )
-import gobject, functools, importlib, NativeUtils
+from myutils.proxy import getproxy
+from myutils.wrapper import threader
+import gobject, functools, importlib, NativeUtils, uuid, requests
 from traceback import print_exc
 from gui.rendertext.textbrowser_imp.base import base
 from gui.dynalang import LAction
@@ -191,7 +193,9 @@ class QTextBrowser_1(QTextEdit):
         return super().focusOutEvent(e)
 
     def mouseMoveEvent(self, ev: QMouseEvent):
-        if globalconfig["selectable"] and globalconfig["selectableEx"]:
+        if globalconfig.get("selectable", True) and globalconfig.get(
+            "selectableEx", False
+        ):
             tooltipswidget.hidetooltipwindow()
             return super().mouseMoveEvent(ev)
         for label in self.p.searchmasklabels:
@@ -238,15 +242,15 @@ class TextAreaBack(QLabel):
     def paintEvent(self, a0):
         parent: TextBrowser = self.parent()
         parent.yinyinglabels
-        c = QColor(globalconfig["text_area_background_color"])
-        c.setAlphaF(globalconfig["text_area_background_alpha"] / 100)
+        c = QColor(globalconfig.get("text_area_background_color", "#ff0000"))
+        c.setAlphaF(globalconfig.get("text_area_background_alpha", 50) / 100)
 
         painter = QPainter(self)
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        __r = globalconfig["text_area_background_r"]
-        __h = globalconfig["text_area_background_h"]
-        __w = globalconfig["text_area_background_w"]
+        __r = globalconfig.get("text_area_background_r", 5)
+        __h = globalconfig.get("text_area_background_h", 5)
+        __w = globalconfig.get("text_area_background_w", 5)
         xpath = QPainterPath()
         for label in parent.yinyinglabels:
             if not label.isVisible():
@@ -263,10 +267,88 @@ class TextAreaBack(QLabel):
         return super().paintEvent(a0)
 
 
+class BackImage(QWidget):
+
+    def __init__(self, p):
+        super().__init__(p)
+        self.backimage = QPixmap()
+        self.backimageopt = 0
+        self.resizedimage = QPixmap()
+        self.__last = None
+        self.__caches: "dict[str, QPixmap]" = {}
+
+    def maybedownloadimage(self, url: str):
+        if not url:
+            return QPixmap()
+        if not (
+            url.lower().startswith("https://") or url.lower().startswith("http://")
+        ):
+            return QPixmap(url)
+        try:
+            if self.__caches.get(url):
+                return self.__caches.get(url)
+
+            req = requests.get(url, proxies=getproxy()).content
+            img = QImage()
+            img.loadFromData(req)
+            img = QPixmap.fromImage(img)
+            self.__caches[url] = img
+            return img
+        except:
+            print_exc()
+            return QPixmap()
+
+    def setimage(self, url: str, opt):
+        if self.__last != (opt == 0, url):
+            self.backimage = self.maybedownloadimage(url if opt else None)
+            self.resizedimage = QPixmap()
+            self.updateresizedimage()
+        self.__last = (opt == 0, url)
+        self.backimageopt = opt
+        self.update()
+
+    def updateresizedimage(self):
+        if (
+            (self.backimage.isNull())
+            or (self.backimage.width() == 0)
+            or (self.backimage.height() == 0)
+        ):
+            self.resizedimage = QPixmap()
+        else:
+            if self.resizedimage.width() == self.width():
+                return
+            r = self.devicePixelRatioF()
+            self.backimage.setDevicePixelRatio(r)
+            imgr = self.backimage.width() / self.backimage.height()
+            self.resizedimage = self.backimage.scaled(
+                int(self.width() * r),
+                int(self.width() / imgr * r),
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+
+    def resizeEvent(self, a0):
+        self.updateresizedimage()
+        return super().resizeEvent(a0)
+
+    def paintEvent(self, _):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.setOpacity(self.backimageopt)
+        painter.drawTiledPixmap(0, 0, self.width(), self.height(), self.resizedimage)
+
+
 class TextBrowser(QWidget, dataget):
     contentsChanged = pyqtSignal(QSize)
     dropfilecallback = pyqtSignal(str)
     _padding = 5
+
+    __setimagehelper = pyqtSignal(str, float, uuid.UUID)
+
+    def wheelEvent(self, a0: QWheelEvent):
+        gobject.base.wheelhistory.emit(-1 if a0.angleDelta().y() > 0 else 1)
+        return super().wheelEvent(a0)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -305,7 +387,7 @@ class TextBrowser(QWidget, dataget):
         self.drawtextarealabel.resize(event.size())
         self.toplabel2.resize(event.size())
         self.masklabel.resize(event.size())
-
+        self.backimagelabel.resize(event.size())
         self.__makeborder(event.size())
 
     def menunoselect(self, p):
@@ -316,13 +398,17 @@ class TextBrowser(QWidget, dataget):
         search = LAction("清空", menu)
         drag = LAction("可拖动的", menu)
         hide = LAction("隐藏工具栏", menu)
+        wheel = LAction("鼠标滚动查看历史文本", menu)
+        wheel.setCheckable(True)
+        wheel.setChecked(globalconfig.get("enable_wheel_history", True))
         drag.setCheckable(True)
-        drag.setChecked(globalconfig["dragable"])
+        drag.setChecked(globalconfig.get("dragable", True))
         hide.setCheckable(True)
         hide.setChecked(globalconfig["hidetools"])
         menu.addAction(search)
         menu.addAction(drag)
         menu.addAction(hide)
+        menu.addAction(wheel)
         action = menu.exec(QCursor.pos())
         if action == search:
             self.parent().clear(False)
@@ -332,9 +418,11 @@ class TextBrowser(QWidget, dataget):
         elif action == hide:
             globalconfig["hidetools"] = hide.isChecked()
             gobject.base.translation_ui.enterfunction()
+        elif action == wheel:
+            globalconfig["enable_wheel_history"] = wheel.isChecked()
 
     def mouseMoveEvent(self, a0: QMouseEvent):
-        if not globalconfig["dragable"]:
+        if not globalconfig.get("dragable", True):
             a0.accept()
             return
         return super().mouseMoveEvent(a0)
@@ -376,7 +464,7 @@ class TextBrowser(QWidget, dataget):
         self.searchmasklabels_clicked2: "list[Qlabel_c]" = []
         self.searchmasklabels_clicked_num = 0
         self.searchmasklabels: "list[FenciQLabel]" = []
-        self.showatcenterflag = globalconfig["showatcenter"]
+        self.showatcenterflag = globalconfig.get("showatcenter", True)
         self.yinyinglabels: "list[base]" = []
         self.yinyinglabels_idx = 0
 
@@ -387,9 +475,12 @@ class TextBrowser(QWidget, dataget):
         self.cleared = True
 
         self.setAcceptDrops(True)
+        self.backimagelabel = BackImage(self)
+        self.backimagelabel.setMouseTracking(True)
+        self.backimagelabel.move(0, 0)
         self.drawtextarealabel = TextAreaBack(self)
         self.drawtextarealabel.setMouseTracking(True)
-        self.showtextareabackground(globalconfig["text_area_background"])
+        self.showtextareabackground(globalconfig.get("text_area_background", False))
         self.atback_color = QLabel(self)
         self.atback_color.setMouseTracking(True)
         self.atback2 = QLabel(self)
@@ -406,11 +497,9 @@ class TextBrowser(QWidget, dataget):
         self.tranparentcolor.setAlpha(0)
         self.textbrowser.setTextColor(self.tranparentcolor)
 
-        self.textbrowser.setStyleSheet(
-            "border-width: 0;\
+        self.textbrowser.setStyleSheet("border-width: 0;\
             border-style: outset;\
-            background-color: rgba(0, 0, 0, 0)"
-        )
+            background-color: rgba(0, 0, 0, 0)")
 
         self.textcursor = self.textbrowser.textCursor()
         self.textbrowser.setVerticalScrollBarPolicy(
@@ -437,7 +526,11 @@ class TextBrowser(QWidget, dataget):
         self.masklabel_top.setMouseTracking(True)
         # self.masklabel_bottom.setStyleSheet('background-color:red')
         self.resets1()
-        self.setselectable(globalconfig["selectable"])
+        self.setselectable(globalconfig.get("selectable", True))
+
+        self.__setimage_sig = None
+        self.__setimagehelper.connect(self.____setimagehelper__)
+        self.setbackgroudimageandopt()
 
     def resets1(self):
         self.currenttype = globalconfig["rendertext_using_internal"]["textbrowser"]
@@ -563,14 +656,14 @@ class TextBrowser(QWidget, dataget):
                 label.maybestylechanged()
 
     def checkskip(self, texttype: TextType):
-        if (texttype in (TextType.Origin,)) and (not globalconfig["isshowrawtext"]):
+        if (texttype in (TextType.Origin,)) and (not globalconfig.get("isshowrawtext", True)):
             return True
         if (texttype in (TextType.Translate, TextType.Error_translator)) and (
-            not globalconfig["showfanyi"]
+            not globalconfig.get("showfanyi", True)
         ):
             return True
         if (texttype in (TextType.Error_translator, TextType.Error_origin)) and (
-            not globalconfig["showtranexception"]
+            not globalconfig.get("showtranexception", True)
         ):
             return True
         return False
@@ -584,7 +677,7 @@ class TextBrowser(QWidget, dataget):
         return i
 
     def checkaddname(self, name, text):
-        if name and globalconfig["showfanyisource"]:
+        if name and globalconfig.get("showfanyisource", False):
             text = name + " " + text
         return text
 
@@ -676,7 +769,7 @@ class TextBrowser(QWidget, dataget):
             return
         text = self.checkaddname(name, text)
         if len(tag):
-            isshowhira = globalconfig["isshowhira"]
+            isshowhira = globalconfig.get("isshowhira", True)
             font = self._createqfont(texttype, klass)
             tag = list(WordSegResultX.fromW(word) for word in tag)
             textlines, linetags = self._splitlinestags(font, tag, text)
@@ -1119,7 +1212,7 @@ class TextBrowser(QWidget, dataget):
         if half:
             fs *= globalconfig["kanarate"]
         font.setPointSizeF(fs)
-        fm = QFontMetricsF(font)
+        fm = QFontMetricsF(font, self)
         if getfm:
             return fm
         return fm.height(), font
@@ -1232,3 +1325,21 @@ class TextBrowser(QWidget, dataget):
                 _.setStyleSheet("background-color: " + color)
             except:
                 pass
+
+    def setbackgroudimageandopt(self):
+        use = not globalconfig.get("backtransparent", False)
+        self.__setimage_sig = __setimage_sig = uuid.uuid4()
+        opt = globalconfig.get("transparent_pic", 0) / 100 if use else 0
+        self.__setimagehelper.emit(
+            globalconfig.get(
+                "backgroundpic", "https://image.lunatranslator.org/luna.jpg"
+            ),
+            opt,
+            __setimage_sig,
+        )
+
+    @threader
+    def ____setimagehelper__(self, url: str, opt, sig):
+        if sig != self.__setimage_sig:
+            return
+        self.backimagelabel.setimage(url, opt)

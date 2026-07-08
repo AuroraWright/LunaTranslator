@@ -1,13 +1,13 @@
 from qtsymbols import *
 import functools, NativeUtils
-import gobject, os, re
+import gobject, os, re, functools
 from myutils.config import globalconfig, static_data
 from myutils.utils import all_langs
 from traceback import print_exc
 from language import Languages
 from gui.setting.textinput_ocr import getocrgrid_table
 from gui.gamemanager.dialog import dialog_savedgame_integrated
-from gui.dynalang import LLabel, LStandardItemModel
+from gui.dynalang import LLabel, LStandardItemModel, LDialog
 from myutils.wrapper import Singleton
 from textio.textsource.mssr import findallmodel, mssr
 from gui.usefulwidget import (
@@ -64,7 +64,7 @@ def gethookgrid_em(self):
             D_getsimpleswitch(
                 globalconfig["embedded"],
                 "clearText",
-                callback=lambda _: gobject.base.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.set_settings_ex(),
             ),
             "",
             "",
@@ -77,7 +77,7 @@ def gethookgrid_em(self):
                 ["翻译", "原文_翻译", "翻译_原文"],
                 globalconfig["embedded"],
                 "displaymode",
-                callback=lambda _: gobject.base.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.set_settings_ex(),
             ),
         ],
         [
@@ -89,7 +89,7 @@ def gethookgrid_em(self):
                 globalconfig["embedded"],
                 "timeout_translate",
                 double=True,
-                callback=lambda x: gobject.base.textsource.flashembedsettings(),
+                callback=lambda x: gobject.base.textsource.set_settings_ex(),
             ),
         ],
         [
@@ -111,7 +111,7 @@ def gethookgrid_em(self):
             D_getsimpleswitch(
                 globalconfig["embedded"],
                 "changefont",
-                callback=lambda _: gobject.base.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.set_settings_ex(),
             ),
             creategamefont_comboBox,
         ],
@@ -121,7 +121,7 @@ def gethookgrid_em(self):
                 globalconfig["embedded"],
                 "changefontsize_use",
                 default=False,
-                callback=lambda _: gobject.base.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.set_settings_ex(),
             ),
             D_getspinbox(
                 0.5,
@@ -131,7 +131,7 @@ def gethookgrid_em(self):
                 step=0.01,
                 double=True,
                 default=1,
-                callback=lambda _: gobject.base.textsource.flashembedsettings(),
+                callback=lambda _: gobject.base.textsource.set_settings_ex(),
             ),
         ],
         [
@@ -232,7 +232,7 @@ def creategamefont_comboBox():
     def callback(x):
         globalconfig["embedded"].__setitem__("changefont_font", x)
         try:
-            gobject.base.textsource.flashembedsettings()
+            gobject.base.textsource.set_settings_ex()
         except:
             pass
 
@@ -322,8 +322,7 @@ def createdownloadprogress(self):
     return downloadprogress
 
 
-def loadmssrsource(mssrsource: SuperCombo):
-    curr = globalconfig["sourcestatus2"]["mssr"]["source"]
+def sources(_):
     sources = ["loopback"]
     vis = ["环回录制"]
     if 1:
@@ -340,23 +339,19 @@ def loadmssrsource(mssrsource: SuperCombo):
         for _, _id in NativeUtils.ListEndpoints(False):
             sources.append(_id)
             vis.append("[[" + _ + "]]")
-    mssrsource.blockSignals(True)
-    mssrsource.clear()
-    mssrsource.addItems(vis, internals=sources)
-    mssrsource.setCurrentData(curr)
-    mssrsource.blockSignals(False)
 
-
-def hhfordirect(__vis, paths):
-
-    mssrsource = D_getsimplecombobox(
-        [""],
+    mssrsource = getsimplecombobox(
+        vis,
         globalconfig["sourcestatus2"]["mssr"],
         "source",
-        internal=[0],
-        callback=lambda _: gobject.base.textsource.init(),
-    )()
-    loadmssrsource(mssrsource)
+        internal=sources,
+        callback=lambda _: (gobject.base.textsource.init(),),
+    )
+    return mssrsource
+
+
+def hhfordirect(self, __vis, paths):
+
     return getboxwidget(
         [
             getsmalllabel("语言"),
@@ -379,7 +374,7 @@ def hhfordirect(__vis, paths):
             ),
             "",
             getsmalllabel("音源"),
-            mssrsource,
+            functools.partial(sources, self),
         ]
     )
 
@@ -419,7 +414,7 @@ def hhforindirect():
     )
 
 
-def modesW(__vis, paths):
+def modesW(self, __vis, paths):
     w = QWidget()
     layout = VisLFormLayout(w)
     layout.setContentsMargins(0, 0, 0, 0)
@@ -437,7 +432,7 @@ def modesW(__vis, paths):
             callback=lambda _: (gobject.base.textsource.init(), setvisrow(_)),
         ),
     )
-    layout.addRow(hhfordirect(__vis, paths))
+    layout.addRow(hhfordirect(self, __vis, paths))
     layout.addRow(hhforindirect())
     setvisrow(globalconfig["sourcestatus2"]["mssr"]["mode"])
     return w
@@ -449,9 +444,9 @@ def getsrgrid(self):
         return [["系统不支持"]]
 
     if os.path.exists(mssr.lcexe):
-        __w = modesW(__vis, paths)
+        __w = modesW(self, __vis, paths)
     else:
-        __w = hhfordirect(__vis, paths)
+        __w = hhfordirect(self, __vis, paths)
     __w.setEnabled(globalconfig["sourcestatus2"]["mssr"]["use"])
 
     return [
@@ -581,32 +576,37 @@ def proxyusage():
     hbox = QHBoxLayout()
     hbox.setContentsMargins(0, 0, 0, 0)
     w2 = QWidget()
-    w2.setEnabled(globalconfig["useproxy"])
-    switch1 = D_getsimpleswitch(globalconfig, "useproxy", callback=w2.setEnabled)()
+    w2.setEnabled(globalconfig.get("useproxy", True))
+    switch1 = D_getsimpleswitch(
+        globalconfig, "useproxy", callback=w2.setEnabled, default=True
+    )()
     hbox.addWidget(switch1)
     hbox.addWidget(QLabel())
     hbox.addWidget(w2)
     hbox.setAlignment(Qt.AlignmentFlag.AlignTop)
     vbox = VisLFormLayout(w2)
     vbox.setContentsMargins(0, 0, 0, 0)
+    check = QLabel()
+    proxy = QLineEdit(globalconfig.get("proxy", "127.0.0.1:7890"))
+    __p = getboxwidget(["手动设置代理", proxy, check])
 
     def __(x):
-        vbox.setRowVisible(1, not x)
+        __p.setEnabled(not x)
 
     vbox.addRow(
         getboxlayout(
             [
                 "使用系统代理",
-                D_getsimpleswitch(globalconfig, "usesysproxy", callback=__)(),
+                D_getsimpleswitch(
+                    globalconfig, "usesysproxy", callback=__, default=True
+                )(),
                 0,
             ]
         ),
     )
-    check = QLabel()
-    proxy = QLineEdit(globalconfig["proxy"])
-    vbox.addRow(getboxlayout(["手动设置代理", proxy, check]))
-    __(globalconfig["usesysproxy"])
-    validator(check, globalconfig["proxy"])
+    vbox.addRow(__p)
+    __(globalconfig.get("usesysproxy", True))
+    validator(check, globalconfig.get("proxy", "127.0.0.1:7890"))
     proxy.textChanged.connect(functools.partial(validator, check))
     return hbox
 

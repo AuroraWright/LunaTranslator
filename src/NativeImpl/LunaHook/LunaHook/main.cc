@@ -3,18 +3,18 @@
 void HIJACK();
 void detachall();
 #if EMUADD_MAP_MULTI
-std::unordered_map<uint64_t, std::pair<JITTYPE, std::set<uintptr_t>>> emuaddr2jitaddr;
+std::unordered_map<uint32_t, std::pair<JITTYPE, std::set<uintptr_t>>> emuaddr2jitaddr;
 #else
-std::unordered_map<uint64_t, std::pair<JITTYPE, uintptr_t>> emuaddr2jitaddr;
+std::unordered_map<uint32_t, std::pair<JITTYPE, uintptr_t>> emuaddr2jitaddr;
 #endif
-std::unordered_map<uintptr_t, std::pair<JITTYPE, uint64_t>> jitaddr2emuaddr;
+std::unordered_map<uintptr_t, std::pair<JITTYPE, uint32_t>> jitaddr2emuaddr;
 std::mutex maplock;
 std::vector<HookParam> JIT_HP_Records;
 std::mutex JIT_HP_Records_lock;
 HMODULE hLUNAHOOKDLL;
 WinMutex viewMutex;
 CommonSharedMem *commonsharedmem;
-Synchronized<std::map<uint64_t, std::pair<std::string, HookParam>>> delayinserthook;
+Synchronized<std::map<uint32_t, std::pair<std::string, HookParam>>> delayinserthook;
 namespace
 {
 	AutoHandle<> hookPipe = INVALID_HANDLE_VALUE,
@@ -160,23 +160,55 @@ void TextOutput(const ThreadParam &tp, const HookParam &hp, TextOutput_T *buffer
 	memcpy(&buffer->hp, &hp, sizeof(hp));
 	WriteFile(hookPipe, buffer, sizeof(TextOutput_T) + len, DUMMY, nullptr);
 }
-void HostInfo(HOSTINFO type, LPCSTR text, ...)
+
+namespace Msg
 {
-	HostInfoNotif buffer;
-	va_list args;
-	va_start(args, text);
-	buffer.type = type;
-	vsnprintf(buffer.message, MESSAGE_SIZE, text, args);
-	WriteFile(hookPipe, &buffer, sizeof(buffer), DUMMY, nullptr);
-}
-void HostInfo(HOSTINFO type, LPCWSTR text, ...)
-{
-	HostInfoNotifW buffer;
-	va_list args;
-	va_start(args, text);
-	buffer.type = type;
-	_vsnwprintf_s(buffer.message, _TRUNCATE, MESSAGE_SIZE, text, args);
-	WriteFile(hookPipe, &buffer, sizeof(buffer), DUMMY, nullptr);
+#define vhostinfoA(_type, cp)                                         \
+	{                                                                 \
+		va_list args;                                                 \
+		va_start(args, text);                                         \
+		HostInfoNotif buffer;                                         \
+		buffer.type = _type;                                          \
+		buffer.codepage = cp;                                         \
+		vsnprintf(buffer.message, MESSAGE_SIZE, text, args);          \
+		va_end(args);                                                 \
+		WriteFile(hookPipe, &buffer, sizeof(buffer), DUMMY, nullptr); \
+	}
+
+#define vhostinfoW(_type)                                                   \
+	{                                                                       \
+		va_list args;                                                       \
+		va_start(args, text);                                               \
+		HostInfoNotifW buffer;                                              \
+		buffer.type = _type;                                                \
+		_vsnwprintf_s(buffer.message, MESSAGE_SIZE, _TRUNCATE, text, args); \
+		va_end(args);                                                       \
+		WriteFile(hookPipe, &buffer, sizeof(buffer), DUMMY, nullptr);       \
+	}
+
+#define definefunction(funcname, type)             \
+	template <>                                    \
+	void funcname<char>(LPCSTR text, ...)          \
+		vhostinfoA(type, CP_UTF8);                 \
+	template <>                                    \
+	void funcname<wchar_t>(LPCWSTR text, ...)      \
+		vhostinfoW(type);                          \
+	void funcname(UINT codepage, LPCSTR text, ...) \
+		vhostinfoA(type, codepage);
+
+	definefunction(Log, HOSTINFO::Console);
+	definefunction(Warning, HOSTINFO::Warning);
+	definefunction(EmuConnected, HOSTINFO::EmuConnected);
+	definefunction(EmuWarning, HOSTINFO::EmuWarning);
+	void EmuGameInfo(const char *id, const char *title, const char *version)
+	{
+		EmuGameInfoNotif buffer(id, title, version);
+		WriteFile(hookPipe, &buffer, sizeof(buffer), DUMMY, nullptr);
+	}
+
+#undef definefunction
+#undef vhostinfoW
+#undef vhostinfoA
 }
 Synchronized<std::unordered_map<uintptr_t, std::wstring>> modulecache;
 std::wstring &querymodule(uintptr_t addr)
@@ -216,7 +248,7 @@ void NotifyHookFound(HookParam hp, wchar_t *text)
 void NotifyHookRemove(uint64_t addr, LPCSTR name)
 {
 	if (name)
-		ConsoleOutput(TR[REMOVING_HOOK], name);
+		Msg::Log(TR[REMOVING_HOOK], name);
 	HookRemovedNotif buffer(addr);
 	WriteFile(hookPipe, &buffer, sizeof(buffer), DUMMY, nullptr);
 }
@@ -290,7 +322,7 @@ void jitaddrclear()
 		JIT_HP_Records.clear();
 	}
 }
-void jitaddraddr(uint64_t em_addr, uintptr_t jitaddr, JITTYPE jittype)
+void jitaddraddr(uint32_t em_addr, uintptr_t jitaddr, JITTYPE jittype)
 {
 	std::lock_guard _(maplock);
 #if EMUADD_MAP_MULTI
@@ -306,7 +338,7 @@ bool NewHook_1(HookParam &hp, LPCSTR lpname, bool silentlyfail = false)
 {
 	if (++currentHook >= MAX_HOOK)
 	{
-		ConsoleOutput(TR[TOO_MANY_HOOKS]);
+		Msg::Log(TR[TOO_MANY_HOOKS]);
 		return false;
 	}
 	if (lpname && *lpname)
@@ -316,7 +348,7 @@ bool NewHook_1(HookParam &hp, LPCSTR lpname, bool silentlyfail = false)
 	if (!(*hooks)[currentHook].Insert(hp))
 	{
 		if (!silentlyfail)
-			ConsoleOutput(TR[InsertHookFailed], WideStringToString(hp.hookcode).c_str());
+			Msg::Log(TR[InsertHookFailed], WideStringToString(hp.hookcode).c_str());
 		(*hooks)[currentHook].Clear();
 		return false;
 	}
@@ -324,7 +356,7 @@ bool NewHook_1(HookParam &hp, LPCSTR lpname, bool silentlyfail = false)
 	{
 		if (hp.emu_addr)
 		{
-			ConsoleOutput("%p => %p", hp.emu_addr, hp.address);
+			Msg::Log("%08X => %p", hp.emu_addr, (uintptr_t)hp.address);
 			std::lock_guard __(JIT_HP_Records_lock);
 			JIT_HP_Records.push_back(hp);
 		}
@@ -335,9 +367,9 @@ bool NewHook_1(HookParam &hp, LPCSTR lpname, bool silentlyfail = false)
 void delayinsertadd(HookParam hp, std::string name)
 {
 	delayinserthook->insert(std::make_pair(hp.emu_addr, std::make_pair(name, hp)));
-	ConsoleOutput(TR[INSERTING_HOOK], name.c_str(), hp.emu_addr);
+	Msg::Log(TR[INSERTING_HOOK], name.c_str(), hp.emu_addr);
 }
-void delayinsertNewHook(uint64_t em_address)
+void delayinsertNewHook(uint32_t em_address)
 {
 	auto &&_delayinserthook = delayinserthook.Acquire();
 	if (_delayinserthook->find(em_address) == _delayinserthook->end())
@@ -348,8 +380,9 @@ void delayinsertNewHook(uint64_t em_address)
 }
 #ifdef _WIN64
 bool PCSX2_UserHook_delayinsert(uint32_t);
+bool RPCS3_UserHook_insert(HookParam hp, LPCSTR name, std::function<bool(HookParam hp, LPCSTR)>);
 #endif
-bool NewHook(HookParam hp, LPCSTR name, bool silentlyfail)
+bool NewHook_2(HookParam hp, LPCSTR name, bool silentlyfail = false)
 {
 	if (hp.address || hp.jittype == JITTYPE::PC)
 		return NewHook_1(hp, name, silentlyfail);
@@ -358,7 +391,7 @@ bool NewHook(HookParam hp, LPCSTR name, bool silentlyfail)
 		auto spls = strSplit(hp.function, ":");
 		if (spls.size() != 5)
 		{
-			ConsoleOutput("invalid");
+			Msg::Log("invalid");
 			return false;
 		}
 		int argcount;
@@ -374,7 +407,7 @@ bool NewHook(HookParam hp, LPCSTR name, bool silentlyfail)
 
 		if (!hp.address)
 		{
-			ConsoleOutput("not find");
+			Msg::Log("not find");
 			return false;
 		}
 		return NewHook_1(hp, name, silentlyfail);
@@ -395,6 +428,19 @@ bool NewHook(HookParam hp, LPCSTR name, bool silentlyfail)
 		{
 			delayinsertadd(hp, name);
 			return true;
+		}
+	}
+	else if (hp.jittype == JITTYPE::RPCS3)
+	{
+		if (hp.type & DIRECT_READ)
+		{
+			hp.address = RPCS3::emu_addr(hp.emu_addr);
+			return NewHook_1(hp, name, silentlyfail);
+		}
+		else
+		{
+			return RPCS3_UserHook_insert(hp, name, [=](auto _, auto _2)
+										 { return NewHook_1(_, _2, silentlyfail); });
 		}
 	}
 	else
@@ -425,14 +471,15 @@ bool NewHook(HookParam hp, LPCSTR name, bool silentlyfail)
 #endif
 }
 
-bool NewHookRetry(HookParam hp, LPCSTR name)
+bool NewHook(HookParam hp, LPCSTR name)
 {
-	if (NewHook(hp, name, true))
+	auto retry = (!(hp.type & BREAK_POINT)) && commonsharedmem->tryvehhook;
+	if (NewHook_2(hp, name, retry))
 		return true;
-	if (hp.type & BREAK_POINT)
+	if (!retry)
 		return false;
 	hp.type |= BREAK_POINT;
-	return NewHook(hp, name);
+	return NewHook_2(hp, name);
 }
 void RemoveHook(uint64_t addr, int maxOffset)
 {
@@ -458,6 +505,32 @@ std::string LoadResData(LPCWSTR pszResID, LPCWSTR _type)
 	GlobalFree(m_hMem);
 	FreeResource(lpRsrc);
 	return data;
+}
+bool is_memory_readable_ex(void *ptr, size_t size)
+{
+	if (!ptr)
+		return false;
+
+	MEMORY_BASIC_INFORMATION mbi = {};
+	SIZE_T result = VirtualQuery(ptr, &mbi, sizeof(mbi));
+
+	if (result == 0)
+	{
+		return false;
+	}
+	if (mbi.State != MEM_COMMIT)
+	{
+		return false;
+	}
+	DWORD readable_protections = PAGE_READONLY | PAGE_READWRITE |
+								 PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
+								 PAGE_WRITECOPY | PAGE_EXECUTE_WRITECOPY;
+	if (mbi.Protect & PAGE_NOACCESS)
+	{
+		return false;
+	}
+	return (mbi.Protect & readable_protections) != 0 &&
+		   mbi.RegionSize >= size;
 }
 
 static bool _queryversion(WORD *_1, WORD *_2, WORD *_3, WORD *_4)

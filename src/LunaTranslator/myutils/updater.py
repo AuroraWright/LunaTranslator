@@ -24,7 +24,7 @@ def testdocconnect():
         @threader
         @trypass
         def __(i, main_server, proxy):
-            res = requests.get(main_server, verify=False, proxies=proxy)
+            res = requests.get(main_server, proxies=proxy)
             if res.status_code == 200:
                 results.append((i, res))
                 wait.set()
@@ -53,7 +53,6 @@ def tryqueryfromhost():
             res = requests.get(
                 "{main_server}/version".format(main_server=main_server),
                 params={"arch": ("x86", "x64")[runtime_bit_64], "target": target},
-                verify=False,
                 proxies=proxy,
             )
             res = res.json()
@@ -84,7 +83,7 @@ def doupdate():
     exe1 = gobject.getcachedir("update/Updater.exe")
     exe = os.path.abspath(exe1)
     shutil.copy(
-        r".\files\shareddllproxy{}.exe".format(("32", "64")[runtime_bit_64]),
+        r".\files\LunaSubprocess{}.exe".format(("32", "64")[runtime_bit_64]),
         exe,
     )
     for dll in os.listdir(runtimedir):
@@ -128,7 +127,7 @@ def updatemethod_checkalready(savep, sha256):
 def updatemethod(urls: "tuple[str, str]"):
     url, sha256 = urls
     check_interrupt = lambda: not (
-        globalconfig["autoupdate"] and versionchecktask.empty()
+        globalconfig.get("autoupdate", True) and versionchecktask.empty()
     )
 
     savep = gobject.getcachedir("update/" + url.split("/")[-1])
@@ -139,7 +138,7 @@ def updatemethod(urls: "tuple[str, str]"):
     if updatemethod_checkalready(savep, sha256):
         return savep
     with open(savep, "wb") as file:
-        r = requests.get(url, stream=True, verify=False, proxies=getproxy())
+        r = requests.get(url, stream=True, proxies=getproxy())
         size = int(r.headers["Content-Length"])
         file_size = 0
         asize = format_bytes(size)
@@ -150,11 +149,11 @@ def updatemethod(urls: "tuple[str, str]"):
                 continue
             file.write(i)
             file_size += len(i)
-
             prg = int(10000 * file_size / size)
-            prg100 = prg / 100
             gobject.base.progresssignal4.emit(
-                _TR("总大小_{} _进度_{:0.2f}%").format(asize, prg100),
+                _TR("{}/{} _进度_{:0.2f}%").format(
+                    format_bytes(file_size), asize, prg / 100
+                ),
                 prg,
             )
 
@@ -196,7 +195,7 @@ def versioncheckthread():
             and _version
             and version < tuple(int(_) for _ in _version[0][1:].split("."))
         )
-        if not (need and globalconfig["autoupdate"]):
+        if not (need and globalconfig.get("autoupdate", True)):
             continue
         gobject.base.progresssignal4.emit("……", 0)
         savep = updatemethod(_version[1:])

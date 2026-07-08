@@ -32,7 +32,7 @@ from gui.dialog_memory import dialog_memory
 from gui.rendertext.texttype import TextType, SpecialColor
 from gui.textbrowser import Textbrowser
 from gui.rangeselect import rangeselct_function
-from gui.usefulwidget import resizableframeless
+from gui.usefulwidget import resizableframeless, load_specific_icon_size
 from gui.edittext import edittrans
 from gui.gamemanager.dialog import dialog_savedgame_integrated
 from gui.gamemanager.common import startgame
@@ -67,6 +67,52 @@ class IconLabelX(LLabel):
         self._icon = QIcon()
         self._size = QSize()
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.pixmap_ = None
+        self.setScaledContents(True)
+
+    def update_scaled_pixmap(self):
+        if self.pixmap_ is None:
+            return
+        label_size = self.size()
+        if label_size.width() <= 0 or label_size.height() <= 0:
+            return
+
+        original_width = self.pixmap_.width()
+        original_height = self.pixmap_.height()
+        label_ratio = label_size.width() / label_size.height()
+        img_ratio = original_width / original_height
+
+        if 0:
+            if label_ratio > img_ratio:
+                canvas_width = original_width
+                canvas_height = original_width / label_ratio
+            else:
+                canvas_width = original_height * label_ratio
+                canvas_height = original_height
+        else:
+            if label_ratio > img_ratio:
+                canvas_width = original_height * label_ratio
+                canvas_height = original_height
+            else:
+                canvas_width = original_width
+                canvas_height = original_width / label_ratio
+
+        dpr = self.devicePixelRatioF()
+        canvas = QPixmap(int(canvas_width * dpr), int(canvas_height * dpr))
+        canvas.setDevicePixelRatio(dpr)
+        canvas.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        x = int((canvas_width - original_width) / 2)
+        y = int((canvas_height - original_height) / 2)
+        painter.drawPixmap(x, y, self.pixmap_)
+        painter.end()
+        self.setPixmap(canvas)
+
+    def resizeEvent(self, event):
+        self.update_scaled_pixmap()
+        super().resizeEvent(event)
 
     def showinlayout(self, layout: QBoxLayout):
 
@@ -86,8 +132,18 @@ class IconLabelX(LLabel):
         h = int(e.size().height() / gobject.Consts.toolscale)
         self.setIconSize(QSize(int(h * gobject.Consts.IconSizeHW), h))
 
-    def setIcon(self, icon: QIcon):
-        self._icon = icon
+    def setIconStr(self, icon: str, color: str):
+        if len(icon) > 1 and (icon == "luna" or not icon.startswith("fa.")):
+            self.pixmap_ = (
+                getExeIcon(getcurrexe(), icon=False, large=True)
+                if icon == "luna"
+                else load_specific_icon_size(icon)
+            )
+            self.update_scaled_pixmap()
+            self._icon = None
+        else:
+            self.pixmap_ = None
+            self._icon = qtawesome.icon(icon, color=color)
         self.update()
 
     def setIconSize(self, size: QSize):
@@ -95,7 +151,10 @@ class IconLabelX(LLabel):
         self.update()
 
     def paintEvent(self, a0: QPaintEvent) -> None:
-
+        if self.pixmap():
+            return super().paintEvent(a0)
+        if self._icon is None:
+            return
         if self._size.isEmpty():
             return
         painter = QPainter(self)
@@ -203,7 +262,7 @@ class ButtonBar(QFrame):
                 )
             else:
                 icon = globalconfig["toolbutton"]["buttons"][name]["icon"]
-            self.buttons[name].setIcon(qtawesome.icon(icon, color=color))
+            self.buttons[name].setIconStr(icon, color)
 
     def setstyle(self, bottomr, bottomr3):
 
@@ -227,7 +286,7 @@ class ButtonBar(QFrame):
             color0="red",
             bottomr=bottomr,
             color2=str2rgba(
-                globalconfig["backcolor_tool"], globalconfig["transparent_tool"]
+                globalconfig["backcolor_tool"], globalconfig.get("transparent_tool", 50)
             ),
         )
         self.setStyleSheet(style)
@@ -320,7 +379,7 @@ class ButtonBar(QFrame):
 
     def setbuttonsize(self):
 
-        if globalconfig["verticalhorizontal"]:
+        if globalconfig.get("verticalhorizontal", False):
             self.setFixedWidth(int(IconLabelX.w()))
         else:
             self.setFixedHeight(int(IconLabelX.h()))
@@ -357,7 +416,7 @@ class TranslatorWindow(resizableframeless):
 
     def setbuttonsizeX(self):
         self.changeextendstated()
-        if globalconfig["verticalhorizontal"]:
+        if globalconfig.get("verticalhorizontal", False):
             self.titlebar.move(self.width() - self.titlebar.width(), 0)
         else:
             self.titlebar.move(0, 0)
@@ -432,7 +491,11 @@ class TranslatorWindow(resizableframeless):
             if windows.MonitorFromWindow(hwnd) != windows.MonitorFromWindow(self.winid):
                 self.__lastpos = None
                 return
-            if globalconfig["verticalhorizontal"] + globalconfig["top_align"] != 1:
+            if (
+                globalconfig.get("verticalhorizontal", False)
+                + globalconfig.get("top_align", 0)
+                != 1
+            ):
                 self.safemove(
                     self.__tracepos - self.__lastpos.topLeft() + rect.topLeft()
                 )
@@ -507,17 +570,17 @@ class TranslatorWindow(resizableframeless):
         return "\n".join(newlines)
 
     def autodisappear(self):
-        if not globalconfig["autodisappear"]:
+        if not globalconfig.get("autodisappear", False):
             return
         self.lastrefreshtime = time.time()
         self.autohidestart = True
-        if globalconfig["autodisappear_which"] == 0:
+        if globalconfig.get("autodisappear_which", 0) == 0:
             flag = (globalconfig["showintab"] and self.isMinimized()) or (
                 not globalconfig["showintab"] and self.isHidden()
             )
             if flag:
                 self.show_()
-        elif globalconfig["autodisappear_which"] == 1:
+        elif globalconfig.get("autodisappear_which", 0) == 1:
             if globalconfig["disappear_delay"] == 0:
                 if self.isMouseHover:
                     self.translate_text.textbrowser.setVisible(True)
@@ -574,14 +637,14 @@ class TranslatorWindow(resizableframeless):
             if self.isMouseHover:
                 self.lastrefreshtime = time.time()
                 return
-            if globalconfig["autodisappear"]:
+            if globalconfig.get("autodisappear", False):
                 if self.autohidestart and (
                     time.time() - self.lastrefreshtime
                     >= globalconfig["disappear_delay"]
                 ):
-                    if globalconfig["autodisappear_which"] == 0:
+                    if globalconfig.get("autodisappear_which", 0) == 0:
                         self.hide_()
-                    elif globalconfig["autodisappear_which"] == 1:
+                    elif globalconfig.get("autodisappear_which", 0) == 1:
                         self.translate_text.textbrowser.hide()
                     self.autohidestart = False
 
@@ -594,7 +657,6 @@ class TranslatorWindow(resizableframeless):
     def showhideui(self):
         if self._move_drag:
             return
-
         flag = (globalconfig["showintab"] and self.isMinimized()) or (
             not globalconfig["showintab"] and self.isHidden()
         )
@@ -653,14 +715,15 @@ class TranslatorWindow(resizableframeless):
             windows.keybd_event(windows.VK_CONTROL, 0, windows.KEYEVENTF_KEYUP, 0)
 
         functions = (
+            ("luna", None),
             ("move", None),
             ("retrans", self.startTranslater),
             (
                 "automodebutton",
                 buttonfunctions(
                     clicked=self.changeTranslateMode,
-                    iconstate=lambda: globalconfig["autorun"],
-                    colorstate=lambda: globalconfig["autorun"],
+                    iconstate=lambda: globalconfig.get("autorun", True),
+                    colorstate=lambda: globalconfig.get("autorun", True),
                 ),
             ),
             ("setting", lambda: gobject.base.settin_ui_showsignal.emit()),
@@ -674,16 +737,16 @@ class TranslatorWindow(resizableframeless):
                 "showraw",
                 buttonfunctions(
                     clicked=self.changeshowhideraw,
-                    iconstate=lambda: globalconfig["isshowrawtext"],
-                    colorstate=lambda: globalconfig["isshowrawtext"],
+                    iconstate=lambda: globalconfig.get("isshowrawtext", True),
+                    colorstate=lambda: globalconfig.get("isshowrawtext", True),
                 ),
             ),
             (
                 "showtrans",
                 buttonfunctions(
                     clicked=self.changeshowhidetrans,
-                    iconstate=lambda: globalconfig["showfanyi"],
-                    colorstate=lambda: globalconfig["showfanyi"],
+                    iconstate=lambda: globalconfig.get("showfanyi", True),
+                    colorstate=lambda: globalconfig.get("showfanyi", True),
                 ),
             ),
             ("history", lambda: gobject.base.transhis.showsignal.emit()),
@@ -731,14 +794,14 @@ class TranslatorWindow(resizableframeless):
                 "mousetransbutton",
                 buttonfunctions(
                     clicked=lambda: self.changemousetransparentstate(0),
-                    colorstate=lambda: globalconfig["mousetransparent"],
+                    colorstate=lambda: globalconfig.get("mousetransparent", False),
                 ),
             ),
             (
                 "backtransbutton",
                 buttonfunctions(
                     clicked=lambda: self.changemousetransparentstate(1),
-                    colorstate=lambda: globalconfig["backtransparent"],
+                    colorstate=lambda: globalconfig.get("backtransparent", False),
                 ),
             ),
             (
@@ -796,8 +859,7 @@ class TranslatorWindow(resizableframeless):
             (
                 "grabwindow",
                 buttonfunctions(
-                    clicked=lambda: grabwindow(screenshot=True),
-                    rightclick=lambda: grabwindow(tocliponly=True, screenshot=True),
+                    clicked=grabwindow, rightclick=lambda: grabwindow(tocliponly=True)
                 ),
             ),
             (
@@ -862,7 +924,7 @@ class TranslatorWindow(resizableframeless):
                 "selectable",
                 buttonfunctions(
                     clicked=self.setselectable,
-                    colorstate=lambda: globalconfig["selectable"],
+                    colorstate=lambda: globalconfig.get("selectable", True),
                     rightclick=self.setselectableEx,
                 ),
             ),
@@ -893,7 +955,7 @@ class TranslatorWindow(resizableframeless):
                 tp,
                 clicked,
                 rightclick,
-                globalconfig["toolbutton"]["buttons"][btn]["tip"],
+                globalconfig["toolbutton"]["buttons"][btn].get("tip", ""),
                 btn,
                 belong,
                 iconstate,
@@ -914,7 +976,7 @@ class TranslatorWindow(resizableframeless):
 
     def changeextendstated(self):
         dh = self.dynamicextraheight()
-        if globalconfig["verticalhorizontal"]:
+        if globalconfig.get("verticalhorizontal", False):
             self.translate_text.move(0, 0)
             height = self.width() - dh
             self.translate_text.resize(int(height), self.height())
@@ -925,16 +987,16 @@ class TranslatorWindow(resizableframeless):
 
     def hide_(self):
         if globalconfig["showintab"]:
-            windows.ShowWindow(self.winid, windows.SW_SHOWMINIMIZED)
+            self.showMinimized()
         else:
             self.hide()
 
     def show_(self):
-
-        if globalconfig["showintab"]:
-            windows.ShowWindow(self.winid, windows.SW_SHOWNOACTIVATE)
-        else:
+        if self.isMinimized():
+            self.showNormal()
+        if self.isHidden():
             self.show()
+        if not (globalconfig["showintab"] or globalconfig["showna"]):
             windows.SetForegroundWindow(self.winid)
         gobject.base.commonstylebase.hide()
 
@@ -1002,14 +1064,16 @@ class TranslatorWindow(resizableframeless):
                 self.settop()
 
     def seteffect(self):
-        if globalconfig["WindowEffect"] == 0:
+        if globalconfig.get("WindowEffect", 0) == 0:
             NativeUtils.clearEffect(self.winid)
-        elif globalconfig["WindowEffect"] == 1:
+        elif globalconfig.get("WindowEffect", 0) == 1:
             NativeUtils.setAcrylicEffect(
-                self.winid, globalconfig["WindowEffect_shadow"], 0x00FFFFFF
+                self.winid, globalconfig.get("WindowEffect_shadow", True), 0x00FFFFFF
             )
-        elif globalconfig["WindowEffect"] == 2:
-            NativeUtils.setAeroEffect(self.winid, globalconfig["WindowEffect_shadow"])
+        elif globalconfig.get("WindowEffect", 0) == 2:
+            NativeUtils.setAeroEffect(
+                self.winid, globalconfig.get("WindowEffect_shadow", True)
+            )
         self.changeextendstated()
 
     def initvalues(self):
@@ -1125,7 +1189,7 @@ class TranslatorWindow(resizableframeless):
         self.translate_text.move(0, 0)
         self.translate_text.dropfilecallback.connect(self.dropfilecallback)
         self.translate_text.contentsChanged.connect(self.textAreaChanged)
-        self.translate_text.setselectable(globalconfig["selectable"])
+        self.translate_text.setselectable(globalconfig.get("selectable", True))
         self.titlebar.raise_()
         self.titlebar.setbuttonsize()
         self.addbuttons()
@@ -1139,7 +1203,7 @@ class TranslatorWindow(resizableframeless):
         t.timeout.connect(self.checksettop)
         t.start()
         self.adjustbuttons = self.titlebar.adjustbuttons
-        self.verticalhorizontal(globalconfig["verticalhorizontal"])
+        self.verticalhorizontal(globalconfig.get("verticalhorizontal", False))
         self.screengeochanged.connect(self.checksettop)
 
     def showmenu(self, _):
@@ -1305,7 +1369,7 @@ class TranslatorWindow(resizableframeless):
     def showabout(self):
 
         _t = get_about_info()
-        if not globalconfig["adaptive_height"]:
+        if not globalconfig.get("adaptive_height", True):
             _t = _t.replace("\n\n", "\n")
         self.showMarkDown(_t)
 
@@ -1331,14 +1395,14 @@ class TranslatorWindow(resizableframeless):
 
     def setselectableEx(self):
         globalconfig["selectableEx"] = True
-        globalconfig["selectable"] = not globalconfig["selectable"]
-        self.translate_text.setselectable(globalconfig["selectable"])
+        globalconfig["selectable"] = not globalconfig.get("selectable", True)
+        self.translate_text.setselectable(globalconfig.get("selectable", True))
         self.refreshtoolicon()
 
     def setselectable(self):
         globalconfig["selectableEx"] = False
-        globalconfig["selectable"] = not globalconfig["selectable"]
-        self.translate_text.setselectable(globalconfig["selectable"])
+        globalconfig["selectable"] = not globalconfig.get("selectable", True)
+        self.translate_text.setselectable(globalconfig.get("selectable", True))
         self.refreshtoolicon()
 
     def createborderradiusstring(self, r, merge, top=False):
@@ -1368,7 +1432,7 @@ class TranslatorWindow(resizableframeless):
 
     @property
     def radiu_valid(self):
-        return globalconfig["WindowEffect"] == 0 and not (
+        return globalconfig.get("WindowEffect", 0) == 0 and not (
             gobject.sys_ge_win_11 and globalconfig["yuanjiao_sys"]
         )
 
@@ -1395,8 +1459,9 @@ class TranslatorWindow(resizableframeless):
         bottomr3 = self.createborderradiusstring(use_r2, False)
         bottomr = self.createborderradiusstring(radiu_valid * use_r2, True, True)
         transparent_value_actually = max(
-            (1 - globalconfig["transparent_EX"]) * 100 / 255,
-            globalconfig["transparent"] * (not globalconfig["backtransparent"]),
+            (1 - globalconfig.get("transparent_EX", False)) * 100 / 255,
+            globalconfig.get("transparent", 10)
+            * (not globalconfig.get("backtransparent", False)),
         )
         self.translate_text.setStyleSheet(
             "Textbrowser{border-width: 0;%s;background-color: %s}"
@@ -1470,45 +1535,39 @@ class TranslatorWindow(resizableframeless):
     @threader
     def mousetransparent_check(self):
         hwnd = int(self.winid)
-        while globalconfig["mousetransparent"]:
+        while globalconfig.get("mousetransparent", False):
             cursor_pos = self.mapFromGlobal(QCursor.pos())
             usegeo = self.titlebar.geometry()
             btn: QWidget = self.titlebar.buttons["mousetransbutton"]
             if (not btn.isVisible()) and (btn.reflayout is not None):
                 usegeo = self.mousetranscheckrect
             if usegeo.contains(cursor_pos):
-
-                windows.SetWindowLong(
-                    hwnd,
-                    windows.GWL_EXSTYLE,
-                    windows.GetWindowLong(hwnd, windows.GWL_EXSTYLE)
-                    & ~windows.WS_EX_TRANSPARENT,
-                )
+                windows.MouseTrans.unset(hwnd)
             else:
-                windows.SetWindowLong(
-                    hwnd,
-                    windows.GWL_EXSTYLE,
-                    windows.GetWindowLong(hwnd, windows.GWL_EXSTYLE)
-                    | windows.WS_EX_TRANSPARENT,
-                )
+                windows.MouseTrans.set(hwnd)
             time.sleep(0.1)
         # 结束时取消穿透(可能以快捷键终止)
-        windows.SetWindowLong(
-            hwnd,
-            windows.GWL_EXSTYLE,
-            windows.GetWindowLong(hwnd, windows.GWL_EXSTYLE)
-            & ~windows.WS_EX_TRANSPARENT,
-        )
+        windows.MouseTrans.unset(hwnd)
 
     def changemousetransparentstate(self, idx):
         if idx == 0:
 
-            globalconfig["mousetransparent"] = not globalconfig["mousetransparent"]
+            globalconfig["mousetransparent"] = not globalconfig.get(
+                "mousetransparent", False
+            )
             self.mousetransparent_check()
         elif idx == 1:
-            globalconfig["backtransparent"] = not globalconfig["backtransparent"]
+            globalconfig["backtransparent"] = not globalconfig.get(
+                "backtransparent", False
+            )
             self.set_color_transparency()
-            gobject.base.backtransparentstatus.emit(not globalconfig["backtransparent"])
+            gobject.base.backtransparentstatus.emit(
+                not globalconfig.get("backtransparent", False)
+            )
+            gobject.base.backtransparentstatus_2.emit(
+                not globalconfig.get("backtransparent", False)
+            )
+            self.translate_text.setbackgroudimageandopt()
         self.refreshtoolicon()
 
     def showhideocrrange(self):
@@ -1531,7 +1590,7 @@ class TranslatorWindow(resizableframeless):
         gobject.base.hwnd = hwnd if pid != _pid else None
 
     def changeshowhideraw(self):
-        isshowrawtext = not globalconfig["isshowrawtext"]
+        isshowrawtext = not globalconfig.get("isshowrawtext", True)
         globalconfig["isshowrawtext"] = isshowrawtext
         gobject.base.show_original_switch.emit(isshowrawtext)
         self.refreshtoolicon()
@@ -1539,16 +1598,18 @@ class TranslatorWindow(resizableframeless):
         gobject.base.fenyinsettings.emit(isshowrawtext)
 
     def changeshowhidetrans(self):
-        globalconfig["showfanyi"] = not globalconfig["showfanyi"]
-        gobject.base.show_fany_switch.emit(globalconfig["showfanyi"])
+        _ = not globalconfig.get("showfanyi", True)
+        globalconfig["showfanyi"] = _
+        gobject.base.show_fany_switch.emit(_)
         self.refreshtoolicon()
         gobject.base.maybeneedtranslateshowhidetranslate()
 
     def changeTranslateMode(self):
-        globalconfig["autorun"] = not globalconfig["autorun"]
+        _ = not globalconfig.get("autorun", True)
+        globalconfig["autorun"] = _
         self.refreshtoolicon()
         if gobject.base.textsource:
-            gobject.base.textsource.runornot(globalconfig["autorun"])
+            gobject.base.textsource.runornot(_)
 
     def changetoolslockstateEx(self):
         globalconfig["locktoolsEx"] = True
@@ -1563,12 +1624,12 @@ class TranslatorWindow(resizableframeless):
     def dynamicextraheight(self):
 
         if self.radiu_valid:
-            if globalconfig["verticalhorizontal"]:
+            if globalconfig.get("verticalhorizontal", False):
                 return int(IconLabelX.w())
             else:
                 return int(IconLabelX.h())
         if globalconfig["locktools"]:
-            if globalconfig["verticalhorizontal"]:
+            if globalconfig.get("verticalhorizontal", False):
                 return int(IconLabelX.w())
             else:
                 return int(IconLabelX.h())
@@ -1653,10 +1714,10 @@ class TranslatorWindow(resizableframeless):
         # size只有一个维度是准确的，应当根据显示方向来使用其中有效的部分
         if self.translate_text.cleared:
             return
-        if not globalconfig["adaptive_height"]:
+        if not globalconfig.get("adaptive_height", True):
             self.translate_text.scrolltoend()
             return
-        if globalconfig["verticalhorizontal"]:
+        if globalconfig.get("verticalhorizontal", False):
             limit = min(size.width(), self.screen().geometry().width())
             newW = limit + self.dynamicextraheight()
             size = QSize(newW, self.height())
@@ -1666,7 +1727,7 @@ class TranslatorWindow(resizableframeless):
             if self.isdoingsomething():
                 self.resizeFuck(size)
                 return
-            if globalconfig["top_align"] == 0:
+            if globalconfig.get("top_align", 0) == 0:
                 # 太抖了，不要动画了。
                 self.smooth_resizing3(size)
             else:
@@ -1685,7 +1746,7 @@ class TranslatorWindow(resizableframeless):
             if self.isdoingsomething():
                 self.resizeFuck(size)
                 return
-            if globalconfig["top_align"] == 0:
+            if globalconfig.get("top_align", 0) == 0:
                 if newHeight > self.height():
                     self.resizeFuck(size)
                 else:
@@ -1720,7 +1781,7 @@ class TranslatorWindow(resizableframeless):
         gobject.base.textsource.newrangeadjustor()
         gobject.base.textsource.setrect(rect)
         self.showhideocrrange()
-        if globalconfig["showrangeafterrangeselect"] == False:
+        if not globalconfig.get("showrangeafterrangeselect", True):
             self.showhideocrrange()
 
         def __():
@@ -1755,7 +1816,7 @@ class TranslatorWindow(resizableframeless):
         usegeo = self.titlebar.geometry()
         btn: QWidget = self.titlebar.buttons["mousetransbutton"]
         if (
-            globalconfig["mousetransparent"]
+            globalconfig.get("mousetransparent", False)
             and (not btn.isVisible())
             and (btn.reflayout is not None)
         ):
@@ -1820,7 +1881,7 @@ class TranslatorWindow(resizableframeless):
         super().resizeEvent(e)
         wh = self.dynamicextraheight()
 
-        if globalconfig["verticalhorizontal"]:
+        if globalconfig.get("verticalhorizontal", False):
             height = self.width() - wh
             self.translate_text.resize(int(height), self.height())
             self.translate_text.move(0, 0)
@@ -1879,7 +1940,8 @@ class TranslatorWindow(resizableframeless):
                         "\n\n".join(errors),
                     )
                 self.tryremoveuseless()
-                doupdate()
+                if not gobject.base.willshutdown:
+                    doupdate()
         except:
             print_exc()
 

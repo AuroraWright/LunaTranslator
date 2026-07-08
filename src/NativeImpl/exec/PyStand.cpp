@@ -121,11 +121,6 @@ bool PyStand::CheckEnviron(const wchar_t *rtp)
 		return false;
 	return true;
 }
-#ifndef WINXP
-#define PYDLL L"python3.dll"
-#else
-#define PYDLL L"python34.dll"
-#endif
 //---------------------------------------------------------------------
 // load python
 //---------------------------------------------------------------------
@@ -137,7 +132,7 @@ bool PyStand::LoadPython()
 
 #ifdef WIN10ABOVE
 	// win10版将runtime路径设为DLL搜索路径，优先使用自带的高级vcrt
-	//  这样，即使将主exe静态编译，也能加载runtime中的vcrt
+	// 这样，即使将主exe静态编译，也能加载runtime中的vcrt
 	SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 	SetDllDirectoryW(_runtime.c_str());
 #else
@@ -210,11 +205,18 @@ int PyStand::RunString(const wchar_t *script)
 		_py_args.push_back((wchar_t *)_py_argv[i].c_str());
 	}
 
-#ifdef WINXP
 	auto Py_SetPath = (void (*)(const wchar_t *))GetProcAddress(_hDLL, "Py_SetPath");
-	std::wstring path = std::wstring(FILESRUNTIME) + L"\\Lib;" + FILESRUNTIME + L"\\DLLs;" + FILESRUNTIME + L"\\Lib\\site-packages";
-	Py_SetPath(path.c_str());
+	std::wstring path = std::wstring() +
+#ifdef WINXP
+						FILESRUNTIME + L"\\Lib;" +
+						FILESRUNTIME + L"\\Lib\\pylibs.zip;" +
+						FILESRUNTIME + L"\\DLLs;" +
+						FILESRUNTIME + L"\\Lib\\site-packages";
+#else
+						FILESRUNTIME + L";" +
+						FILESRUNTIME + L"\\pylibs.zip;";
 #endif
+	Py_SetPath(path.c_str());
 	hr = _Py_Main((int)_py_args.size(), &_py_args[0]);
 	return hr;
 }
@@ -468,11 +470,40 @@ bool VerifyKeyMatchesSelf(const wchar_t *filePath, const std::optional<std::vect
 	return memcmp(selfKey.value().data(), targetKey.value().data(), selfKey.value().size()) == 0;
 }
 
+bool IsSHA256Supported()
+{
+	HCRYPTPROV hProv = NULL;
+	HCRYPTHASH hHash = NULL;
+	bool bSupported = false;
+
+	// 尝试获取加密提供程序句柄
+	// 使用 PROV_RSA_AES (24)，这是一个支持 SHA256 的现代 CSP
+	if (CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT))
+	{
+		// 尝试创建 SHA256 哈希对象
+		// CALG_SHA_256 定义在 Wincrypt.h 中
+		// 如果系统不支持，此函数会返回 FALSE 且 GetLastError() 为 NTE_BAD_ALGID
+		if (CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash))
+		{
+			bSupported = true;
+			CryptDestroyHash(hHash);
+		}
+		CryptReleaseContext(hProv, 0);
+	}
+
+	return bSupported;
+}
 std::set<const wchar_t *> PyStand::checkintegrity_(int &succ)
 {
 	// 分别对python代码检查hash，对exe/dll检查签名
 	std::set<const wchar_t *> collect;
-
+#ifdef WINXP
+	// windows xp sp2 不支持sha256
+	if (!IsSHA256Supported())
+	{
+		return {};
+	}
+#endif
 	auto selfKey = GetCertificatePublicKey(exepath.c_str());
 	if (selfKey)
 	{
@@ -497,8 +528,11 @@ std::set<const wchar_t *> PyStand::checkintegrity_(int &succ)
 		auto f = readFile(fn);
 		if (!f)
 		{
-			succ = -2;
-			collect.insert(fn);
+			if (fn != wcsstr(fn, L"LunaTranslator/translator/_"))
+			{
+				succ = -2;
+				collect.insert(fn);
+			}
 			continue;
 		}
 		auto sigf = Sha256Digest(f.value());

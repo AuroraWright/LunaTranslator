@@ -27,6 +27,7 @@ from gui.usefulwidget import (
     getcolorbutton,
     KeySequenceEdit,
     check_grid_append,
+    DarkLightAutoResetIconHelper,
 )
 import qtawesome
 from gui.dynalang import LFormLayout, LLabel, LAction, LDialog
@@ -35,7 +36,7 @@ from gui.showword import cishusX
 
 
 @Singleton
-class multicolorset(LDialog):
+class multicolorset(LDialog, DarkLightAutoResetIconHelper):
     def __init__(self, parent) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
         self.setWindowTitle("颜色设置")
@@ -51,6 +52,7 @@ class multicolorset(LDialog):
             d=globalconfig,
             key="showcixing_touming",
             callback=gobject.base.translation_ui.translate_text.setcolorstyle,
+            default=30,
         )
         _hori.addWidget(_s)
         formLayout.addRow(_hori)
@@ -109,9 +111,9 @@ def renameapi(qlabel: QLabel, apiuid, self, _=None):
     menu.addAction(editname)
     useproxy = LAction("使用代理", menu)
     useproxy.setCheckable(True)
-    if globalconfig["useproxy"] and globalconfig["cishu"][apiuid].get("type") not in (
-        "offline",
-    ):
+    if globalconfig.get("useproxy", True) and globalconfig["cishu"][apiuid].get(
+        "type"
+    ) not in ("offline",):
         menu.addSeparator()
         menu.addAction(useproxy)
         useproxy.setChecked(globalconfig["cishu"][apiuid].get("useproxy", True))
@@ -310,7 +312,10 @@ def setTabcishu_l(self):
     ]
 
     def _getkeys(key):
-        dia = QDialog(self)
+        class __(QDialog, DarkLightAutoResetIconHelper):
+            pass
+
+        dia = __(self)
         dia.setWindowIcon(qtawesome.icon("fa.keyboard-o"))
         dia.setWindowFlags(
             dia.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
@@ -350,7 +355,7 @@ def setTabcishu_l(self):
                 type="grid",
                 parent=self,
                 name="fenyinsettings",
-                enable=globalconfig["isshowrawtext"],
+                enable=globalconfig.get("isshowrawtext", True),
                 grid=(
                     [
                         "显示注音",
@@ -358,6 +363,7 @@ def setTabcishu_l(self):
                             globalconfig,
                             "isshowhira",
                             callback=gobject.base.translation_ui.translate_text.showhidert,
+                            default=True,
                         ),
                         D_getcolorbutton(
                             self,
@@ -401,6 +407,7 @@ def setTabcishu_l(self):
                                     _
                                 ),
                             ),
+                            default=True,
                         ),
                         D_getIconButton(
                             icon="fa.paint-brush",
@@ -433,6 +440,7 @@ def setTabcishu_l(self):
                                                 _
                                             ),
                                         ),
+                                        default=False,
                                     ),
                                     D_getIconButton(
                                         callback=lambda: tooltipssetting(self),

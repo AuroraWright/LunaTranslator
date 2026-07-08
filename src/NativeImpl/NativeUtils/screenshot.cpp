@@ -39,16 +39,7 @@ std::optional<SimpleBMP> parseBMP(std::optional<SimpleBMP> &&bmp, bool needcheck
         return {};
     if (needcheck)
     {
-        bool checkempty = false;
-        if (bmp.value().bitCount == 32)
-        {
-            checkempty = std::all_of((uint32_t *)bmp.value().pixels, (uint32_t *)bmp.value().pixels + bmp.value().pixelsize / 4, std::bind(std::equal_to<uint32_t>(), std::placeholders::_1, *(uint32_t *)bmp.value().pixels));
-        }
-        else
-        {
-            checkempty = std::all_of(bmp.value().pixels, bmp.value().pixels + bmp.value().pixelsize, std::bind(std::equal_to<unsigned char>(), std::placeholders::_1, 0));
-        }
-        if (checkempty)
+        if (std::all_of(bmp.value().pixels, bmp.value().pixels + bmp.value().pixelsize, std::bind(std::equal_to<unsigned char>(), std::placeholders::_1, 0)))
             return {};
     }
     return std::move(bmp);

@@ -89,7 +89,7 @@ class FenciColor(ColorControl):
             return None
         if self.isdeli:
             return None
-        if not globalconfig["show_fenci"]:
+        if not globalconfig.get("show_fenci", True):
             return None
         c = QColor(Qt.GlobalColor.white)
         if self.cixing:
@@ -99,7 +99,12 @@ class FenciColor(ColorControl):
                 c = QColor(globalconfig["cixingcolor"][self.cixing])
             except:
                 pass
-        return (c.red(), c.green(), c.blue(), globalconfig["showcixing_touming"] / 100)
+        return (
+            c.red(),
+            c.green(),
+            c.blue(),
+            globalconfig.get("showcixing_touming", 30) / 100,
+        )
 
     def get(self):
         color = self._randomcolor_1()
@@ -127,7 +132,6 @@ class dataget:
         return (
             globalconfig["usesearchword"]
             or globalconfig["usecopyword"]
-            or globalconfig["useopenlink"]
             or globalconfig["usesearchword_S"]
         )
 
@@ -135,7 +139,7 @@ class dataget:
     def _clickhovershow(self):
         return (
             self._clickable
-            or globalconfig["word_hover_show_word_info"]
+            or globalconfig.get("word_hover_show_word_info", False)
             or globalconfig["usesearchword_S_hover"]
         )
 
@@ -143,11 +147,11 @@ class dataget:
         if texttype == TextType.Origin:
             fm = globalconfig["fonttype"]
             fs = globalconfig["fontsizeori"]
-            bold = globalconfig["showbold"]
+            bold = globalconfig.get("showbold", False)
         else:
             fm = globalconfig["fonttype2"]
             fs = globalconfig["fontsize"]
-            bold = globalconfig["showbold_trans"]
+            bold = globalconfig.get("showbold_trans", False)
         return fm, fs, bold
 
     def _getfontinfo_kana(self):

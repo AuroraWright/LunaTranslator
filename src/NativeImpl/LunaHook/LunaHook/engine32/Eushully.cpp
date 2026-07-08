@@ -450,7 +450,6 @@ bool InsertEushullyHook()
   ULONG addr = MemDbg::findLastCallerAddressAfterInt3((DWORD)::GetTextExtentPoint32A, processStartAddress, processStopAddress);
   //GROWL_DWORD(addr);
   if (!addr) {
-    ConsoleOutput("Eushully: failed");
     return false;
   }
   */
@@ -520,7 +519,6 @@ bool InsertEushullyHook()
   hp.type = USING_STRING | FIXING_SPLIT | EMBED_ABLE | EMBED_AFTER_NEW | EMBED_DYNA_SJIS; // merging all threads
   hp.offset = arg2_lpString;                                                              // arg2 = 0x4 * 2
   hp.embed_hook_font = F_MultiByteToWideChar | F_GetTextExtentPoint32A | F_GetGlyphOutlineA | F_CreateFontA;
-  ConsoleOutput("INSERT Eushully");
   bool succ = NewHook(hp, "ARCGameEngine");
   if (thisCaller)
   {
@@ -601,6 +599,5 @@ namespace
 }
 bool Eushully::attach_function()
 {
-
-  return InsertEushullyHook() || TENMEI() || pchooks();
+  return (InsertEushullyHook() | TENMEI()) || pchooks();
 }

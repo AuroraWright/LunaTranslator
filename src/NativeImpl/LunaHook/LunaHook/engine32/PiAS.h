@@ -10,9 +10,11 @@ public:
         check_by = CHECK_BY::CUSTOM;
         check_by_target = [&]()
         {
-            auto _ = {L"font.dat", L"graph.dat", L"sound.dat", L"music.dat", L"text.dat"};
-            auto checkfile = std::all_of(_.begin(), _.end(), Util::CheckFile);
-            return checkfile && Util::SearchResourceString(L"PiAS");
+            if (Util::CheckFileAll({L"font.dat", L"graph.dat", L"sound.dat", L"music.dat", L"text.dat"}) &&
+                Util::SearchResourceString(L"PiAS"))
+                return true;
+            is_engine_certain = false;
+            return Util::CheckFileAll({L"FONT0.dat", L"graph.dat", L"sound.dat", L"text.dat"});
         };
     };
     bool attach_function();

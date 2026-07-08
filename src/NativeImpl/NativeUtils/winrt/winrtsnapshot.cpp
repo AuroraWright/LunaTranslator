@@ -12,6 +12,7 @@
 
 #include "hstring.hpp"
 #include "../bmpx.hpp"
+#include "../osversion.hpp"
 
 using ABI::Windows::Foundation::GetActivationFactory;
 using ABI::Windows::Foundation::IClosable;
@@ -24,6 +25,7 @@ using ABI::Windows::Graphics::Capture::IDirect3D11CaptureFramePoolStatics;
 using ABI::Windows::Graphics::Capture::IGraphicsCaptureItem;
 using ABI::Windows::Graphics::Capture::IGraphicsCaptureSession;
 using ABI::Windows::Graphics::Capture::IGraphicsCaptureSession2;
+using ABI::Windows::Graphics::Capture::IGraphicsCaptureSession3;
 using ABI::Windows::Graphics::DirectX::DirectXPixelFormat;
 using ABI::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 using ABI::Windows::Graphics::DirectX::Direct3D11::IDirect3DSurface;
@@ -61,7 +63,97 @@ struct FrameArrivedCallback : ComImpl<ITypedEventHandler<Direct3D11CaptureFrameP
     }
 };
 
-void capture_window(HWND window_handle, void (*cb)(byte *, size_t))
+inline bool IsNotBlack(const unsigned char *pixel)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        if (pixel[i] != 0)
+            return true;
+    }
+    return false;
+}
+void CropBMPBlackBordersInPlace(unsigned char *data, size_t &dataSize)
+{
+    if (!data || dataSize < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER))
+        return;
+
+    // 1. 解析头部
+    BITMAPFILEHEADER *bfh = reinterpret_cast<BITMAPFILEHEADER *>(data);
+    BITMAPINFOHEADER *bih = reinterpret_cast<BITMAPINFOHEADER *>(data + sizeof(BITMAPFILEHEADER));
+
+    int oldWidth = bih->biWidth;
+    int oldHeight = std::abs(bih->biHeight);
+    int bitCount = bih->biBitCount;
+
+    if (bitCount < 24)
+        return; // 暂不支持调色板格式
+
+    int bytesPerPixel = bitCount / 8;
+    int oldStride = ((oldWidth * bitCount + 31) / 32) * 4; // 原每行字节数（含填充）
+    unsigned char *pixelBase = data + bfh->bfOffBits;
+
+    // 2. 扫描边界 (minX, maxX, minY, maxY)
+    int minX = oldWidth, maxX = -1, minY = oldHeight, maxY = -1;
+    bool foundContent = false;
+
+    for (int y = 0; y < oldHeight; ++y)
+    {
+        unsigned char *rowPtr = pixelBase + y * oldStride;
+        for (int x = 0; x < oldWidth; ++x)
+        {
+            if (IsNotBlack(rowPtr + x * bytesPerPixel))
+            {
+                if (x < minX)
+                    minX = x;
+                if (x > maxX)
+                    maxX = x;
+                if (y < minY)
+                    minY = y;
+                if (y > maxY)
+                    maxY = y;
+                foundContent = true;
+            }
+        }
+    }
+
+    // 如果全是黑色，不做处理或根据需求缩小为1x1
+    if (!foundContent)
+        return;
+
+    // 3. 计算新尺寸
+    int newWidth = maxX - minX + 1;
+    int newHeight = maxY - minY + 1;
+    int newStride = ((newWidth * bitCount + 31) / 32) * 4;
+
+    // 4. 原地移动像素数据
+    // 因为 newStride <= oldStride 且 minY >= 0，
+    // 目标地址总是 <= 源地址，所以从低索引向高索引遍历是安全的。
+    for (int y = 0; y < newHeight; ++y)
+    {
+        unsigned char *srcRow = pixelBase + (minY + y) * oldStride + (minX * bytesPerPixel);
+        unsigned char *dstRow = pixelBase + y * newStride;
+
+        // 使用 memmove 以防万一（虽然在此逻辑下 memcpy 通常也是安全的）
+        std::memmove(dstRow, srcRow, newWidth * bytesPerPixel);
+
+        // 如果新行有补齐字节（Padding），清零（可选）
+        if (newStride > newWidth * bytesPerPixel)
+        {
+            std::memset(dstRow + newWidth * bytesPerPixel, 0, newStride - newWidth * bytesPerPixel);
+        }
+    }
+
+    // 5. 更新头部信息
+    bih->biWidth = newWidth;
+    bih->biHeight = (bih->biHeight > 0) ? newHeight : -newHeight;
+    bih->biSizeImage = newStride * newHeight;
+
+    bfh->bfSize = bfh->bfOffBits + bih->biSizeImage;
+
+    // 6. 写回最终大小
+    dataSize = bfh->bfSize;
+}
+void capture_window(HWND window_handle, void (*cb)(byte *, size_t), bool blackborderremove)
 {
     // Init COM
     // init_apartment(winrt::apartment_type::multi_threaded);
@@ -104,6 +196,9 @@ void capture_window(HWND window_handle, void (*cb)(byte *, size_t))
     CComPtr<IGraphicsCaptureSession2> session2;
     if (SUCCEEDED(session.QueryInterface(&session2)))
         session2->put_IsCursorCaptureEnabled(false);
+    CComPtr<IGraphicsCaptureSession3> session3;
+    if (SUCCEEDED(session.QueryInterface(&session3)))
+        session3->put_IsBorderRequired(false);
     EventRegistrationToken token;
     std::atomic_flag waitforloadflag = ATOMIC_FLAG_INIT;
     waitforloadflag.test_and_set();
@@ -134,8 +229,8 @@ void capture_window(HWND window_handle, void (*cb)(byte *, size_t))
     d3d_context->CopyResource(user_texture, texture);
     D3D11_MAPPED_SUBRESOURCE resource;
     CHECK_FAILURE_NORET(d3d_context->Map(user_texture, NULL, D3D11_MAP_READ, 0, &resource));
-
-    auto bmp = CreateBMP(captured_texture_desc.Width, captured_texture_desc.Height);
+    bool alpha = blackborderremove ? false : true;
+    auto bmp = CreateBMP(captured_texture_desc.Width, captured_texture_desc.Height, 32, alpha);
 
     UINT l_bmp_row_pitch = captured_texture_desc.Width * 4;
     auto sptr = static_cast<BYTE *>(resource.pData);
@@ -149,22 +244,22 @@ void capture_window(HWND window_handle, void (*cb)(byte *, size_t))
         ptr += l_bmp_row_pitch;
     }
     d3d_context->Unmap(user_texture, NULL);
+    if (blackborderremove)
+        CropBMPBlackBordersInPlace(bmp.data.get(), bmp.size);
     cb(bmp.data.get(), bmp.size);
 }
-DECLARE_API void winrt_capture_window(HWND hwnd, void (*cb)(byte *, size_t))
+DECLARE_API void winrt_capture_window(HWND hwnd, void (*cb)(byte *, size_t), bool blackborderremove)
 {
     // auto hwnd = GetForegroundWindow();// FindWindow(L"Window_Magpie_967EB565-6F73-4E94-AE53-00CC42592A22", 0);
-    auto style_ex = GetWindowLong(hwnd, GWL_EXSTYLE);
+    auto style_ex = GetWindowExStyle(hwnd);
     auto style_ex_save = style_ex;
-    bool needset = !(((style_ex & WS_EX_APPWINDOW) && !(style_ex & WS_EX_TOOLWINDOW)));
+    bool needset = !(style_ex & WS_EX_APPWINDOW);
     if (needset)
     {
-
         style_ex |= WS_EX_APPWINDOW;
-        style_ex &= ~WS_EX_TOOLWINDOW;
         SetWindowLong(hwnd, GWL_EXSTYLE, style_ex);
     }
-    capture_window(hwnd, cb);
+    capture_window(hwnd, cb, blackborderremove);
     if (needset)
         SetWindowLong(hwnd, GWL_EXSTYLE, style_ex_save);
 }

@@ -22,7 +22,7 @@ def get_original_git_show(commit_hash):
 def call_llm_api(prompt: str, api_key: str, api_url: str, model: str):
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-
+    print(prompt[:1000000])
     data = {
         "model": model,
         "messages": [
@@ -30,14 +30,12 @@ def call_llm_api(prompt: str, api_key: str, api_url: str, model: str):
                 "role": "system",
                 "content": "You are a professional Git commit message generator assistant. You need to generate concise commit messages based on code changes.",
             },
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": prompt[:1000000]},
         ],
         "temperature": 0,
         "max_tokens": 300,
     }
-
-    response = requests.post(api_url, headers=headers, json=data, timeout=30)
-    response.raise_for_status()
+    response = requests.post(api_url, headers=headers, json=data)
     try:
         result = response.json()
         message = result["choices"][0]["message"]["content"].strip()
@@ -47,7 +45,7 @@ def call_llm_api(prompt: str, api_key: str, api_url: str, model: str):
 
 
 def generate_commit_messages(diff_text: str):
-    chinese_prompt = f"""Based on the Git diff provided, generate an English commit message. Do not describe overly specific code changes.
+    chinese_prompt = f"""Based on the Git diff provided, generate an English commit message, with only ascii characters. Do not describe overly specific code changes.
 
 Git diff:
 ```

@@ -169,14 +169,28 @@ mecab_end.argtypes = (mecab,)
 _ClipBoardGetText = utilsdll.ClipBoardGetText
 _ClipBoardGetText.argtypes = (c_void_p,)
 _ClipBoardGetText.restype = c_bool
+_ClipBoardGetFileNames = utilsdll.ClipBoardGetFileNames
+_ClipBoardGetFileNames.argtypes = (c_void_p,)
+_ClipBoardGetFileNames.restype = c_bool
 _ClipBoardSetText = utilsdll.ClipBoardSetText
 _ClipBoardSetText.argtypes = (c_wchar_p,)
 _ClipBoardSetImage = utilsdll.ClipBoardSetImage
 _ClipBoardSetImage.argtypes = (c_void_p, c_size_t)
 _ClipBoardSetImage.restype = c_bool
+_ClipBoardGetImage = utilsdll.ClipBoardGetImage
+_ClipBoardGetImage_CB = CFUNCTYPE(None, POINTER(c_char), c_size_t)
+_ClipBoardGetImage.argtypes = (_ClipBoardGetImage_CB,)
+_ClipBoardGetImage.restype = c_bool
 
 
 class _ClipBoard:
+    @property
+    def files(self):
+        ret: "list[str]" = []
+        if not _ClipBoardGetFileNames(CFUNCTYPE(None, c_wchar_p)(ret.append)):
+            return []
+        return ret
+
     @property
     def text(self):
         ret = []
@@ -189,7 +203,18 @@ class _ClipBoard:
         _ClipBoardSetText(t)
 
     @property
-    def image(self): ...
+    def image(self):
+        ret: "list[bytes]" = []
+
+        def _cb(ptr, size):
+            ret.append(ptr[:size])
+
+        if not _ClipBoardGetImage(_ClipBoardGetImage_CB(_cb)):
+            return None
+        if ret:
+            return ret[0]
+        return None
+
     @image.setter
     def image(self, bytes_: bytes):
         _ClipBoardSetImage(bytes_, len(bytes_))
@@ -935,7 +960,7 @@ winrt_OCR_get_AvailableRecognizerLanguages = (
 winrt_OCR_get_AvailableRecognizerLanguages.argtypes = (c_void_p,)
 
 winrt_capture_window = utilsdll.winrt_capture_window
-winrt_capture_window.argtypes = c_void_p, c_void_p
+winrt_capture_window.argtypes = c_void_p, c_void_p, c_bool
 
 
 class WinRT:
@@ -967,13 +992,15 @@ class WinRT:
         return ret
 
     @staticmethod
-    def capture_window(hwnd):
+    def capture_window(hwnd, blackborderremove=False):
         ret = []
 
         def cb(ptr, size):
             ret.append(ptr[:size])
 
-        winrt_capture_window(hwnd, CFUNCTYPE(None, POINTER(c_char), c_size_t)(cb))
+        winrt_capture_window(
+            hwnd, CFUNCTYPE(None, POINTER(c_char), c_size_t)(cb), blackborderremove
+        )
         if len(ret):
             return ret[0]
         return None

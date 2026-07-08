@@ -550,6 +550,11 @@ namespace
             return buffer->clear();
         ULJM05943F(buffer, hp);
     }
+    void ULJM06314(TextBuffer *buffer, HookParam *hp)
+    {
+        StringReplacer(buffer, TEXTANDLEN("#Name[1]"), TEXTANDLEN("\x8e\x8c\x8b\x49")); // 詞紀
+        ULJM05943F(buffer, hp);
+    }
     void ULJM05975Name(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->viewA();
@@ -591,11 +596,20 @@ namespace
         last = ws;
         buffer->from(strReplace(ws, L"[br]"));
     }
+    DECLARE_FUNCTION(ULJM06167N, const char *_);
     void ULJM06167(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
-        if (s == "0")
+        if (s.find("#n") == s.npos)
+        {
+            HookParam hp;
+            hp.address = (uintptr_t)ULJM06167N;
+            hp.offset = GETARG(1);
+            hp.type = USING_STRING;
+            static auto _ = NewHook(hp, "ULJM06167");
+            ULJM06167N(s.c_str());
             return buffer->clear();
+        }
         ULJM05943F(buffer, hp);
     }
     void ULJM05610(TextBuffer *buffer, HookParam *hp)
@@ -729,6 +743,28 @@ namespace
         if (lastx.touch(s))
             return buffer->clear();
         FULJM05603(buffer, hp);
+    }
+    void ULJM05840(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+    {
+        auto s = (char *)PPSSPP::emu_arg(context)[0x01];
+        while (*(s - 1) || *(s - 2))
+            s -= 1;
+        if (!*s)
+            s += 1;
+        std::string ss;
+        while (*s)
+        {
+            std::string _s = s;
+            ss += _s;
+            s += _s.size() + 1;
+        }
+        if (all_ascii(ss))
+            return;
+        static std::string last;
+        if (last == ss)
+            return;
+        last = ss;
+        buffer->from(ss);
     }
     void ULJM05810(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
     {
@@ -963,6 +999,14 @@ namespace
             buffer->from(s);
         }
     }
+    void NPJH50627(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(#Rubi\[(.*?)\])");
+        s = re::sub(s, R"(#[A-Za-z]+\[[\d\-,\.]*\])");
+        s = re::sub(s, R"((\x81\x40)*#n(\x81\x40)*)");
+        buffer->from(s);
+    }
     void ULJM06145(TextBuffer *buffer, HookParam *hp)
     {
         auto s = buffer->strA();
@@ -1021,7 +1065,17 @@ namespace
         s = re::sub(s, "#FAMILY", "$FAMILY");
         s = re::sub(s, "#GIVE", "$GIVE");
         s = re::sub(s, "(#[A-Z0-9\\-]+)+");
-        s = re::sub(s, "\\n+");
+        strReplace(s, "\n");
+        buffer->from(s);
+    }
+    void ULUS10576(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, "#RUBS(#[A-Z0-9]+)*[^#]+");
+        s = re::sub(s, "#C[0-9]+");
+        s = re::sub(s, "#CDEF");
+        strReplace(s, "\n", " ");
+        strReplace(s, "+", "-");
         buffer->from(s);
     }
     void ULJM05441(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
@@ -1229,7 +1283,6 @@ namespace
         void ULJM06115(TextBuffer *buffer, HookParam *hpx)
         {
             auto s = buffer->strA();
-
             HookParam hp;
             hp.address = (uintptr_t)ULJM06115_C;
             hp.offset = GETARG(1);
@@ -1257,6 +1310,11 @@ namespace
     void ULJM06173(TextBuffer *buffer, HookParam *hp)
     {
         StringCharReplacer(buffer, TEXTANDLEN("\x81\x40<br>"), '\n');
+        StringFilter(buffer, TEXTANDLEN("<br>"));
+    }
+    void ULJM06173Ex(TextBuffer *buffer, HookParam *hp)
+    {
+        ULJM05433(buffer, hp);
         StringFilter(buffer, TEXTANDLEN("<br>"));
     }
     void ULJS00592(TextBuffer *buffer, HookParam *hp)
@@ -1513,6 +1571,67 @@ namespace
         if (cache.touch(s))
             return buffer->clear();
     }
+    DECLARE_FUNCTION(ULJM05697S, const char *_);
+    void ULJM05697(TextBuffer *buffer, HookParam *hpx)
+    {
+        auto s = buffer->strA();
+        if (s.find("#n") == s.npos)
+        {
+            HookParam hp;
+            hp.address = (uintptr_t)ULJM05697S;
+            hp.offset = GETARG(1);
+            hp.type = USING_STRING | NO_CONTEXT | FULL_STRING;
+            static auto _ = NewHook(hp, hpx->name);
+            ULJM05697S(s.c_str());
+            return buffer->clear();
+        }
+        ULJM05943F(buffer, hpx);
+    }
+    DECLARE_FUNCTION(ULJM05823F, const char *_);
+    void ULJM05823(TextBuffer *buffer, HookParam *hpx)
+    {
+        auto s = buffer->strA();
+        if (s.find("#n") == s.npos)
+        {
+            HookParam hp;
+            hp.address = (uintptr_t)ULJM05823F;
+            hp.offset = GETARG(1);
+            hp.type = USING_STRING | NO_CONTEXT | FULL_STRING;
+            static auto _ = NewHook(hp, hpx->name);
+            ULJM05823F(s.c_str());
+            return buffer->clear();
+        }
+        ULJM05943F(buffer, hpx);
+    }
+    void NPJH50715(TextBuffer *buffer, HookParam *hp)
+    {
+        auto ws = buffer->strAW();
+        ws = remapkatakana(ws);
+        ws = re::sub(ws, LR"(\{ruby:(.*?)&.*?\})", L"$1");
+        buffer->fromWA(ws);
+    }
+    void NPJH50654(hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+    {
+        std::string ws = (char *)PPSSPP::emu_arg(context)[0xf];
+        if (ws == u8"■■■")
+            return;
+        if (ws == u8"%nn")
+            return;
+        if (ws == u8"%")
+            return;
+        static bool nextisname = false;
+        if (ws == u8"　")
+        {
+            nextisname = true;
+            return;
+        }
+        if (nextisname)
+        {
+            nextisname = false;
+            *split = 1;
+        }
+        buffer->from(ws);
+    }
 }
 struct emfuncinfoX
 {
@@ -1520,6 +1639,17 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // AKB1/149 恋愛総選挙
+    {0x89DB26C, {FULL_STRING | CODEC_UTF8, 0xf, 0, NPJH50654, NewLineCharFilterA, std::vector<const char *>{"NPJH50654", "NPJH50655"}}},
+    // 桜花センゴク Portable
+    {0x881441C, {FULL_STRING, 1, 0, 0, NPJH50627, "NPJH50627"}},
+    // 学園ヘタリア Portable
+    {0x88113B0, {0, 0, 0, ULJM05840, 0, std::vector<const char *>{"ULJM05839", "ULJM05840"}}},
+    // 恋愛0キロメートル Portable
+    {0x881F154, {FULL_STRING, 1, 0, 0, NPJH50715, "NPJH50715"}},
+    // 文明開華 葵座異聞録 再演
+    {0x886A55C, {FULL_STRING, 0, 0, 0, FULJM05889, "NPJH50560"}},
+    {0x886A600, {FULL_STRING, 0xC, 0, 0, FULJM05889, "NPJH50560"}}, // name
     // サイファーPORTABLE
     {0x880FF80, {0, 3, 0, 0, ULJM05491, "ULJM05491"}}, // 不可以快进
     // 花と乙女に祝福を　～春風の贈り物～　portable
@@ -1533,6 +1663,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Starry☆Sky～in Winter～Portable
     {0x8835DD0, {USING_CHAR | DATA_INDIRECT, 0XD, 0, 0, 0, "ULJM05861"}},
     /* sceFontGetCharInfo 还有很多无法用JIThook的游戏可以用这个函数，包括有JIThook地址的，但之前没有进行记录，现在进行以下记录，仅用于避免未来重复劳动。*/
+    // L@ve once //ULJM05746
     // Starry☆Sky～After Spring～Portable //ULJM06207
     // Starry☆Sky～After Summer～Portable //ULJM06208
     // Starry☆Sky～After Autumn～Portable //ULJM06209
@@ -1621,6 +1752,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // Fate/EXTRA CCC
     {0x8958490, {0, 0, 0, 0, NPJH50505F, "NPJH50505"}},
     // Fate/EXTRA
+    {0x882F980, {FULL_STRING, 0, 0, 0, ULUS10576, "ULUS10576"}},
+    // Fate/EXTRA
     {0x88B87F0, {0, 6, 0, 0, FNPJH50247, "NPJH50247"}},
     // 神々の悪戯
     {0x88663FC, {0, 0, 0, NPJH50809, NPJH50809F, "NPJH50809"}}, // 缺少自定义人名
@@ -1677,8 +1810,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8885fd8, {0, 0, 0, 0, 0, "ULJM06393"}},
     {0x88ac3a8, {0, 1, 0, 0, 0, "ULJM06393"}},
     // S・Y・K ～新説西遊記～ ポータブル
-    {0x88DD918, {0, 0, 0, 0, ULJM05823_2, "ULJM05697"}}, // text+name->name
-    {0x8811DAC, {FULL_STRING, 0xc, 0, 0, ULJM05943F, "ULJM05697"}},
+    {0x88DD918, {FULL_STRING, 0, 0, 0, ULJM05697, "ULJM05697"}},
     // S.Y.K ～蓮咲伝～ Portable
     {0x88FB080, {0, 0, 0, 0, ULJM05867_1, "ULJM05867"}}, // TEXT
     {0x88FB0B8, {0, 0, 0, 0, ULJM05867_2, "ULJM05867"}}, // NAME
@@ -1703,13 +1835,12 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 明治東亰恋伽 トワヰライト・キス
     {0x884DE44, {0, 0, 0, 0, NPJH50900, "NPJH50900"}}, // text
     // 青春はじめました！
-    {0x880a744, {0, 0, 0, 0, ULJM05943F, std::vector<const char *>{"ULJM06302", "ULJM06303"}}},
-    {0x8804094, {FULL_STRING, 1, 0, 0, ULJM06344, std::vector<const char *>{"ULJM06302", "ULJM06303"}}},
+    {0x880a744, {0, 0, 0, 0, ULJM05943F, std::vector<const char *>{"ULJM06302", "ULJM06303", "ULJM06307"}}},
+    {0x8804094, {FULL_STRING, 1, 0, 0, ULJM06344, std::vector<const char *>{"ULJM06302", "ULJM06303", "ULJM06307"}}},
     // アーメン・ノワール ポータブル
     {0x883b6a8, {0, 0, 0, 0, ULJM05943F, "ULJM06064"}},
     // デス・コネクション　ポータブル
-    {0x882AEF4, {0, 0, 0, 0, ULJM05943F, "ULJM05823"}},
-    {0x88B2464, {0, 0, 0, 0, ULJM05823_2, "ULJM05823"}}, // text+name->name
+    {0x8855594, {FULL_STRING, 0, 0, 0, ULJM05823, "ULJM05823"}},
     // しらつゆの怪
     {0x888A26C, {0, 0, 0, 0, ULJM06289, "ULJM06289"}},
     // ダイヤの国のアリス～Wonderful Wonder World～
@@ -1736,8 +1867,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8829F14, {0, 4, 0, 0, ULJM05943F, "ULJM05847"}},
     {0x886D270, {0, 0, 0, 0, ULJM05823_2, "ULJM05847"}},
     // 華鬼 ～夢のつづき～
-    {0x88406CC, {0, 0, 0, 0, ULJM05943F, "ULJM06048"}}, // text
-    {0x885B7BC, {0, 0, 0, 0, ULJM05943F, "ULJM06048"}}, // name+text
+    {0x885B7BC, {FULL_STRING, 0, 0, 0, ULJM05943F, "ULJM06048"}}, // name+text
+    {0x8912534, {FULL_STRING, 0, 0, 0, ULJM06167, "ULJM06048"}},
     // サモンナイト３
     {0x89DCF90, {0, 6, 0, 0, NPJH50380, "NPJH50380"}},
     // サモンナイト４
@@ -1813,6 +1944,10 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8863D5C, {0, 3, 0, 0, ULJM05874, "ULJM05874"}},
     // メモリーズオフ ゆびきりの記憶
     {0x88A50B0, {0, 1, 0, 0, ULJM06040_1, "ULJM05875"}},
+    // Memories Off ～それから～
+    {0x89435F8, {FULL_STRING, 0, 0, 0, 0, "ULJM05350"}},
+    // ユア・メモリーズオフ
+    {0x88EF260, {0, 1, 0, 0, FULJM05603, "ULJM05435"}},
     // CLANNAD
     {0x880F240, {CODEC_UTF16, 0, 0, 0, ULJM05282, std::vector<const char *>{"ULJM05338", "ULJM05339"}}},
     // ＣＬＡＮＮＡＤ　光見守る坂道で　上巻
@@ -1833,12 +1968,12 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8816BFC, {0, 0, 0, 0, ULJM06052, "ULJM06052"}}, // 只能在下一句时提取到上一句
     // CHAOS;HEAD らぶChu☆Chu!
     {0x88B5AD8, {0, 0xe, 0, 0, ULJM05821, "ULJM05821"}},
+    // 涼宮ハルヒの追想
+    {0x881AAD8, {FULL_STRING | CODEC_UTF16, 1, 0, 0, 0, "ULJS00371"}},
     // 涼宮ハルヒの約束
-    {0x882C6B4, {0, 6, 0, 0, NewLineCharFilterA, "ULJS00124"}},
+    {0x882C6B4, {0, 6, 0, 0, NewLineCharFilterA, std::vector<const char *>{"ULJS00123", "ULJS00124"}}},
     // code_18
     {0x884B8B8, {0, 0, 0, 0, ULJM05821, "ULJM05936"}},
-    // ユア・メモリーズオフ
-    {0x88EF260, {0, 1, 0, 0, FULJM05603, "ULJM05435"}},
     // 華ヤカ哉、我ガ一族
     {0x885138C, {FULL_STRING, 1, 0, 0, ULJM05691, "ULJM05691"}},
     // 華ヤカ哉、我ガ一族 キネマモザイク
@@ -1909,10 +2044,10 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x88644D4, {0, 1, 0, 0, NPJH50899, "NPJH50879"}},
     // 白華の檻～緋色の欠片４～
     {0x88FE8C0, {0, 0, 0, 0, ULJM05823_2, "ULJM06167"}},
-    {0x894672C, {0, 4, 0, 0, ULJM06167, "ULJM06167"}},
+    {0x88FE8D8, {FULL_STRING, 1, 0, 0, ULJM06167, "ULJM06167"}},
     // 白華の檻 ～緋色の欠片４～ 四季の詩
     {0x8851EA0, {0, 0, 0, 0, ULJM06266, "ULJM06314"}},
-    {0x88E33E0, {0, 0, 0, 0, ULJM05943F, "ULJM06314"}},
+    {0x89082AC, {FULL_STRING, 0, 0, 0, ULJM06314, "ULJM06314"}},
     // 蒼黒の楔 緋色の欠片３ ポータブル
     {0x888ACD4, {0, 0, 0, 0, ULJM05823_2, "NPJH50609"}},
     {0x8885390, {0, 4, 0, 0, ULJM06289, "NPJH50609"}},
@@ -2092,7 +2227,7 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x88385E0, {0, 1, 0, 0, NewLineCharFilterA, "ULJM06116"}},
     // デザート・キングダム ポータブル
     {0x88274D0, {0, 1, 0, 0, ULJM05823_2, "ULJM06249"}},
-    {0x88730AC, {0, 1, 0, 0, ULJM05943F, "ULJM06249"}},
+    {0x88730AC, {FULL_STRING, 1, 0, 0, ULJM05943F, "ULJM06249"}},
     // 猛獣使いと王子様 Portable
     {0x88FFEF0, {0, 0, 0, 0, ULJM05943F, "ULJM05895"}},
     {0x8879C38, {0, 0, 0, 0, ULJM05943F, "ULJM05895"}},
@@ -2236,9 +2371,14 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // 探偵オペラ　ミルキィホームズ　２
     {0x88B3848, {CODEC_UTF8, 0xf, 0, 0, NewLineCharFilterA, "ULJS00520"}},
     // TOKYOヤマノテBOYS Portable DARK CHERRY DISC
-    {0x8856FC8, {0, 0, 0, 0, ULJM06173, "ULJM06173"}},
+    {0x8856FC8, {FULL_STRING, 0, 0, 0, ULJM06173, "ULJM06173"}},
+    {0x887666C, {FULL_STRING, 0, 0, 0, ULJM06173Ex, "ULJM06173"}},
     // TOKYOヤマノテBOYS Portable HONEY MILK DISC
-    {0x8856C80, {0, 0, 0, 0, ULJM06173, "ULJM06171"}},
+    {0x8856C80, {FULL_STRING, 0, 0, 0, ULJM06173, "ULJM06171"}},
+    {0x88761A4, {FULL_STRING, 0, 0, 0, ULJM06173Ex, "ULJM06171"}},
+    // TOKYOヤマノテBOYS Portable SUPER MINT DISC
+    {0x8856FC0, {FULL_STRING, 0, 0, 0, ULJM06173, "ULJM06172"}},
+    {0x8876508, {FULL_STRING, 0, 0, 0, ULJM06173Ex, "ULJM06172"}},
     // アンジェリーク 魔恋の六騎士
     {0x889CBC8, {0, 1, 0, 0, ULJM06129, "ULJM05986"}},
     // MISSINGPARTS the TANTEI stories Complete

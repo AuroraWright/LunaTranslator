@@ -31,7 +31,6 @@ static bool InsertAliceHook1(DWORD addr)
 {
   if (!addr)
   {
-    ConsoleOutput("AliceHook1: failed");
     return false;
   }
   for (DWORD i = addr, s = addr; i < s + 0x100; i++)
@@ -52,27 +51,61 @@ static bool InsertAliceHook1(DWORD addr)
       hp.split = -8 - ((c & 0xf) << 2);
       hp.type = USING_STRING | USING_SPLIT;
       // if (s>j) hp.type^=USING_SPLIT;
-      ConsoleOutput("INSERT AliceHook1");
 
       // RegisterEngineType(ENGINE_SYS40);
       return NewHook(hp, "System40");
     }
-  ConsoleOutput("AliceHook1: failed");
   return false;
 }
 static bool InsertAliceHook2(DWORD addr)
 {
   if (!addr)
   {
-    ConsoleOutput("AliceHook2: failed");
     return false;
   }
   HookParam hp;
   hp.address = addr;
-  hp.offset = regoffset(eax);
-  hp.index = 0x8;
-  hp.type = DATA_INDIRECT;
-  ConsoleOutput("INSERT AliceHook2");
+  BYTE bytes[] = {0x8b, 0x4d, 0x0c};
+  BYTE bytes2[] = {0x8b, 0x01,
+                   0x3d, XX4,
+                   0x0f, 0x85, XX4,
+                   0x83, 0x79, 0x18, 0x10,
+                   0x8d, 0x51, 0x04,
+                   0x72, 0x02,
+                   0x8b, 0x12};
+  auto addr1 = MemDbg::findBytes(bytes, sizeof(bytes), addr, addr + 0x20);
+  if (addr1)
+  {
+    addr1 = MemDbg::findBytes(bytes2, sizeof(bytes2), addr1, addr1 + 0x20);
+  }
+  if (addr1)
+  {
+    // Rance 02 英文版
+    /*
+      if ( *(void ***)a2 == &CStringWrapper::`vftable' )
+  {
+    v2 = (_DWORD *)(a2 + 4);
+    if ( *(_DWORD *)(a2 + 24) >= 0x10u )
+      v2 = (_DWORD *)*v2;
+  }
+  else
+  {
+    v2 = (_DWORD *)(**(int (***)(void))a2)();
+  }
+    */
+    hp.type = USING_STRING;
+    hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+    {
+      auto _ = (TextUnionA *)(context->stack[2] + 4);
+      buffer->from(_->view());
+    };
+  }
+  else
+  {
+    hp.offset = regoffset(eax);
+    hp.index = 0x8;
+    hp.type = DATA_INDIRECT;
+  }
   return NewHook(hp, "System40");
   // RegisterEngineType(ENGINE_SYS40);
 }
@@ -97,7 +130,6 @@ bool InsertAliceHook()
 
     ok |= InsertAliceHook2(addr);
   }
-  // ConsoleOutput("AliceHook: failed");
   return ok;
 }
 namespace

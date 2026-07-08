@@ -52,7 +52,7 @@
     사용자 정의 시스템 프롬프트와 사용자 메시지에서 필드를 사용하여 일부 정보를 참조할 수 있습니다:
     - `{sentence}`: 현재 번역할 텍스트
     - `{srclang}` 및 `{tgtlang}`: 소스 언어 및 대상 언어. 프롬프트에서 영어만 사용된 경우, 언어 이름의 영어 번역으로 대체됩니다. 그렇지 않은 경우 현재 UI 언어의 언어 이름 번역으로 대체됩니다.    
-    - `{contextOriginal[N]}`과 `{contextTranslation[N]}`과 `{contextBoth[N]}`: N개의 이전 원문, 번역문, 둘 다. N은 "동반 컨텍스트 수"와 관련이 없으며 입력 시 정수로 대체해야 합니다.
+    - `{contextOriginal[N]}`과 `{contextTranslation[N]}`과 `{contextBoth[N]}`: N개의 이전 원문, 번역문, 둘 다. 입력이 `contextBoth[N]`인 경우 `附带上下文个数` 값을 참조하고, 입력이 `contextBoth[10]`인 경우 입력된 10개 항목 수를 사용합니다.
     - `{DictWithPrompt[XXXXX]}`: 이 필드는 "고유 명사 번역" 목록의 항목을 참조할 수 있습니다. **일치하는 항목이 없을 경우, 번역 내용을 손상시키지 않도록 이 필드는 지워집니다**. 여기서 `XXXXX`는 LLM이 주어진 항목을 사용하여 번역을 최적화하도록 안내하는 프롬프트로, 사용자 정의할 수 있거나 사용자 지정 메시지를 비활성화하여 기본 프롬프트를 사용할 수 있습니다.
 
 
@@ -60,11 +60,15 @@
 
     일부 플랫폼의 일부 모델에서는 `top p` 및 `frequency penalty`와 같은 매개변수가 인터페이스에서 허용되지 않을 수 있으며, 또는 `max tokens` 매개변수가 더 이상 사용되지 않고 `max completion tokens`로 변경되었을 수 있습니다. 이 문제는 스위치를 활성화하거나 비활성화하여 해결할 수 있습니다.
 
-1. #### reasoning effort  
+1. #### reasoning effort
+    일부 플랫폼에서 지원하는 추론 강도 제어 설정입니다.
 
-    Gemini 플랫폼에서는 이 옵션을 Gemini의 `thinkingBudget`에 자동으로 매핑합니다. 매핑 규칙은 다음과 같습니다: 
+    Gemini 플랫폼의 경우, 옵션이 Gemini의 `thinkingBudget`으로 자동 매핑됩니다. 매핑 규칙은 다음과 같습니다:
     
-    none/minimal→0(사고 비활성화, 단 Gemini-2.5-Pro 모델에는 적용되지 않음), low→512, medium→-1(동적 사고 활성화), high/xhigh→24576.  
+    none/minimal -> 0 (추론 비활성화, 단 Gemini-2.5-Pro 모델에는 적용되지 않음), low -> 512, medium -> -1 (동적 추론 활성화), high/xhigh -> 24576.
+
+1. #### thinking.type
+    일부 플랫폼에서 지원하는 추론 모드 전환 스위치입니다.
 
 1. #### 기타 파라미터  
 
@@ -121,17 +125,9 @@
 
 여기서 `{endpoint}`와 `{deployName}`을 당신의 endpoint와 deployName으로 교체해 주세요.
 
-== deepinfra
-
-**API Key** https://deepinfra.com/dash/api_keys
-
 == cerebras
 
 **API Key** https://cloud.cerebras.ai/  ->  API Keys
-
-== Chutes
-
-**API Key** https://chutes.ai/app/api
 
 :::
 
@@ -142,6 +138,10 @@
 == DeepSeek
 
 **API Key** https://platform.deepseek.com/api_keys
+
+== Xiaomi MiMo
+
+**API Key** https://platform.xiaomimimo.com/#/console/api-keys
 
 == 알리바이둔 백련 대형 모델
 
@@ -165,14 +165,6 @@
 == 지푸AI
 
 **API Key** https://bigmodel.cn/usercenter/apikeys
-
-== 영일만물
-
-**API Key** https://platform.lingyiwanwu.com/apikeys
-
-== 실리콘 기반 흐름
-
-**API Key** https://cloud-hk.siliconflow.cn/account/ak
 
 == iFLYTEK 스파크 대형 모델
 
@@ -208,8 +200,17 @@
 
 사용 방법은 [이 글](https://www.newapi.ai/en/docs/apps/luna-translator)을 참조하십시오.
 
+## 특정 오프라인 번역 모델
 
-### 오프라인 배포 모델
+오프라인 번역을 위해 특별히 설계되었거나 특정 시나리오에 맞게 미세 조정된 오프라인 번역 대규모 모델이 존재합니다.
 
-[llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama) 등의 도구를 사용하여 모델 배포 후 주소와 모델을 입력할 수도 있습니다.
+대부분의 모델은 배포 후 **대규모 모델 범용 인터페이스**를 직접 사용하여 호출할 수 있습니다. 그러나 일부 모델은 더 나은 번역 성능을 발휘하기 위해 전용 프롬프트 형식을 사용해야 할 수 있습니다.
 
+이 인터페이스는 이러한 전용 프롬프트 형식이 필요한 모델을 위해 특별히 설계되었습니다. 따라서 이 인터페이스는 사용자 정의 프롬프트 설정을 제공하지 않고, 모델 게시자가 제공하는 프롬프트 형식을 사용합니다.
+
+현재 이 인터페이스는 다음 모델을 지원합니다:
+
+| 저자 | 모델 | 언어 |
+| ---- | ---------- | ---------- | 
+| tencent | Hy-MT2 | 범용 |
+| SakuraLLM | SakuraLLM & GalTransl | 일본어 -> 중국어 |

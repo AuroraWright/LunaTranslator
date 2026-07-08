@@ -112,7 +112,7 @@ def loadmainui(startwithgameuid):
 def checklang():
 
     from myutils.config import globalconfig
-    from language import GetUILanguage
+    from language import GetUILanguage, Languages
     import windows
 
     if "languageuse2" in globalconfig:
@@ -120,6 +120,10 @@ def checklang():
     lang = GetUILanguage(windows.GetLocale())
     globalconfig["languageuse2"] = lang.code
     globalconfig["tgtlang4"] = lang.code
+    if lang == Languages.Chinese:
+        globalconfig["fanyi"]["youdaodict"]["use"] = True
+    else:
+        globalconfig["fanyi"]["google"]["use"] = True
 
 
 def checkintegrity():
@@ -129,11 +133,10 @@ def checkintegrity():
         runtime_for_win10,
         runtime_bit_64,
         GetDllpath,
-        sys_ge_win_10,
         sys_win10_release_supported,
     )
 
-    if sys_ge_win_10 and not sys_win10_release_supported:
+    if runtime_for_win10 and not sys_win10_release_supported:
         return 1, _TR("软件当前版本需要 Windows 10 1803 及以上。请使用软件的其他版本。")
     dll3264 = [
         "NativeUtils.dll",
@@ -154,8 +157,8 @@ def checkintegrity():
 
     dllshared = [
         "LunaHook/" + ("LunaHost32.dll", "LunaHost64.dll")[runtime_bit_64],
-        "shareddllproxy32.exe",
-        "shareddllproxy64.exe",
+        "LunaSubprocess32.exe",
+        "LunaSubprocess64.exe",
         "Magpie/Magpie.Core.exe" if not runtime_for_xp else None,
         "LunaHook/LunaHook32.dll",
         "LunaHook/LunaHook64.dll",
@@ -197,23 +200,14 @@ def switchdir():
 
 
 def _parseargs():
-    import argparse
     import gobject
     from urllib.parse import urlsplit
     from traceback import print_exc
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--URLProtocol", required=False)
-    parser.add_argument("--Exec", required=False)
-    parser.add_argument("--test", required=False, action="store_true")
-    parser.add_argument("--userconfig", required=False)
     try:
-        args = parser.parse_args()
         URLProtocol: str = args.URLProtocol
         Exec: str = args.Exec
         gobject.istest = args.test
-        userconfig = args.userconfig
-        gobject.thisuserconfig = userconfig if userconfig else gobject.thisuserconfig
         if URLProtocol:
             print(URLProtocol)
             result = urlsplit(URLProtocol)
@@ -233,14 +227,6 @@ def _parseargs():
             return 1, Exec
     except Exception:
         print_exc()
-
-
-def parseargs():
-    import gobject
-
-    _ = _parseargs()
-    sys.path.insert(1, gobject.thisuserconfig)
-    return _
 
 
 def parsellmapi(result):
@@ -283,7 +269,7 @@ def parsellmapi(result):
     copyllmapi("chatgpt-3rd-party", args["name"], args["uid"], args=args, use=True)
 
 
-def ifhasllmapi(_):
+def checkargs():
     import gobject
     import NativeUtils
     import windows
@@ -293,6 +279,7 @@ def ifhasllmapi(_):
     gobject.isRunningMutex = NativeUtils.SimpleCreateMutex("LUNA_IS_RUNNING_MUTEX")
     startwithgameuid = None
     error = None
+    _ = _parseargs()
     if _:
         if _[0] == 1:
             startwithgameuid = _[1]
@@ -308,18 +295,40 @@ def ifhasllmapi(_):
     return startwithgameuid, error
 
 
+def create_argparser():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--URLProtocol", required=False)
+    parser.add_argument("--Exec", required=False)
+    parser.add_argument("--test", required=False, action="store_true")
+    parser.add_argument("--userconfig", required=False)
+    args = parser.parse_args()
+    return args
+
+
+def check_userdir(args):
+    import gobject
+
+    userconfig = args.userconfig
+    gobject.thisuserconfig = userconfig if userconfig else gobject.thisuserconfig
+    sys.path.insert(1, gobject.thisuserconfig)
+
+
 if __name__ == "__main__":
     switchdir()
-    args = parseargs()
+    args = create_argparser()
+    check_userdir(args)
+
     checklang()
-    startwithgameuid, error = ifhasllmapi(args)
     error2 = checkintegrity()
-    prepareqtenv(error or error2)
+    prepareqtenv(error2)
     from qtsymbols import QApplication
 
     app = QApplication(sys.argv)
     # app.setQuitOnLastWindowClosed(False)
-    mayberror(error)
     mayberror(error2)
+    startwithgameuid, error = checkargs()
+    mayberror(error)
     loadmainui(startwithgameuid)
     app.exit(app.exec())

@@ -1,11 +1,7 @@
 {
+    "showna": true,
     "llama.cpp": {},
     "screenshot_savepath": "",
-    "screenshot_method": {
-        "gdi": true,
-        "winrt": true,
-        "magpie": true
-    },
     "history": {
         "autosave": false,
         "showorigin": true,
@@ -16,24 +12,10 @@
         "usewebview2": true,
         "webviewLoadExt": true
     },
-    "webviewLoadExt": true,
-    "webviewLoadExt_cishu": true,
     "multihookmergeby": "\n",
-    "autoopenselecttext": true,
-    "displayrank": 0,
-    "showrangeafterrangeselect": true,
-    "autodisappear": false,
-    "autodisappear_which": 0,
-    "WindowBackdrop": 3,
-    "WindowEffect": 0,
-    "WindowEffect_shadow": true,
-    "read_raw": true,
-    "global_list_opened": true,
-    "read_trans": false,
     "disappear_delay": 5,
     "network": 1,
     "useextrahtml": false,
-    "ocrselectalpha": 0.3,
     "foldstatus": {
         "ocr": {
             "other": false
@@ -303,13 +285,9 @@
     "buttonsize": 25,
     "buttonsize2": 18,
     "language_setted_2.4.5": false,
-    "postprocess_rank": [],
-    "text_area_background": false,
-    "text_area_background_alpha": 50,
-    "text_area_background_color": "#ff0000",
-    "text_area_background_r": 5,
-    "text_area_background_w": 5,
-    "text_area_background_h": 5,
+    "postprocess_rank": [
+        "fulltohalf"
+    ],
     "fix_translate_rank": false,
     "fix_translate_rank_rank": [],
     "cishuvisrank": [],
@@ -407,7 +385,6 @@
     "ocr_stable_sim2_v2": 0.95,
     "ocr_diff_sim_v2": 0.95,
     "ocr_text_diff": 3,
-    "autorun": true,
     "fontsize": 16.0,
     "fontsizeori": 16.0,
     "localeswitchmethod": 0,
@@ -428,28 +405,16 @@
     "fonttype": "",
     "fonttype2": "",
     "hira_vis_type": 0,
-    "word_hover_show_word_info": false,
-    "word_hover_action_usewb2": false,
     "min_auto_height": 0,
     "iskongxin": true,
-    "isshowrawtext": true,
     "kanarate": 0.5,
     "rawtextcolor": "#000000",
     "backcolor": "#ffaaff",
-    "transparent": 10,
-    "transparent_EX": true,
     "backcolor_tool": "#ffaaff",
     "transparent_tool": 50,
-    "isshowhira": true,
     "hidetools": false,
     "locktools": true,
     "locktoolsEx": false,
-    "showfanyisource": false,
-    "showfanyi": true,
-    "autoread": false,
-    "ttsnointerrupt": false,
-    "ttsautoforward": false,
-    "show_fenci": true,
     "jiamingcolor": "black",
     "ankiconnect": {
         "host": "127.0.0.1",
@@ -479,33 +444,34 @@
     "setting_geo_2": [
         100,
         100,
-        800,
+        1000,
         600
     ],
     "global_namemap2": [],
-    "settingfontsize": 12,
-    "settingfontbold": false,
     "buttoncolor": "#2e2eff",
     "buttoncolor_1": "#ff03f2",
     "ocrrangecolor": "#000000",
-    "ocrrangewidth": 2,
-    "useproxy": true,
-    "usesysproxy": true,
     "tagNameRemap": {},
     "dialog_savegame_layout": {
-        "borderColor": "#00000000",
+        "layout": "updown",
+        "textColor": "#000000",
+        "textbackColor": "#ffffffff",
+        "borderColor": "#10000000",
         "borderColor2": "#ff000000",
-        "borderW": 2,
+        "borderW": 1,
         "itemw": 130,
         "itemh": 190,
         "margin": 6,
         "margin2": 6,
         "radius": 10,
         "radius2": 10,
-        "textH": 0,
+        "textH2": 1,
         "backcolor2": "#40ffffff",
         "onselectcolor2": "#40007fff",
         "onfilenoexistscolor2": "#40acacac",
+        "backcolor3": "#40ffffff",
+        "onselectcolor3": "#40007fff",
+        "onfilenoexistscolor3": "#40acacac",
         "listitemheight": 30,
         "listitemwidth_2": [
             300,
@@ -521,12 +487,9 @@
         400
     ],
     "hovercolor": "#80000000",
-    "anki_Orientation_V": true,
-    "gamemanageruseversion": 0,
-    "gamemanager_integrated_internal_layout": 2,
-    "profiles_index": 0,
     "toolbutton": {
         "rank2": [
+            "luna",
             "move",
             "retrans",
             "automodebutton",
@@ -539,8 +502,8 @@
             "noundict",
             "fix",
             "langdu",
-            "mousetransbutton",
             "backtransbutton",
+            "mousetransbutton",
             "locktoolsbutton",
             "gamepad_new",
             "selectgame",
@@ -565,6 +528,12 @@
             "reset_TS_status"
         ],
         "buttons": {
+            "luna": {
+                "use": false,
+                "icon": "luna",
+                "tip": "luna",
+                "align": 0
+            },
             "retrans": {
                 "use": true,
                 "tip": "手动执行",
@@ -820,19 +789,6 @@
         }
     },
     "disappear_delay_tool": 1,
-    "mousetransparent": false,
-    "adaptive_height": true,
-    "top_align": 0,
-    "backtransparent": false,
-    "showtranexception": true,
-    "refresh_on_get_trans": false,
-    "proxy": "127.0.0.1:7890",
-    "showbold": false,
-    "showbold_trans": false,
-    "showShadow": false,
-    "shadowcolor": "blue",
-    "ocr_hori_extend": true,
-    "showcixing_touming": 30,
     "cixingcolor": {
         "形容詞": "aliceblue",
         "形状詞": "antiquewhite",
@@ -883,6 +839,9 @@
             "36": {
                 "name": "读取剪贴板"
             },
+            "disableothers": {
+                "name": "禁用其他全部快捷键"
+            },
             "_1": {
                 "name": "手动执行"
             },
@@ -915,6 +874,9 @@
             },
             "_9": {
                 "name": "锁定工具栏"
+            },
+            "52": {
+                "name": "隐藏工具栏"
             },
             "_10": {
                 "name": "游戏管理"
@@ -1062,12 +1024,13 @@
                 },
                 "API接口地址": {
                     "rank": 0,
-                    "type": "listedit_with_name"
+                    "type": "llm_api_urls"
                 },
                 "SECRET_KEY": {
                     "rank": 1,
                     "name": "API Key",
-                    "type": "textlist"
+                    "type": "textlist",
+                    "issecret": true
                 },
                 "model": {
                     "rank": 2,
@@ -1304,6 +1267,13 @@
         "gtts": {
             "use": false,
             "name": "GoogleTTS"
+        },
+        "chrome": {
+            "use": false,
+            "name": "Chrome speechSynthesis",
+            "args": {
+                "key": ""
+            }
         }
     },
     "hirasetting": {
@@ -1346,10 +1316,6 @@
             "use": true,
             "name": "weblio"
         },
-        "goo": {
-            "use": true,
-            "name": "goo"
-        },
         "chatgptlike": {
             "canGetUrl": false,
             "use": false,
@@ -1361,7 +1327,7 @@
                 "SECRET_KEY": "",
                 "使用自定义promt": false,
                 "自定义promt": "",
-                "Temperature": 0.3,
+                "Temperature": 0,
                 "max_tokens": 4096,
                 "use_max_completion_tokens": false,
                 "top_p": 0.3,
@@ -1370,6 +1336,8 @@
                 "frequency_penalty_use": false,
                 "reasoning_effort": "none",
                 "reasoning_effort_use": false,
+                "thinking.type": "disabled",
+                "thinking.type.use": false,
                 "user_user_prompt_1": "",
                 "use_user_user_prompt": false,
                 "s": "",
@@ -1377,6 +1345,18 @@
                 "customparams": []
             },
             "argstype": {
+                "thinking.type": {
+                    "type": "combo",
+                    "refswitch": "thinking.type.use",
+                    "internal": [
+                        "disabled",
+                        "enabled"
+                    ],
+                    "list": [
+                        "disabled",
+                        "enabled"
+                    ]
+                },
                 "reasoning_effort": {
                     "type": "combo",
                     "refswitch": "reasoning_effort_use",
@@ -1420,12 +1400,13 @@
                 },
                 "API接口地址": {
                     "rank": 0,
-                    "type": "listedit_with_name"
+                    "type": "llm_api_urls"
                 },
                 "SECRET_KEY": {
                     "rank": 1,
                     "name": "API Key",
-                    "type": "textlist"
+                    "type": "textlist",
+                    "issecret": true
                 },
                 "model": {
                     "rank": 2,
@@ -1528,6 +1509,7 @@
     "theme3": "PyQtDarkTheme",
     "useopenlink": false,
     "useopenlinklink1": [
+        "https://www.google.com/search?q={word}",
         "https://jpdb.io/search?q={word}",
         "https://www.weblio.jp/content/{word}"
     ],
@@ -1572,9 +1554,6 @@
             "use": false
         }
     },
-    "verticalocr": 2,
-    "ocrmergelines": true,
-    "ocrmergelines_distance": 0.4,
     "ocr": {
         "selfbuild": {
             "use": false,
@@ -1583,14 +1562,15 @@
         },
         "local": {
             "use": true,
-            "name": "本地OCR",
+            "name": "内置OCR",
             "type": "offline",
             "argstype": "customwidget"
         },
         "SnippingTool": {
             "use": false,
             "name": "SnippingTool",
-            "type": "offline"
+            "type": "offline",
+            "argstype": "customwidget"
         },
         "weixinocr": {
             "use": false,
@@ -1600,7 +1580,8 @@
         "windowsocr": {
             "use": false,
             "name": "WindowsOCR",
-            "type": "offline"
+            "type": "offline",
+            "outdate": true
         },
         "baiduocr_X": {
             "use": false,
@@ -1656,7 +1637,8 @@
         "tesseract5": {
             "use": false,
             "name": "Tesseract5",
-            "type": "offline"
+            "type": "offline",
+            "outdate": true
         },
         "chatgptlike": {
             "use": false,
@@ -1690,7 +1672,7 @@
             "name": "必应"
         },
         "google": {
-            "use": true,
+            "use": false,
             "color": "#ff0000",
             "name": "谷歌"
         },
@@ -1730,7 +1712,7 @@
             "color": "blue",
             "name": "彩云"
         },
-        "deepl_1": {
+        "deepl": {
             "use": false,
             "color": "blue",
             "name": "DeepL",
@@ -1931,10 +1913,9 @@
             "use": false,
             "type": "offline",
             "color": "blue",
-            "name": "Sakura大模型",
+            "name": "特定离线翻译模型",
             "is_gpt_like": true,
-            "useproxy": false,
-            "useEx": "useExfunction"
+            "useproxy": false
         },
         "realtime_edit": {
             "use": false,
@@ -1946,15 +1927,11 @@
     "realtime_edit_target": "realtime_edit",
     "movefollow": true,
     "WordViewTooltipColor": "#c0ffc0ff",
-    "WordViewTooltipDWM": 0,
-    "WordViewTooltipDWM_1": true,
     "WordViewTooltipContentColor": "#c0ffffff",
     "WordViewTooltipHideFocus": true,
     "WordViewTooltipHideLeave": false,
     "WordViewTooltipRadius": 4,
     "WordViewTooltipBorder": 5,
-    "word_hover_DWM": 0,
-    "word_hover_DWM_1": true,
     "word_hover_border_R": 4,
     "word_hover_border": 8,
     "word_hover_bg_color": "#333",
@@ -1965,7 +1942,6 @@
     "maxlength": 10000,
     "srclang4": "auto",
     "tgtlang4": "zh",
-    "showatcenter": true,
     "ocr_auto_method_v2": "period",
     "ocr_interval": 1.5,
     "ocr_trigger_delay": 0,
@@ -1991,18 +1967,10 @@
             "event": 1
         }
     ],
-    "selectable": true,
-    "selectableEx": false,
-    "autoupdate": true,
     "proxies": null,
-    "viewlistpos": 0,
     "wordlabel": [],
     "wordlabel2": [],
-    "getWordFallbackClipboard": true,
-    "verticalhorizontal": false,
     "noundictconfig_ex": [],
     "toppest_translator": null,
-    "use_ocr_preprocess": false,
-    "extraLangs": [],
-    "dragable": true
+    "extraLangs": []
 }

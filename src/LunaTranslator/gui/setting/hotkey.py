@@ -53,13 +53,13 @@ def autoreadswitch(self):
     try:
         self.autoread.clicksignal.emit()
     except:
-        globalconfig["autoread"] = not globalconfig["autoread"]
+        globalconfig["autoread"] = not globalconfig.get("autoread", False)
 
 
 def safeGet():
 
     t = NativeUtils.GetSelectedText()
-    if (t is None) and (globalconfig["getWordFallbackClipboard"]):
+    if (t is None) and (globalconfig.get("getWordFallbackClipboard", True)):
         t = NativeUtils.ClipBoard.text
     if 0:
         QToolTip.showText(QCursor.pos(), _TR("取词失败"), gobject.base.commonstylebase)
@@ -82,7 +82,7 @@ liandianqi_stoped = True
 
 def invoke_liandianqi_or_stop():
     global liandianqi_stoped
-    key = globalconfig.get("liandianqi_vkey", vkcode_map[list(vkcode_map.keys())])
+    key = globalconfig.get("liandianqi_vkey", vkcode_map[list(vkcode_map.keys())[0]])
     if not key:
         return
     interval = globalconfig.get("liandianqi_interval", 1)
@@ -204,7 +204,8 @@ def registrhotkeys(self):
         "_7": lambda: gobject.base.readcurrent(force=True),
         "_7_1": lambda: gobject.base.audioplayer.stop(),
         "_8": lambda: gobject.base.translation_ui.changemousetransparentstate(0),
-        "_9": gobject.base.translation_ui.changetoolslockstate,
+        "_9": lambda: (gobject.base.translation_ui.changetoolslockstate(), gobject.base.translation_ui.enterfunction()),
+        "52": lambda: (globalconfig.__setitem__("hidetools", not globalconfig["hidetools"]), gobject.base.translation_ui.enterfunction()),
         "_10": gobject.base.translation_ui.showsavegame_signal.emit,
         "_11": gobject.base.translation_ui.hotkeyuse_selectprocsignal.emit,
         "_12": lambda: gobject.base.hookselectdialog.showsignal.emit(),
@@ -214,7 +215,7 @@ def registrhotkeys(self):
         "_15": gobject.base.translation_ui.bindcropwindow_signal.emit,
         "_16": gobject.base.translation_ui.showhideuisignal.emit,
         "_17": gobject.base.translation_ui.quitf_signal.emit,
-        "_21": lambda: grabwindow(screenshot=True),
+        "_21": grabwindow,
         "_22": gobject.base.translation_ui.muteprocessignal.emit,
         "41": lambda: gobject.base.translation_ui.fullsgame_signal.emit(False),
         "42": lambda: gobject.base.translation_ui.fullsgame_signal.emit(True),
@@ -248,6 +249,7 @@ def registrhotkeys(self):
         "49": lambda: _ocr_focus_No(),
         "50": safesaveall,
         "51": lambda: gobject.base.translation_ui.changemousetransparentstate(1),
+        "disableothers": functools.partial(__enable, self, exception="disableothers"),
     }
 
     for name in globalconfig["myquickkeys"]:
@@ -262,6 +264,7 @@ hotkeys = [
     [
         "通用",
         [
+            "disableothers",
             "_1",
             "_2",
             "_3",
@@ -271,6 +274,7 @@ hotkeys = [
             "_8",
             "51",
             "_9",
+            "52",
             "38",
             "_16",
             "_17",
@@ -466,7 +470,7 @@ def setTab_quick_lazy(self, ls):
                 "keystring",
                 functools.partial(regist_or_not_key, self, name),
             ),
-            (functools.partial(delaycreatereferlabels, self, name), -1),
+            (functools.partial(delaycreatereferlabels, self, name), 0),
         ]
         if name in hotkeysettings:
             l[1] = (l[1][0], 1)
@@ -482,9 +486,15 @@ def setTab_quick_lazy(self, ls):
     return grids
 
 
-def __enable(self, x):
+def __enable(self, exception=None, *_):
+    if exception == "disableothers":
+        gobject.tempconfig["disableothers"] = not gobject.tempconfig.get(
+            "disableothers", False
+        )
     for quick in globalconfig["quick_setting"]["all"]:
         if quick not in self.bindfunctions:
+            continue
+        if quick == exception:
             continue
         regist_or_not_key(self, quick)
 
@@ -499,7 +509,11 @@ def regist_or_not_key(self, name, _=None):
         return
     keystring = __.get("keystring")
     if (not keystring) or (
-        not (__.get("use") and globalconfig["quick_setting"]["use"])
+        not (
+            __.get("use")
+            and globalconfig["quick_setting"]["use"]
+            and not gobject.tempconfig.get("disableothers", False)
+        )
     ):
         return
 

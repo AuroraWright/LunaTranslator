@@ -62,6 +62,7 @@ namespace
 	Host::HookInsertHandler HookInsert;
 	Host::EmbedCallback embedcallback;
 	Host::I18NQueryCallback i18nQueryCallback;
+	Host::EmuGameInfoCallback OnEmuGameInfo;
 	void RemoveThreads(std::function<bool(ThreadParam)> removeIf)
 	{
 		std::vector<TextThread *> threadsToRemove;
@@ -101,6 +102,11 @@ namespace
 		processRecordsByIds->try_emplace(processId, processId, hostPipe);
 		OnConnect(processId);
 		Host::AddConsoleOutput(FormatString(TR[PROC_CONN], processId));
+		if (Host::enablePCHooks)
+		{
+			processRecordsByIds->at(processId).Send(InsertPCHooksCmd(0));
+			processRecordsByIds->at(processId).Send(InsertPCHooksCmd(1));
+		}
 		BYTE buffer[PIPE_BUFFER_SIZE] = {};
 		DWORD bytesRead;
 		while (ReadFile(hookPipe, buffer, PIPE_BUFFER_SIZE, &bytesRead, nullptr))
@@ -165,10 +171,16 @@ namespace
 				HookInsert(processId, info->addr, info->hookcode);
 			}
 			break;
+			case HOST_NOTIFICATION_EMUINFO:
+			{
+				auto info = (EmuGameInfoNotif *)buffer;
+				OnEmuGameInfo(StringToWideString(info->id), StringToWideString(info->title), StringToWideString(info->version));
+			}
+			break;
 			case HOST_NOTIFICATION_TEXT:
 			{
 				auto info = (HostInfoNotif *)buffer;
-				Host::InfoOutput(info->type, StringToWideString(info->message));
+				Host::InfoOutput(info->type, StringToWideString(info->message, info->codepage).value_or(L""));
 			}
 			break;
 			case HOST_NOTIFICATION_TEXT_W:
@@ -268,8 +280,10 @@ namespace Host
 			   std::optional<HostInfoHandler> hostinfo,
 			   std::optional<HookInsertHandler> hookinsert,
 			   std::optional<EmbedCallback> embed,
-			   std::optional<I18NQueryCallback> _i18nQueryCallback)
+			   std::optional<I18NQueryCallback> _i18nQueryCallback, std::optional<EmuGameInfoCallback> emuGameInfoCallback)
 	{
+		OnEmuGameInfo = [=](auto &&...args)
+		{ IF_HASVAL_DISPATCH(procmutex, emuGameInfoCallback); };
 		OnConnect = [=](auto &&...args)
 		{ IF_HASVAL_DISPATCH(procmutex, Connect); };
 		OnDisconnect = [=](auto &&...args)
@@ -412,9 +426,6 @@ namespace Host
 			case HOSTINFO::Warning:
 			case HOSTINFO::EmuWarning:
 				text = FormatString(L"[%s]", TR[T_WARNING]) + text;
-				break;
-			case HOSTINFO::EmuGameName:
-				text = L"[Game] " + text;
 				break;
 			default:;
 			}

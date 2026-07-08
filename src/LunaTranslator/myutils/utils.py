@@ -13,6 +13,7 @@ from myutils.config import (
     uid2gamepath,
     savehook_new_data,
     findgameuidofpath,
+    findgameuidofemugame,
     getdefaultsavehook,
     gamepath2uid_index,
     defaultglobalconfig,
@@ -311,7 +312,7 @@ def trysearchforid_1(gameuid, searchargs: list, target=None):
             try:
                 vid = targetmod[key].getidbytitle(arg)
             except:
-                print_exc()
+                # print_exc()
                 continue
             if vid:
                 break
@@ -380,7 +381,7 @@ def duplicateconfig(uidold):
     return uid
 
 
-def find_or_create_uid(targetlist, gamepath: str, title=None):
+def find_or_create_uid(targetlist: list, gamepath: str, title=None):
     uids = findgameuidofpath(gamepath, findall=True)
     if len(uids) == 0:
         uid = initanewitem(title)
@@ -397,6 +398,26 @@ def find_or_create_uid(targetlist, gamepath: str, title=None):
         else:
             uid2gamepath[uid] = gamepath
         trysearchforid(uid, [title] + guessmaybetitle(gamepath, title))
+        return uid
+    else:
+        intarget = uids[0]
+        index = len(targetlist)
+        for uid in uids:
+            if uid in targetlist:
+                thisindex = targetlist.index(uid)
+                if thisindex < index:
+                    index = thisindex
+                    intarget = uid
+        return intarget
+
+
+def find_or_create_uid_for_emu(targetlist: list, gameid: str, emuid: str, title=None):
+    uids = findgameuidofemugame(gameid, findall=True)
+    if len(uids) == 0:
+        uid = initanewitem(title)
+        uid2gamepath[uid] = uid2gamepath[emuid]
+        savehook_new_data[uid]["emugameid"] = gameid
+        trysearchforid(uid, [title])
         return uid
     else:
         intarget = uids[0]
@@ -482,7 +503,9 @@ def splittranslatortypes():
 
 
 def splitocrtypes(dic, other=False):
-    offline, online, other = [], [], []
+    offline: "list[str]" = []
+    online: "list[str]" = []
+    other: "list[str]" = []
     for k in dic:
         try:
             {"online": online, "offline": offline, "other": other}[
@@ -677,7 +700,7 @@ class unsupportkey(Exception):
 
 
 def parsekeystringtomodvkcode(keystring: str, modes=False, canonlymod=False):
-    keystring = keystring.upper()
+    keystring = keystring.upper().replace(" ", "_")
     keys = []
     mode = 0
     _modes = []
@@ -912,11 +935,11 @@ class APIType:
             self._value_ = APIType.azure
         elif "qianfan.baidubce.com/v2" in url:
             self._value_ = APIType.qianfan
-        elif url.startswith("https://dashscope.aliyuncs.com/compatible-mode/v1"):
+        elif url.startswith("https://dashscope.aliyuncs.com/compatible-mode"):
             self._value_ = APIType.aliyuncs
         elif url.startswith("https://api.cohere."):
             self._value_ = APIType.cohere
-        elif url.startswith("https://api.mistral.ai/v1"):
+        elif url.startswith("https://api.mistral.ai"):
             self._value_ = APIType.mistral
         else:
             self._value_ = APIType.openai
@@ -1031,10 +1054,14 @@ def common_create_gpt_data(config: dict, message, extrabody):
         data.update(stream=True)
     if config.get("frequency_penalty_use", False):
         data.update(frequency_penalty=config["frequency_penalty"])
+    if config.get("repetition_penalty_use", False):
+        data.update(repetition_penalty=config["repetition_penalty"])
     if config.get("top_p_use", True):
         data.update(top_p=config["top_p"])
     if config.get("reasoning_effort_use", False):
         data.update(reasoning_effort=config["reasoning_effort"])
+    if config.get("thinking.type.use", False):
+        data.update(thinking={"type": config.get("thinking.type", "disabled")})
     if extrabody:
         data.update(extrabody)
     return data
@@ -1051,7 +1078,6 @@ def common_create_gemini_request(
     apitype: APIType,
 ):
     gen_config = {
-        "stopSequences": [" \n"],
         "temperature": config["Temperature"],
         "maxOutputTokens": config["max_tokens"],
         "topP": config["top_p"],
@@ -1097,12 +1123,12 @@ def common_create_gemini_request(
     ]
     # https://discuss.ai.google.dev/t/gemma-3-missing-features-despite-announcement/71692/13
     sys_message = (
-        {"systemInstruction": {"parts": {"text": sysprompt}}} if sysprompt else {}
+        {"systemInstruction": {"parts": [{"text": sysprompt}]}} if sysprompt else {}
     )
     usingstream = config.get("流式输出", False)
     payload = {}
     payload.update(contents=contents)
-    payload.update(safety_settings=safety)
+    payload.update(safetySettings=safety)
     if not model.startswith("gemma-3"):
         payload.update(sys_message)
     payload.update(generationConfig=gen_config)
@@ -1118,13 +1144,38 @@ def common_create_gemini_request(
     return res
 
 
-def common_parse_normal_response_1(response: requests.Response, apitype: APIType):
+def common_parse_gemini_candidate_text(candidate: dict):
+    content: dict = candidate.get("content", {})
+    return "".join(
+        part.get("text", "")
+        for part in content.get("parts", [])
+        if isinstance(part, dict) and not part.get("thought")
+    )
+
+
+def common_parse_gemini_response_text(js: dict):
+    candidates = js.get("candidates", [])
+    if not candidates:
+        return ""
+    return common_parse_gemini_candidate_text(candidates[0])
+
+
+def common_parse_normal_response_1(
+    response: requests.Response,
+    apitype: APIType,
+    getmodelhook: list = None,
+):
     try:
         js = response.json()
+        if getmodelhook is not None and js.get("model"):
+            getmodelhook.append(js.get("model"))
         if apitype == APIType.claude:
             return js["content"][0]["text"], None
         elif apitype == APIType.gemini:
-            return js["candidates"][0]["content"]["parts"][0]["text"], None
+            resp = common_parse_gemini_response_text(js)
+            if not resp:
+                raise Exception()
+            return resp, None
         else:
             message: dict = js["choices"][0]["message"]
             return message["content"], message.get("reasoning")
@@ -1133,9 +1184,13 @@ def common_parse_normal_response_1(response: requests.Response, apitype: APIType
 
 
 def common_parse_normal_response(
-    response: requests.Response, apitype: APIType, hidethinking=False, splitthink=False
+    response: requests.Response,
+    apitype: APIType,
+    hidethinking=False,
+    splitthink=False,
+    getmodelhook: list = None,
 ):
-    resp, reasoning = common_parse_normal_response_1(response, apitype)
+    resp, reasoning = common_parse_normal_response_1(response, apitype, getmodelhook)
     if hidethinking:
         # 有时，会没有<think>只有</think>比如使用prefill的时候。移除第一个</think>之前的内容
         resp = re.sub(r"([\s\S]*)</think>\n*", "", resp)
@@ -1162,7 +1217,7 @@ class IDParser(HTMLParser):
         self.watch_startpos = False
         HTMLParser.__init__(self)
 
-    def loads(self, html):
+    def loads(self, html: str):
         self.html = html
         self.feed(html)
         self.close()
@@ -1224,19 +1279,19 @@ def get_element_by(attr, attrv, html):
 
 
 def __getimageformatlist():
+    def __movefirst(v, l: list):
+        l.remove(v)
+        l.insert(0, v)
+
     _ = sorted([_.data().decode() for _ in QImageWriter.supportedImageFormats()])
     if "png" in _:
-        _.remove("png")
-        _.insert(0, "png")
+        __movefirst("png", _)
     if "jpeg" in _:
-        _.remove("jpeg")
-        _.insert(0, "jpeg")
+        __movefirst("jpeg", _)
     if "jpg" in _:
-        _.remove("jpg")
-        _.insert(0, "jpg")
+        __movefirst("jpg", _)
     if "webp" in _:
-        _.remove("webp")
-        _.insert(0, "webp")
+        __movefirst("webp", _)
     return _
 
 

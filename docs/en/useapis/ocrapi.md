@@ -28,10 +28,6 @@ https://cloud.tencent.com/document/product/866/33526
 
 https://cloud.tencent.com/document/product/551/17232
 
-== Youdao Dictionary
-
-https://www.patreon.com/posts/high-precision-133319068
-
 == Youdao
 
 https://ai.youdao.com/doc.s#guide
@@ -60,14 +56,24 @@ Same as [Translation](/en/guochandamoxing.html)
 
 ## Offline OCR {#anchor-offline}
 
-::: tabs
+### Built-in OCR {#anchor-localocr}
 
-== Local OCR
+The built-in **PP-OCRv5_mobile** (lightweight recognition model for Chinese, Japanese, and English) is already included. If you need to recognize other languages or want to use other models, you need to download the models in the settings and configure them for use.
 
-The built-in system includes lightweight recognition models for Chinese, Japanese, and English. If you need to recognize other languages, you can download the corresponding language models from the `Resource Download` section.
+![img](https://image.lunatranslator.org/en/localocr.png)
 
+The settings also provide some high-precision models, such as PP-OCRv6_medium and PP-OCRv5_server, which can achieve extremely high recognition accuracy, but the recognition speed is relatively slower.
 
-`Resource Downloads` also provide high-precision models for Chinese, Japanese, and English, which can achieve extremely high recognition accuracy, but the recognition speed is relatively slow.
+| Model | Detection Module Hmean(%) | Recognition Module Avg Accuracy(%) | Supported Languages | Size(MB) |
+| - | - | - | - | - |
+| PP-OCRv6_small | 84.1 | 81.3 | Any | 25.2 |
+| PP-OCRv6_medium | 86.2 | 83.2 | Any | 99.7 |
+| PP-OCRv6_tiny | 80.6 | 73.5 | Any | 5.45 |
+| PP-OCRv5_mobile | 79.0 | 81.29 | Simplified Chinese, Traditional Chinese, English, Japanese | 17.7 |
+| PP-OCRv5_server | 83.8 | 86.38 | Simplified Chinese, Traditional Chinese, English, Japanese | 148 |
+| eslav_PP-OCRv5_mobile | 79.0 | 81.6 | East Slavic languages | 11.2 |
+| korean_PP-OCRv5_mobile | 79.0 | 88.0 | Korean | 12.2 |
+| latin_PP-OCRv5_mobile | 79.0 | 84.7 | Latin-script languages | 11.3 |
 
 To improve the recognition efficiency of high-precision models, the following methods can be adopted:
 
@@ -85,14 +91,17 @@ To improve the recognition efficiency of high-precision models, the following me
 
     ![img](https://image.lunatranslator.org/zh/ov_device.png)
 
+### Other OCR
+
+::: tabs
+
 == SnippingTool
 
 >[!WARNING]
 >Only supports Windows 10 and Windows 11 operating systems.
 
-If you are using the latest version of Windows 11, you can use it directly. 
-
-Otherwise, you need to install this module from `Resource Download` to enable its functionality.
+If you are using the latest version of Windows 11, you can use it directly; otherwise, you need to install this module in Settings to use it.
+![img](https://image.lunatranslator.org/zh/snip.png)
 
 == Manga-OCR
 

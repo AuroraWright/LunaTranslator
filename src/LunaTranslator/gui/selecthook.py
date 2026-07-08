@@ -12,7 +12,7 @@ from myutils.config import (
 )
 from myutils.utils import get_time_stamp, is_ascii_control
 from gui.gamemanager.dialog import dialog_setting_game
-from textio.textsource.texthook import texthook
+from textio.textsource.texthook import texthook, HOSTINFO
 from gui.usefulwidget import (
     closeashidewindow,
     getsimplecombobox,
@@ -21,6 +21,7 @@ from gui.usefulwidget import (
     getsimpleswitch,
     getsimplepatheditor,
     FocusSpin,
+    getIconButton,
     FocusCombo,
     TableViewW,
 )
@@ -36,14 +37,6 @@ from gui.dynalang import (
     LTabWidget,
     LCheckBox,
 )
-
-
-class HOSTINFO:
-    Console = 0
-    Warning = 1
-    EmuWarning = 2
-    EmuGameName = 3
-    EmuConnected = 4
 
 
 def getformlayoutw(w=None, cls=LFormLayout, hide=False):
@@ -675,14 +668,13 @@ class hookselect(closeashidewindow):
 
         self.userhook = QLineEdit()
         self.searchtextlayout.addWidget(self.userhook)
-        userhookinsert = LPushButton("插入特殊码")
-        userhookinsert.clicked.connect(self.inserthook)
+        self.userhook.returnPressed.connect(self.inserthook)
+        userhookinsert = getIconButton(icon='fa.plus', callback=self.inserthook)
         self.searchtextlayout.addWidget(userhookinsert)
 
         self.searchtextlayout.addWidget(D_getdoclink("hooksettings.html#特殊码格式")())
 
-        self.userhookfind = LPushButton("搜索特殊码")
-        self.userhookfind.clicked.connect(self.findhook)
+        self.userhookfind = getIconButton(icon='fa.search', callback=self.findhook)
         self.searchtextlayout.addWidget(self.userhookfind)
         self.searchtextlayout.addWidget(__)
 
@@ -882,8 +874,19 @@ class hookselect(closeashidewindow):
         if globalconfig["sourcestatus2"]["texthook"]["use"] == False:
             return
         if self.firsttimex:
-            self.firsttimex = False
-            QMessageBox.warning(self, _TR("警告"), _TR("该功能可能会导致游戏崩溃！"))
+            ret = QMessageBox.question(
+                self,
+                _TR("警告"),
+                _TR(
+                    "该功能可能会导致游戏崩溃！\n如果遇到不支持的游戏，建议把游戏提交给我适配，而不是自己尝试搜索。\n仍要继续尝试自己搜索吗？"
+                ),
+                defaultButton=QMessageBox.StandardButton.No,
+            )
+            if ret == QMessageBox.StandardButton.Yes:
+                self.firsttimex = False
+            elif ret == QMessageBox.StandardButton.No:
+                return os.startfile(dynamiclink("Resource/game_support"))
+
         if not self.searchhookparam:
             self.searchhookparam = searchhookparam(self)
         self.searchhookparam.show()
@@ -1006,9 +1009,10 @@ class hookselect(closeashidewindow):
                 iserror=False,
                 iswarning=True,
             )
-        elif info == HOSTINFO.EmuGameName:
-            gobject.base.displayinfomessage(sentence, "<msg_info_refresh>")
         elif info == HOSTINFO.EmuConnected:
+            sentence = _TR(
+                "检测到模拟器: {}\n请在模拟器加载游戏之前，先让翻译器HOOK模拟器，否则将无法识别模拟器内加载的游戏"
+            ).format(sentence)
             gobject.base.translation_ui.showMarkDownSig.emit(
                 "{}\n[{}]({})".format(
                     sentence,

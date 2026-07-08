@@ -34,7 +34,6 @@ import gobject, qtawesome, importlib
 from gui.dynalang import LFormLayout, LDialog, LAction, LLabel
 from myutils.ocrutil import ocr_end, ocr_init, ocr_run
 from myutils.wrapper import threader, Singleton
-from gui.setting.about import offlinelinks
 from ocrengines.baseocrclass import OCRResultParsed
 
 
@@ -146,7 +145,7 @@ def safeloadfunction(p, args, file, func, name):
 
 
 def checkclickable(name: ClickableLabel):
-    name.setClickable(globalconfig["useproxy"])
+    name.setClickable(globalconfig.get("useproxy", True))
 
 
 def renameapi(qlabel: QLabel, apiuid):
@@ -171,6 +170,9 @@ def getrenameablellabel(uid):
     name.clicked.connect(fn)
     name.beforeEnter.connect(functools.partial(checkclickable, name))
     return name
+
+
+savelenx = 0
 
 
 def initgridsources(self, names):
@@ -242,6 +244,12 @@ def initgridsources(self, names):
     if len(line):
         grids_source.append(line)
     check_grid_append(grids_source)
+
+    global savelenx
+    if len(grids_source) >= 2:
+        savelenx = savelenx if savelenx else len(grids_source[0])
+    elif len(grids_source) == 1:
+        grids_source[0] += [""] * (savelenx - len(grids_source[0]))
 
     return grids_source
 
@@ -418,10 +426,9 @@ class showocrimage(saveposwindow):
 
 def internal(self):
     offline, online, other = splitocrtypes(globalconfig["ocr"], other=True)
+    outdate = [_ for _ in offline if globalconfig["ocr"][_].get("outdate", False)]
+    offline = [_ for _ in offline if _ not in outdate]
     offgrids = initgridsources(self, offline)
-    offgrids += [
-        [(functools.partial(offlinelinks, "ocr"), 0)],
-    ]
     engines = [
         [
             dict(
@@ -440,12 +447,30 @@ def internal(self):
             )
         ],
         [
-            functools.partial(
-                createfoldgrid,
-                initgridsources(self, other),
-                "其他",
-                d=globalconfig["foldstatus"]["ocr"],
-                k="other",
+            (
+                functools.partial(
+                    createfoldgrid,
+                    [
+                        [
+                            dict(
+                                type="grid",
+                                title="其他",
+                                grid=initgridsources(self, other),
+                            )
+                        ],
+                        [
+                            dict(
+                                type="grid",
+                                title="过时的",
+                                grid=initgridsources(self, outdate),
+                            )
+                        ],
+                    ],
+                    "其他",
+                    d=globalconfig["foldstatus"]["ocr"],
+                    k="other",
+                ),
+                -1,
             )
         ],
         [
@@ -480,14 +505,14 @@ def internal(self):
         [
             "识别方向",
             D_getsimplecombobox(
-                ["横向", "竖向", "自适应"], globalconfig, "verticalocr"
+                ["横向", "竖向", "自适应"], globalconfig, "verticalocr", default=2
             ),
             "",
             "合并临近行",
-            D_getsimpleswitch(globalconfig, "ocrmergelines"),
+            D_getsimpleswitch(globalconfig, "ocrmergelines", default=True),
             getsmalllabel("距离"),
             D_getspinbox(
-                0, 3, globalconfig, "ocrmergelines_distance", double=True, step=0.01
+                0, 3, globalconfig, "ocrmergelines_distance", double=True, step=0.01, default=0.4
             ),
             getsmalllabel("x"),
             "",
@@ -533,6 +558,7 @@ def internal(self):
                 globalconfig,
                 "ocrrangewidth",
                 callback=lambda _: gobject.base.textsource.setstyle(),
+                default=2,
             ),
             "",
             "",
@@ -540,7 +566,7 @@ def internal(self):
         ],
         [
             "选取OCR范围后显示范围框",
-            D_getsimpleswitch(globalconfig, "showrangeafterrangeselect"),
+            D_getsimpleswitch(globalconfig, "showrangeafterrangeselect", default=True),
         ],
     ]
     allothers = [

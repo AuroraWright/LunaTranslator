@@ -28,10 +28,6 @@ https://cloud.tencent.com/document/product/866/33526
 
 https://cloud.tencent.com/document/product/551/17232
 
-== Từ điển Youdao
-
-https://www.patreon.com/posts/high-precision-133319068
-
 == Youdao
 
 https://ai.youdao.com/doc.s#guide
@@ -60,14 +56,24 @@ Giống như [Dịch thuật](/en/guochandamoxing.html)
 
 ## OCR Ngoại tuyến {#anchor-offline}
 
-::: tabs
+### OCR tích hợp {#anchor-localocr}
 
-== Local OCR
+Đã bao gồm sẵn **PP-OCRv5_mobile** (mô hình nhận dạng nhẹ cho tiếng Trung, Nhật và Anh). Nếu cần nhận dạng ngôn ngữ khác hoặc muốn sử dụng mô hình khác, bạn cần tải xuống mô hình trong phần cài đặt và thiết lập sử dụng.
 
-Mô hình nhận dạng nhẹ tích hợp sẵn bao gồm tiếng Trung, tiếng Nhật và tiếng Anh. Nếu bạn cần nhận dạng ngôn ngữ khác, vui lòng tải thêm mô hình ngôn ngữ tương ứng trong mục `Tải tài nguyên`.  
+![img](https://image.lunatranslator.org/en/localocr.png)
 
+Phần cài đặt cũng cung cấp một số mô hình độ chính xác cao, ví dụ (PP-OCRv6_medium, PP-OCRv5_server), có thể đạt độ chính xác nhận dạng cực cao, nhưng tốc độ nhận dạng tương đối chậm hơn.
 
-`Tải xuống tài nguyên` cũng cung cấp các mô hình độ chính xác cao cho tiếng Trung, tiếng Nhật và tiếng Anh, có thể đạt độ nhận diện cực kỳ chính xác, nhưng tốc độ nhận diện tương đối chậm.
+| Mô hình | Mô-đun phát hiện Hmean(%) | Mô-đun nhận dạng Avg Accuracy(%) | Ngôn ngữ hỗ trợ | Dung lượng(MB) |
+| - | - | - | - | - |
+| PP-OCRv6_small | 84.1 | 81.3 | Bất kỳ | 25.2 |
+| PP-OCRv6_medium | 86.2 | 83.2 | Bất kỳ | 99.7 |
+| PP-OCRv6_tiny | 80.6 | 73.5 | Bất kỳ | 5.45 |
+| PP-OCRv5_mobile | 79.0 | 81.29 | Tiếng Trung Giản thể, Tiếng Trung Phồn thể, Tiếng Anh, Tiếng Nhật | 17.7 |
+| PP-OCRv5_server | 83.8 | 86.38 | Tiếng Trung Giản thể, Tiếng Trung Phồn thể, Tiếng Anh, Tiếng Nhật | 148 |
+| eslav_PP-OCRv5_mobile | 79.0 | 81.6 | Ngôn ngữ Đông Slav | 11.2 |
+| korean_PP-OCRv5_mobile | 79.0 | 88.0 | Tiếng Hàn | 12.2 |
+| latin_PP-OCRv5_mobile | 79.0 | 84.7 | Ngôn ngữ sử dụng bảng chữ cái Latinh | 11.3 |
 
 Để cải thiện hiệu suất nhận diện của các mô hình độ chính xác cao, có thể áp dụng các biện pháp sau:
 
@@ -85,14 +91,17 @@ Mô hình nhận dạng nhẹ tích hợp sẵn bao gồm tiếng Trung, tiếng
 
     ![img](https://image.lunatranslator.org/zh/ov_device.png)
 
+### OCR khác
+
+::: tabs
+
 == SnippingTool
 
 >[!WARNING]
 >Chỉ hỗ trợ hệ điều hành Windows 10 và Windows 11.
 
-Nếu bạn đang sử dụng phiên bản mới nhất của Windows 11, bạn có thể sử dụng trực tiếp.
-
-Nếu không, bạn cần cài đặt mô-đun này từ `Tải xuống Tài nguyên` để kích hoạt chức năng của nó.
+Nếu bạn đang sử dụng phiên bản Windows 11 mới nhất thì có thể sử dụng trực tiếp, nếu không thì cần cài đặt mô-đun này trong phần Cài đặt để sử dụng.
+![img](https://image.lunatranslator.org/zh/snip.png)
 
 == Manga-OCR
 

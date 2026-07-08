@@ -40,10 +40,22 @@ namespace Util
   DWORD FindImportEntry(DWORD hModule, DWORD fun);
 #endif
 
-  bool CheckFileEx(LPCWSTR name, bool if_exits_also_ok = true);
-  bool CheckFile(LPCWSTR name);
+  bool CheckFile(LPCWSTR name, bool if_exits_also_ok = false);
+
+  inline bool CheckFileAll(std::initializer_list<LPCWSTR> _, bool if_exits_also_ok = false)
+  {
+    return std::all_of(_.begin(), _.end(), [if_exits_also_ok](LPCWSTR s)
+                       { return CheckFile(s, if_exits_also_ok); });
+  }
+
+  inline bool CheckFileAny(std::initializer_list<LPCWSTR> _, bool if_exits_also_ok = false)
+  {
+    return std::any_of(_.begin(), _.end(), [if_exits_also_ok](LPCWSTR s)
+                       { return CheckFile(s, if_exits_also_ok); });
+  }
 
   bool SearchResourceString(LPCWSTR str, HMODULE hModule = NULL);
+  bool SearchStringFileInfo(LPCWSTR str, HMODULE hModule = NULL);
 
   std::pair<uintptr_t, uintptr_t> QueryModuleLimits(HMODULE module, uintptr_t addition = 0x1000, DWORD protect = PAGE_EXECUTE);
   std::vector<uintptr_t> SearchMemory(const void *bytes, short length, DWORD protect = PAGE_EXECUTE, uintptr_t minAddr = 0, uintptr_t maxAddr = -1ULL);

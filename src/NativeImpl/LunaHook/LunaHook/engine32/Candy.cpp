@@ -110,12 +110,10 @@ namespace
             hp.address = j;
             hp.offset = regoffset(edx);
             hp.type = USING_STRING;
-            ConsoleOutput("INSERT SystemC#1");
 
             // RegisterEngineType(ENGINE_CANDY);
             return NewHook(hp, "SystemC");
           }
-    ConsoleOutput("CandyHook1: failed");
     return false;
   }
 
@@ -219,13 +217,11 @@ namespace
         0x75};
     for (auto addr : Util::SearchMemory(bytes, sizeof(bytes), PAGE_EXECUTE))
     {
-      ConsoleOutput("%x", addr);
       if ((*(BYTE *)(addr - 1) == 0x3c) || ((*(BYTE *)(addr - 2) == 0x83) && (*(BYTE *)(addr - 1) == 0xf9)))
       {
         addr = MemDbg::findEnclosingAlignedFunction(addr);
         if (!addr)
           continue;
-        ConsoleOutput("!%x", addr);
         HookParam hp;
         hp.type = USING_STRING;
         if (*(BYTE *)addr == 0x55)
@@ -270,7 +266,6 @@ namespace
     hp.address = addr + 1;
     hp.offset = stackoffset(4);
     hp.type = USING_STRING | CODEC_UTF16;
-    ConsoleOutput("INSERT SystemC#3");
 
     return NewHook(hp, "SystemC#3");
   }
@@ -349,10 +344,32 @@ bool WillowSoft::attach_function()
     return false;
 
   HookParam hp;
-  hp.type = USING_STRING;
-  hp.offset = stackoffset(2);
-  hp.type |= DATA_INDIRECT;
-  hp.index = 0;
+  hp.type = USING_STRING | FULL_STRING;
+  hp.text_fun = [](hook_context *context, HookParam *hp, TextBuffer *buffer, uintptr_t *split)
+  {
+    // 裸執事
+    unsigned int src = context->stack[2];
+    if (hp->user_value == 0)
+      if (IsBadReadPtr(*(char **)src, 0x100))
+        hp->user_value = 1;
+      else
+        hp->user_value = 2;
+
+    buffer->from(hp->user_value == 2 ? *(char **)src : (char *)src);
+  };
+  hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
+  {
+    auto s = buffer->strA();
+    if (all_ascii(s))
+      return buffer->clear();
+
+    static std::string last;
+    if (last == s)
+      return buffer->clear();
+    last = s;
+    s = re::sub(s, R"((\x81\x40)*[\n\r](\x81\x40)*)");
+    buffer->from(s);
+  };
   hp.address = addr;
   return NewHook(hp, "WillowSoft");
 }

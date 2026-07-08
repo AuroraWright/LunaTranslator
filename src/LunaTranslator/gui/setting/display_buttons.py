@@ -16,7 +16,7 @@ from gui.usefulwidget import (
     D_getcolorbutton,
     makegrid,
 )
-from gui.dynalang import LDialog
+from gui.dynalang import LDialog, LLabel
 from gui.setting.display_ui import toolcolorchange
 
 
@@ -43,8 +43,11 @@ class dialog_selecticon(LDialog):
         lineEdit = QLineEdit(self)
         lineEdit.setText(self.curr)
         lineEdit.textChanged.connect(self.cb)
+        hb = QHBoxLayout()
+        hb.addWidget(LLabel("图标_|_字符_|_图片路径_|_luna"))
+        hb.addWidget(lineEdit)
         vbox = QVBoxLayout(self)
-        vbox.addWidget(lineEdit)
+        vbox.addLayout(hb)
         layout = QGridLayout()
         vbox.addLayout(layout)
         for i, name in enumerate(js):
@@ -266,10 +269,13 @@ def createbuttonwidget(self, lay: QLayout):
         else:
             l.append("")
         l.append(getsmalllabel())
-        t = globalconfig["toolbutton"]["buttons"][k]["tip"]
+        t = globalconfig["toolbutton"]["buttons"][k].get("tip", "")
         if "belong" in globalconfig["toolbutton"]["buttons"][k]:
-            t += "_(仅_{})".format(
-                " ".join(globalconfig["toolbutton"]["buttons"][k]["belong"])
+            t += "_(仅{}模式下可用)".format(
+                ",".join(
+                    {"texthook": "HOOK", "ocr": "OCR"}.get(_, "?")
+                    for _ in globalconfig["toolbutton"]["buttons"][k]["belong"]
+                )
             )
         l.append(D_getdoclink("alltoolbuttons.html#anchor-" + k))
         l.append(t)

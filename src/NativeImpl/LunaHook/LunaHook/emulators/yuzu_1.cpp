@@ -112,6 +112,11 @@ namespace
         }
         buffer->from(s);
     }
+    void T0100B1F0123B6000(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        buffer->from((wchar_t *)YUZU::emu_arg(context)[0x1]);
+        *split = YUZU::emu_arg(context)[0x4];
+    }
     void T001005BB019EC0000(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
     {
         if ((WORD)YUZU::emu_arg(context)[0x6] == 0)
@@ -425,6 +430,7 @@ namespace
     void F0100EA001A626000(TextBuffer *buffer, HookParam *hp)
     {
         auto s = utf32_to_utf16(buffer->viewU());
+        s = re::sub(s, L"　*\n　*");
         if (s == L"　　")
         {
             return buffer->clear();
@@ -501,6 +507,18 @@ namespace
         auto s = buffer->strW();
         s = re::sub(s, LR"([\r\n]+)");
         buffer->from(s);
+    }
+    template <int i>
+    void F0100B6501FE4C000_1(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strW();
+        static std::wstring last;
+        if (startWith(s, last))
+        {
+            buffer->from(s.substr(last.size()));
+        }
+        last = s;
+        F0100B6501FE4C000(buffer, hp);
     }
     void F0100BDD01AAE4000(TextBuffer *buffer, HookParam *hp)
     {
@@ -2303,13 +2321,26 @@ namespace
         s = re::sub(s, "<[^>]+>|\\[[^\\]]+\\]");
         buffer->from(s);
     }
-
+    void F01007ED02424E000(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = strReplace(s, "@");
+        s = strReplace(s, u8"❝", "\"");
+        s = strReplace(s, u8"❞", "\"");
+        s = strReplace(s, u8"❛", "'");
+        s = strReplace(s, u8"❜", "'");
+        buffer->from(s);
+    }
     void F010096000CA38000(TextBuffer *buffer, HookParam *hp)
     {
-
         auto s = buffer->strW();
-        s = re::sub(s, LR"(\$\w{1,2})");
-        s = re::sub(s, LR"(\$\[|\$\/.+?])");
+        s = re::sub(s, LR"(\$[a-zA-Z0-9]{1,2})");
+        s = strReplace(s, L"@");
+        s = strReplace(s, L"❝", L"\"");
+        s = strReplace(s, L"❞", L"\"");
+        s = strReplace(s, L"❛", L"'");
+        s = strReplace(s, L"❜", L"'");
+        s = re::sub(s, LR"(\$\[|\$\/.+?\])");
         buffer->from(s);
     }
     void F0100EC001DE7E000(TextBuffer *buffer, HookParam *hp)
@@ -2812,6 +2843,63 @@ namespace
         s = re::sub(s, L"　*<br>　*");
         buffer->from(s);
     }
+    void F0100A3D026610000(TextBuffer *buffer, HookParam *hp)
+    {
+        F010036F023A16000(buffer, hp);
+        auto s = buffer->strW();
+        strReplace(s, L"<lastname>", L"夜久");
+        buffer->from(s);
+    }
+    DECLARE_FUNCTION(NF010056B024B92000, const wchar_t *_);
+    void F010056B024B92000(TextBuffer *buffer, HookParam *hpx)
+    {
+        auto s = buffer->strW();
+        s = re::sub(s, L"<ruby=(.*?)>(.*?)</ruby>", L"$2");
+        s = re::sub(s, L"<(.*?)>");
+        if (s.find(L'「') == s.npos &&
+            s.find(L'」') == s.npos &&
+            s.find(L'、') == s.npos &&
+            s.find(L'。') == s.npos &&
+            s.find(L'（') == s.npos &&
+            s.find(L'）') == s.npos &&
+            s.find(L"\\n") == s.npos)
+        {
+            HookParam hp;
+            hp.address = (uintptr_t)NF010056B024B92000;
+            hp.offset = GETARG(1);
+            hp.type = CODEC_UTF16 | USING_STRING | NO_CONTEXT | FULL_STRING;
+            static auto _ = NewHook(hp, hpx->name);
+            NF010056B024B92000(s.c_str());
+            return buffer->clear();
+        }
+        s = re::sub(s, L"　*\n　*");
+        static std::wstring last;
+        if (s == last)
+            return buffer->clear();
+        last = s;
+        buffer->from(s);
+    }
+    std::wstring F0100D640254B0000_name;
+    void F0100D640254B0000_0(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strW();
+        if (s == L"narration")
+            return buffer->clear();
+        F0100D640254B0000_name = re::sub(s, L"(.*)>(.*?)<(.*)", L"$2");
+        buffer->clear();
+    }
+    void F0100D640254B0000_1(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strW();
+        s = re::sub(s, L"<ruby=(.*?)>(.*?)</ruby>", L"$2");
+        s = re::sub(s, L"<(.*?)>");
+        if (F0100D640254B0000_name.size())
+        {
+            s = L"【" + F0100D640254B0000_name + L"】" + s;
+            F0100D640254B0000_name.clear();
+        }
+        buffer->from(s);
+    }
 }
 struct emfuncinfoX
 {
@@ -2819,11 +2907,33 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // Dies irae -Amantes amentes-
+    {0x262C44, {FULL_STRING, 3, 0, 0, 0, 0x0100BB900B5B4000ull, nullptr}}, // 1.0.0 & 1.0.1
+    // 戦国†恋姫EX～COLLECTION～
+    {0x804D7FD0, {FULL_STRING | CODEC_UTF8, 0, 0, 0, F01003080177CA000, 0x010079F01E36A000ull, "1.0.0"}},
+    {0x804DA920, {FULL_STRING | CODEC_UTF8, 0, 0, 0, F01003080177CA000, 0x010079F01E36A000ull, "1.0.2"}},
+    // CARTAGRA
+    {0x801A24E0, {FULL_STRING | CODEC_UTF16, 8, 0, 0, F010096000CA38000, 0x01007ED02424E000ull, "1.0.0"}},
+    {0x8010EFB8, {FULL_STRING | CODEC_UTF8, 9, 0, 0, F01007ED02424E000, 0x01007ED02424E000ull, "1.0.0"}},
+    // Starry☆Sky～Spring Memories～
+    {0x81B951AC, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F0100A3D026610000, 0x0100A3D026610000ull, "1.0.0"}},
+    // 陰キャラブコメ　インシツマシマシ
+    {0x8253DF90, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F0100D640254B0000_1, 0x0100D640254B0000ull, "1.0"}},
+    {0x8253FF54, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F0100D640254B0000_0, 0x0100D640254B0000ull, "1.0"}},
+    // Gakuen Club
+    {0x80128A00, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F010042300C4F6000_1, 0x010052900B8EE000ull, "1.0.0"}},
+    {0x8012962C, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F010042300C4F6000_1, 0x010052900B8EE000ull, "1.1.0"}},
+    // ハンサムロンダリング -the mystic lover-
+    {0x834D665C, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F010056B024B92000, 0x010056B024B92000ull, "1.0.0"}},
+    {0x834D669C, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, F010056B024B92000, 0x010056B024B92000ull, nullptr}}, // 1.1.0 & 1.1.1
     // Glass Heart Princess
     {0x8005D740, {FULL_STRING | CODEC_UTF8, 1, 0, 0, F010081D016E4E000, 0x01002AB02254C000ull, "1.0.0"}},
     // この素晴らしい世界に祝福を！　この欲望の衣装に寵愛を！
     {0x803D9698, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, f0100D2A02101C000, 0x010016C011AAA000ull, "1.0.0"}},
     // UN:LOGICAL
+    {0x81BE9F48, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, f0100D2A02101C000, 0x010068501FF9A000ull, "1.0.2"}},
+    {0x818ED370, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, f0100D2A02101C000, 0x010068501FF9A000ull, "1.0.2"}},
+    {0x81BE889C, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, 0, 0x010068501FF9A000ull, "1.0.2"}}, // name
     {0x818EE690, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, f0100D2A02101C000, 0x010068501FF9A000ull, "1.0.0"}},
     {0x81BEC158, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, f0100D2A02101C000, 0x010068501FF9A000ull, "1.0.0"}},
     {0x81BECDD4, {FULL_STRING | CODEC_UTF16, 0, 0x14, 0, 0, 0x010068501FF9A000ull, "1.0.0"}}, // name
@@ -3043,6 +3153,13 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // マツリカの炯-kEi- 天命胤異伝
     {0x8017ad54, {CODEC_UTF32, 1, 0, 0, F0100EA001A626000, 0x0100EA001A626000ull, "1.0.0"}}, // text
     {0x80174d4c, {CODEC_UTF32, 1, 0, 0, F0100EA001A626000, 0x0100EA001A626000ull, "1.0.0"}}, // name
+    // マツリカの炯-kEi- 天命華燭伝
+    {0x8024667C, {CODEC_UTF32 | FULL_STRING, 0, 0, 0, F0100EA001A626000, 0x0100DAA021616000ull, "1.0.0"}},
+    {0x80238084, {CODEC_UTF32 | FULL_STRING, 8, 0, 0, F0100EA001A626000, 0x0100DAA021616000ull, "1.0.0"}},
+    {0x80245C30, {CODEC_UTF32 | FULL_STRING, 1, 0, 0, F0100EA001A626000, 0x0100DAA021616000ull, "1.0.0"}},
+    {0x802466D4, {CODEC_UTF32 | FULL_STRING, 0, 0, 0, F0100EA001A626000, 0x0100DAA021616000ull, "1.0.1"}},
+    {0x802384F4, {CODEC_UTF32 | FULL_STRING, 8, 0, 0, F0100EA001A626000, 0x0100DAA021616000ull, "1.0.1"}},
+    {0x80245cf8, {CODEC_UTF32 | FULL_STRING, 1, 0, 0, F0100EA001A626000, 0x0100DAA021616000ull, "1.0.1"}},
     // 茉莉花之炯 天命胤異傳
     {0x80138DFC, {CODEC_UTF32, 1, 0, 0, F0100EA001A626000, 0x0100F5A01EA12000ull, "1.0.0"}}, // text
     {0x801769CC, {CODEC_UTF32, 0, 0, 0, F0100EA001A626000, 0x0100F5A01EA12000ull, "1.0.0"}}, // name
@@ -3175,8 +3292,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x800458c8, {CODEC_UTF8, 0, 0, 0, F010088B01A8FC000, 0x0100B6900A668000ull, "1.0.0"}},
     // Diabolik Lovers Grand Edition
     {0x80041080, {CODEC_UTF8, 1, 0, 0, F0100BD700E648000, 0x0100BD700E648000ull, "1.0.0"}}, // name
-    {0x80041080, {CODEC_UTF8, 0, 0, 0, F0100BD700E648000, 0x0100BD700E648000ull, "1.0.0"}}, // dialogue
-    {0x80041080, {CODEC_UTF8, 2, 0, 0, F0100BD700E648000, 0x0100BD700E648000ull, "1.0.0"}}, // choice1
+    {0x8002886c, {CODEC_UTF8, 0, 0, 0, F0100BD700E648000, 0x0100BD700E648000ull, "1.0.0"}}, // dialogue
+    {0x80041040, {CODEC_UTF8, 2, 0, 0, F0100BD700E648000, 0x0100BD700E648000ull, "1.0.0"}}, // choice1
     // DIABOLIK LOVERS CHAOS LINEAGE
     {0x80033A00, {CODEC_UTF8, 0, 0, 0, F010027400BD24000, 0x010027400BD24000ull, "1.0.0"}},
     {0x8001EEB8, {CODEC_UTF8, 0, 0, 0, F010027400BD24000_1, 0x010027400BD24000ull, "1.0.2"}},
@@ -3601,6 +3718,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x81322cec, {CODEC_UTF16, 0, 0, ReadUnityString, F010042300C4F6000, 0x0100E390145C8000ull, "1.0.0"}}, // dialogue
     {0x819b1a78, {CODEC_UTF16, 2, 0, ReadUnityString, F010042300C4F6000, 0x0100E390145C8000ull, "1.0.0"}}, // dialogue
     {0x81314e8c, {CODEC_UTF16, 0, 0, ReadUnityString, F010042300C4F6000, 0x0100E390145C8000ull, "1.0.0"}}, // dialogue
+    // ときめきメモリアル forever with you エモーショナル
+    {0x819F08C0, {CODEC_UTF8 | FULL_STRING, 1, 0, 0, f0100A460141B8000, 0x01005F201D534000ull, "1.0.0"}},
     // ときめきメモリアル Girl's Side
     {0x822454a4, {CODEC_UTF16, 0, 0, ReadUnityString, F0100D9A01BD86000, 0x0100D9A01BD86000ull, "1.0.1"}}, // dialogue1
     {0x82247138, {CODEC_UTF16, 0, 0, ReadUnityString, F0100D9A01BD86000, 0x0100D9A01BD86000ull, "1.0.1"}}, // dialogue2
@@ -3927,12 +4046,13 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8002a530, {CODEC_UTF8, 0, 0, 0, F010095E01581C000, 0x010095E01581C000ull, "1.1.1"}},
     {0x8000f564, {CODEC_UTF8, 0, 0, 0, F010095E01581C000, 0x010095E01581C000ull, "1.1.1"}},
     // 大正×対称アリス all in one
-    {0x80064ab8, {CODEC_UTF16, 1, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.2"}},
-    {0x80064bd4, {CODEC_UTF16, 1, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.2"}},
-    {0x8015f968, {CODEC_UTF16, 0, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.2"}},
+    {0x800640DC, {CODEC_UTF16 | FULL_STRING, 1, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.1"}},
+    {0x80064ab8, {CODEC_UTF16 | FULL_STRING, 1, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.2"}},
+    {0x80064bd4, {CODEC_UTF16 | FULL_STRING, 1, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.2"}},
+    {0x8015f968, {CODEC_UTF16 | FULL_STRING, 0, 0, 0, F010096000CA38000, 0x010096000CA38000ull, "1.0.2"}},
     // 大正×対称アリス HEADS&TAILS
-    {0x8009bb3c, {CODEC_UTF16, 1, 0, 0, F0100B1F0123B6000, 0x0100B1F0123B6000ull, "2.0.0"}},
-    {0x8009bc58, {CODEC_UTF16, 1, 0, 0, F0100B1F0123B6000, 0x0100B1F0123B6000ull, "2.0.0"}},
+    {0x8009bb3c, {CODEC_UTF16 | FULL_STRING, 1, 0, T0100B1F0123B6000, F0100B1F0123B6000, 0x0100B1F0123B6000ull, "2.0.0"}},
+    {0x8009bc58, {CODEC_UTF16 | FULL_STRING, 1, 0, 0, F0100B1F0123B6000, 0x0100B1F0123B6000ull, "2.0.0"}},
     // 幻想マネージュ
     {0x8124f690, {CODEC_UTF16, 0, 0x14, 0, F010037500DF38000, 0x010037500DF38000ull, "1.0.4"}},
     {0x811f63f0, {CODEC_UTF16, 0, 0x14, 0, F010037500DF38000, 0x010037500DF38000ull, "1.0.4"}},
@@ -4191,8 +4311,8 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     // アイキス3cute
     {0x804C18C4, {CODEC_UTF8, 1, 0, 0, F0100FD4016528000, 0x0100FD4016528000ull, nullptr}}, // 1.0.0 && 1.0.2
     // OZMAFIA!! VIVACE
-    {0x80058544, {0, 1, 0, 0, F0100509013040000, 0x01002BE0118AE000ull, nullptr}}, // 1.0.0 && 1.0.1
-    {0x8005b1f4, {0, 0, 0, 0, F01005090130400002, 0x01002BE0118AE000ull, nullptr}},
+    {0x80058544, {FULL_STRING, 1, 0, 0, F0100509013040000, 0x01002BE0118AE000ull, nullptr}}, // 1.0.0 && 1.0.1
+    {0x8005b1f4, {FULL_STRING, 0, 0, 0, F01005090130400002, 0x01002BE0118AE000ull, nullptr}},
     // ときめきメモリアル Girl's Side 3rd Story
     {0x82270d80, {CODEC_UTF16, 2, 0, ReadUnityString, F010091C01BD8A000, 0x010091C01BD8A000ull, "1.0.1"}},
     {0x82270c60, {CODEC_UTF16, 2, 0, ReadUnityString, F010091C01BD8A000, 0x010091C01BD8A000ull, "1.0.1"}},
@@ -4325,9 +4445,9 @@ static const emfuncinfoX emfunctionhooks_1[] = {
     {0x8017F17C, {CODEC_UTF16, 8, 0, 0, F010048101D49E000, 0x010048101D49E000ull, "1.0.1"}},
     {0x8011aea4, {CODEC_UTF16, 9, 0, 0, F010048101D49E000, 0x010048101D49E000ull, "1.0.1"}},
     // 喧嘩番長 乙女 ダブルパック
-    {0x81801c7c, {CODEC_UTF16, 0, 0x14, 0, F0100B6501FE4C000, 0x0100B6501FE4C000ull, "1.1.0"}},
+    {0x81801c7c, {CODEC_UTF16, 0, 0x14, 0, F0100B6501FE4C000_1<1>, 0x0100B6501FE4C000ull, "1.1.0"}},
     {0x8161f640, {CODEC_UTF16, 0, 0x14, 0, F0100B6501FE4C000, 0x0100B6501FE4C000ull, "1.1.0"}},
-    {0x817f8490, {CODEC_UTF16, 1, 0x14, 0, F0100B6501FE4C000, 0x0100B6501FE4C000ull, "1.1.0"}},
+    {0x817f8490, {CODEC_UTF16, 1, 0x14, 0, F0100B6501FE4C000_1<0>, 0x0100B6501FE4C000ull, "1.1.0"}},
     // 喧嘩番長 乙女 2nd Rumble !!
     {0x81A7C250, {CODEC_UTF16, 1, 0x14, 0, F0100B6501FE4C000, 0x01004CA01D51E000ull, "1.0.0"}}, // text
     {0x82DEDB70, {CODEC_UTF16, 1, 0x14, 0, F0100B6501FE4C000, 0x01004CA01D51E000ull, "1.0.2"}}, // text

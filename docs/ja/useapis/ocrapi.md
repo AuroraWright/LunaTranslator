@@ -28,10 +28,6 @@ https://cloud.tencent.com/document/product/866/33526
 
 https://cloud.tencent.com/document/product/551/17232
 
-== 有道辞書
-
-https://www.patreon.com/posts/high-precision-133319068
-
 == 有道
 
 https://ai.youdao.com/doc.s#guide
@@ -61,14 +57,24 @@ https://ocr.space/
 
 ## オフラインOCR {#anchor-offline}
 
+### ローカルOCR {#anchor-localocr}
 
-::: tabs
+内蔵済みの**PP-OCRv5_mobile**（中日英語の軽量認識モデル）が含まれています。他の言語を認識したい場合、または他のモデルを使用したい場合は、設定でモデルをダウンロードして使用するように設定する必要があります。
 
-== ローカルOCR
+![img](https://image.lunatranslator.org/en/localocr.png)
 
-組み込みでは、中国語・日本語・英語の軽量認識モデルが含まれています。他の言語を認識する必要がある場合は、`リソースダウンロード`で対応する言語モデルを追加してください。
+設定では、高精度モデル（例：PP-OCRv6_medium、PP-OCRv5_server）も提供されており、非常に高い認識精度を達成できますが、認識速度は比較的遅くなります。
 
-`リソースダウンロード`には中日英語の高精度モデルも提供されており、極めて高い認識精度を達成できますが、認識速度は比較的遅くなります。
+| モデル | 検出モジュール Hmean(%) | 認識モジュール Avg Accuracy(%) | 対応言語 | サイズ(MB) |
+| - | - | - | - | - |
+| PP-OCRv6_small | 84.1 | 81.3 | 任意 | 25.2 |
+| PP-OCRv6_medium | 86.2 | 83.2 | 任意 | 99.7 |
+| PP-OCRv6_tiny | 80.6 | 73.5 | 任意 | 5.45 |
+| PP-OCRv5_mobile | 79.0 | 81.29 | 簡体字中国語、繁体字中国語、英語、日本語 | 17.7 |
+| PP-OCRv5_server | 83.8 | 86.38 | 簡体字中国語、繁体字中国語、英語、日本語 | 148 |
+| eslav_PP-OCRv5_mobile | 79.0 | 81.6 | 東スラヴ語群 | 11.2 |
+| korean_PP-OCRv5_mobile | 79.0 | 88.0 | 韓国語 | 12.2 |
+| latin_PP-OCRv5_mobile | 79.0 | 84.7 | ラテン文字言語 | 11.3 |
 
 高精度モデルの認識効率を向上させるためには、以下の方法を採用できます：
 
@@ -86,15 +92,18 @@ https://ocr.space/
 
     ![img](https://image.lunatranslator.org/zh/ov_device.png)
 
+### その他のOCR
+
+::: tabs
+
 
 == SnippingTool
 
 >[!WARNING]
 > Windows 10およびWindows 11オペレーティングシステムのみをサポートしています。
 
-最新版のWindows 11システムであれば直接使用できます。
-
-それ以外の場合は、`リソースダウンロードで`このモジュールをインストールする必要があります。
+最新版のWindows 11システムであればそのまま使用できますが、それ以外の場合は設定からこのモジュールをインストールして使用する必要があります。
+![img](https://image.lunatranslator.org/zh/snip.png)
 
 == manga-ocr
 

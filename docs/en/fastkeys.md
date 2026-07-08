@@ -6,6 +6,9 @@
 
 ## General
 
+1. #### Disable All Other Shortcuts {#anchor-disableothers}
+    Disables all other shortcuts except this one. Triggering this shortcut again will release the disable.
+
 1. #### Manual execution {#anchor-_1}
     Reads input once from the current text input source and performs translation.
     For example, if the current mode is OCR, it will perform OCR again.
@@ -33,13 +36,16 @@
     This feature must be used in conjunction with the mouse pass-through window tool button to function correctly.
 
 1. #### Window background transparency {#anchor-51}
-    The function of this button is to switch the opacity of the translation window to 0 with one click. This switch will not cause the original opacity settings to be forgotten.
+    The function of this button is to switch the opacity of the translation window to 0 with one click. When the opacity is 0, the mouse will also penetrate through the window.
 
 1. #### Lock Toolbar {#anchor-_9}
     When the toolbar is not locked, it will automatically hide when the mouse moves out; activating this will keep the toolbar always visible.
     When the toolbar is not locked and `Mouse Pass-through Window` is activated, the toolbar will only be displayed when the mouse moves to the **Mouse Pass-through Window button and the area to its left and right**; otherwise, it will be displayed as soon as the mouse enters the translation window.
     If window effects (Aero/Arylic) are used and the toolbar is not locked, the toolbar will be in the z-axis area above the text area, not on the y-axis above the text area. This is because, due to Windows, when window effects are used, if the toolbar is only hidden rather than shrunk to reduce its window height, the hidden toolbar will still be rendered with the Acrylic/Aero background, causing a blank area where the toolbar is located.
 
+1. #### Hide Toolbar {#anchor-52}
+    Hides the toolbar. This setting takes priority over locking the toolbar.
+    
 1. #### Word Selection Translation {#anchor-38}
     Translate the text currently selected by the mouse
 

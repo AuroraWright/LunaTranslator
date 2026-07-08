@@ -28,10 +28,6 @@ https://cloud.tencent.com/document/product/866/33526
 
 https://cloud.tencent.com/document/product/551/17232
 
-== 유다오 사전
-
-https://www.patreon.com/posts/high-precision-133319068
-
 == 유다오
 
 https://ai.youdao.com/doc.s#guide
@@ -62,14 +58,25 @@ https://ocr.space/
 
 ## 오프라인 OCR {#anchor-offline}
 
+### 내장 OCR {#anchor-localocr}
 
-::: tabs
 
-== 로컬 OCR
+내장된 **PP-OCRv5_mobile**(중국어, 일본어, 영어 경량 인식 모델)이 이미 포함되어 있습니다. 다른 언어를 인식해야 하거나 다른 모델을 사용하려면 설정에서 모델을 다운로드하고 사용하도록 설정해야 합니다.
 
-기본적으로 중국어, 일본어, 영어 경량 인식 모델이 내장되어 있습니다. 다른 언어를 인식하려면 '리소스 다운로드'에서 해당 언어의 인식 모델을 추가해야 합니다.
+![img](https://image.lunatranslator.org/en/localocr.png)
 
-`리소스 다운로드`에서는 중국어, 일본어, 영어에 대한 고정밀 모델도 제공되며, 극히 높은 인식 정확도를 달성할 수 있지만 인식 속도는 상대적으로 느립니다.
+설정에서는 또한 일부 고정밀 모델(예: PP-OCRv6_medium, PP-OCRv5_server)을 제공하며, 매우 높은 인식 정확도를 달성할 수 있지만 인식 속도는 상대적으로 느립니다.
+
+| 모델 | 검출 모듈 Hmean(%) | 인식 모듈 Avg Accuracy(%) | 지원 언어 | 크기(MB) |
+| - | - | - | - | - |
+| PP-OCRv6_small | 84.1 | 81.3 | 모든 언어 | 25.2 |
+| PP-OCRv6_medium | 86.2 | 83.2 | 모든 언어 | 99.7 |
+| PP-OCRv6_tiny | 80.6 | 73.5 | 모든 언어 | 5.45 |
+| PP-OCRv5_mobile | 79.0 | 81.29 | 중국어 간체, 중국어 번체, 영어, 일본어 | 17.7 |
+| PP-OCRv5_server | 83.8 | 86.38 | 중국어 간체, 중국어 번체, 영어, 일본어 | 148 |
+| eslav_PP-OCRv5_mobile | 79.0 | 81.6 | 동슬라브어군 | 11.2 |
+| korean_PP-OCRv5_mobile | 79.0 | 88.0 | 한국어 | 12.2 |
+| latin_PP-OCRv5_mobile | 79.0 | 84.7 | 라틴 문자 사용 언어 | 11.3 |
 
 고정밀 모델의 인식 효율을 높이기 위해 다음과 같은 방법을 사용할 수 있습니다:
 
@@ -87,12 +94,17 @@ https://ocr.space/
 
     ![img](https://image.lunatranslator.org/zh/ov_device.png)
 
+### 기타 OCR
+
+::: tabs
+
 == SnippingTool
 
 >[!WARNING]
 Win10-Win11 운영체제만 지원됩니다.
 
-최신 버전의 Windows 11 시스템이라면 바로 사용할 수 있지만, 그렇지 않다면 `리소스 다운로드`에서 해당 모듈을 설치해야 사용할 수 있습니다.
+최신 버전의 Windows 11 시스템이라면 바로 사용할 수 있지만, 그렇지 않은 경우 설정에서 이 모듈을 설치해야 사용할 수 있습니다.
+![img](https://image.lunatranslator.org/zh/snip.png)
 
 == manga-ocr
 

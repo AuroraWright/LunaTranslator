@@ -13,7 +13,6 @@ bool InsertUnisonShiftHook()
   auto addr1 = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
   if (addr1 == 0)
     return false;
-  ConsoleOutput("UnisonShift %p", addr1);
   HookParam hp;
   hp.address = addr1;
   hp.offset = stackoffset(3);
@@ -32,7 +31,6 @@ bool InsertUnisonShift2Hook()
   auto addr1 = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
   if (addr1 == 0)
     return false;
-  ConsoleOutput("UnisonShift2 %p", addr1);
   BYTE start[] = {0x83, 0xEC, 0x08};
   addr1 = reverseFindBytes(start, sizeof(start), addr1 - 0x100, addr1);
   if (addr1 == 0)
@@ -54,7 +52,6 @@ bool InsertUnisonShift3Hook()
   auto succ = false;
   for (auto addr : addrs)
   {
-    ConsoleOutput("UnisonShift3 %p", addr);
     addr = (DWORD)((BYTE *)addr - 5);
     int x = -1;
     for (int i = 0; i < 0x20; i++)
@@ -67,13 +64,19 @@ bool InsertUnisonShift3Hook()
     }
     if (x == -1)
       continue;
-    ConsoleOutput("UnisonShift3 found %p", addr - x);
     addr = (DWORD)((BYTE *)addr + 1 - x);
     auto raddr = *(int *)addr;
-    ConsoleOutput("UnisonShift3 raddr %p", raddr);
+    if (raddr <= processStartAddress || raddr >= processStopAddress) // mov eax,1; addr=0x1，不对。
+      continue;
     HookParam hp;
     hp.address = raddr;
     hp.type = DIRECT_READ;
+    hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
+    {
+      auto s = buffer->strAW();
+      s = re::sub(s, L"#");
+      buffer->fromWA(s);
+    };
     succ |= NewHook(hp, "UnisonShift3");
   }
 
@@ -119,11 +122,44 @@ namespace
     return NewHook(hp, "_056");
   }
 }
+static bool h1()
+{
+  // 胸キュン！はぁとde恋シ・テ・ル～お兄ちゃんもっと大好き～
+  // https://vndb.org/v4263
 
+  BYTE bytes[] = {
+      0x8b, 0x15, XX4,
+      0x56,
+      0xbe, XX4,
+      0x8b, 0x0c, 0x95, XX4,
+      0x8a, 0x01,
+      0x84, 0xc0,
+      0x74, XX,
+      0x2b, 0xce,
+      0x88, 0x06,
+      0x8a, 0x44, 0x31, 0x01,
+      0x46,
+      0x84, 0xc0,
+      0x75, XX};
+  auto addr1 = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
+  if (!addr1)
+    return false;
+  HookParam hp;
+  hp.address = addr1 + 6 + 1 + 5 + 7;
+  hp.offset = regoffset(ecx);
+  hp.type = USING_STRING | FULL_STRING;
+  hp.filter_fun = [](TextBuffer *buffer, HookParam *hp)
+  {
+    auto s = buffer->strAW();
+    s = re::sub(s, L"#");
+    buffer->fromWA(s);
+  };
+  return NewHook(hp, "UnisonShift4");
+}
 bool UnisonShift2::attach_function()
 {
   bool b1 = InsertUnisonShift2Hook();
   bool b2 = InsertUnisonShift3Hook();
   auto __ = _056();
-  return b1 || b2 || __;
+  return b1 || b2 || __ || h1();
 }

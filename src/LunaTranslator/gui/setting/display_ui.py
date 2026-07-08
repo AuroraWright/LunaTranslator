@@ -3,8 +3,9 @@ import functools, importlib
 from traceback import print_exc
 import gobject
 from myutils.config import globalconfig, static_data
-from myutils.utils import nowisdark
+from myutils.utils import nowisdark, getimagefilefilter
 from gui.flowsearchword import createsomecontrols
+from gui.qevent import DarkLightSettingChangedEvent
 from gui.usefulwidget import (
     D_getsimplecombobox,
     D_getspinbox,
@@ -13,77 +14,114 @@ from gui.usefulwidget import (
     FocusFontCombo,
     D_getsimpleswitch,
     getsimpleswitch,
+    D_getIconButton,
     getsmalllabel,
     getboxlayout,
+    getsimplepatheditor,
+    createfoldgrid,
 )
 
 
-def changeHorizontal(self):
+def changeHorizontal_pic(
+    horizontal_slider_tool: QSlider, horizontal_slider_tool_label: QLabel
+):
 
-    globalconfig["transparent"] = self.horizontal_slider.value()
-    try:
-        self.horizontal_slider_label.setText("{}%".format(globalconfig["transparent"]))
-    except:
-        pass
-    #
-    gobject.base.translation_ui.set_color_transparency()
-
-
-def __exswitch(self, ex):
-    self.horizontal_slider.setMinimum(1 - ex)
-    gobject.base.translation_ui.set_color_transparency()
-
-
-def createhorizontal_slider(self):
-
-    self.horizontal_slider = QSlider()
-    self.horizontal_slider.setMaximum(100)
-    self.horizontal_slider.setMinimum(1 - globalconfig["transparent_EX"])
-    self.horizontal_slider.setOrientation(Qt.Orientation.Horizontal)
-    self.horizontal_slider.setValue(globalconfig["transparent"])
-    self.horizontal_slider.valueChanged.connect(
-        functools.partial(changeHorizontal, self)
+    globalconfig["transparent_pic"] = horizontal_slider_tool.value()
+    horizontal_slider_tool_label.setText(
+        "{}%".format(globalconfig.get("transparent_pic", 0))
     )
-    w = QWidget()
-    hb = QHBoxLayout(w)
-    hb.setContentsMargins(0, 0, 0, 0)
+    gobject.base.translation_ui.translate_text.setbackgroudimageandopt()
 
-    self.horizontal_slider_label = QLabel()
-    self.horizontal_slider_label.setText("{}%".format(globalconfig["transparent"]))
-    hb.addWidget(self.horizontal_slider)
-    hb.addWidget(self.horizontal_slider_label)
+
+def createhorizontal_slider_pic():
+
+    horizontal_slider = QSlider()
+    horizontal_slider.setMaximum(100)
+    horizontal_slider.setMinimum(0)
+    horizontal_slider.setOrientation(Qt.Orientation.Horizontal)
+    horizontal_slider.setValue(globalconfig.get("transparent_pic", 0))
+
+    horizontal_slider_label = QLabel()
+    horizontal_slider.valueChanged.connect(
+        functools.partial(
+            changeHorizontal_pic, horizontal_slider, horizontal_slider_label
+        )
+    )
+    horizontal_slider_label.setText(
+        "{}%".format(globalconfig.get("transparent_pic", 0))
+    )
+
+    def dosomething(x):
+        horizontal_slider.setEnabled(x)
+        horizontal_slider_label.setText(
+            "{}%".format(globalconfig.get("transparent_pic", 0) if x else 0)
+        )
+
+    gobject.base.backtransparentstatus_2.connect(dosomething)
+    dosomething(not globalconfig.get("backtransparent", False))
+    return getboxlayout([horizontal_slider, horizontal_slider_label])
+
+
+def changeHorizontal(
+    horizontal_slider_tool: QSlider, horizontal_slider_tool_label: QLabel
+):
+
+    globalconfig["transparent"] = horizontal_slider_tool.value()
+    horizontal_slider_tool_label.setText("{}%".format(globalconfig["transparent"]))
+    gobject.base.translation_ui.set_color_transparency()
+
+
+def createhorizontal_slider():
+
+    horizontal_slider = QSlider()
+    horizontal_slider.setMaximum(100)
+    horizontal_slider.setMinimum(1 - globalconfig.get("transparent_EX", False))
+    horizontal_slider.setOrientation(Qt.Orientation.Horizontal)
+    horizontal_slider.setValue(globalconfig.get("transparent", 10))
+    horizontal_slider_label = QLabel()
+    horizontal_slider.valueChanged.connect(
+        functools.partial(changeHorizontal, horizontal_slider, horizontal_slider_label)
+    )
+
+    horizontal_slider_label.setText("{}%".format(globalconfig.get("transparent", 10)))
 
     l = getsmalllabel("  EX")()
-    hb.addWidget(l)
+
+    def dosomething(en):
+        horizontal_slider.setEnabled(en)
+        horizontal_slider_label.setText(
+            "{}%".format(
+                globalconfig.get("transparent", 10)
+                if en
+                else (1 - globalconfig.get("transparent_EX", False))
+            )
+        )
+
     sw = getsimpleswitch(
         globalconfig,
         "transparent_EX",
-        callback=functools.partial(__exswitch, self),
+        callback=lambda ex: (
+            horizontal_slider.setMinimum(1 - ex),
+            gobject.base.translation_ui.set_color_transparency(),
+            dosomething(not globalconfig.get("backtransparent", False)),
+        ),
+        default=False,
     )
 
-    hb.addWidget(sw)
+    gobject.base.backtransparentstatus.connect(dosomething)
 
-    gobject.base.backtransparentstatus.connect(
-        lambda x: (
-            self.horizontal_slider.setEnabled(x),
-            self.horizontal_slider_label.setEnabled(x),
-        )
+    dosomething(not globalconfig.get("backtransparent", False))
+    return getboxlayout([horizontal_slider, horizontal_slider_label, l, sw])
+
+
+def changeHorizontal_tool(
+    horizontal_slider_tool: QSlider, horizontal_slider_tool_label: QLabel
+):
+
+    globalconfig["transparent_tool"] = horizontal_slider_tool.value()
+    horizontal_slider_tool_label.setText(
+        "{}%".format(globalconfig.get("transparent_tool", 50))
     )
-
-    self.horizontal_slider.setEnabled(not globalconfig["backtransparent"])
-    self.horizontal_slider_label.setEnabled(not globalconfig["backtransparent"])
-    return w
-
-
-def changeHorizontal_tool(self):
-
-    globalconfig["transparent_tool"] = self.horizontal_slider_tool.value()
-    try:
-        self.horizontal_slider_tool_label.setText(
-            "{}%".format(globalconfig["transparent_tool"])
-        )
-    except:
-        pass
     #
     gobject.base.translation_ui.enterfunction()
     gobject.base.translation_ui.set_color_transparency()
@@ -96,25 +134,25 @@ def toolcolorchange():
     gobject.base.translation_ui.set_color_transparency()
 
 
-def createhorizontal_slider_tool(self):
+def createhorizontal_slider_tool():
 
-    self.horizontal_slider_tool = QSlider()
-    self.horizontal_slider_tool.setMaximum(100)
-    self.horizontal_slider_tool.setMinimum(1)
-    self.horizontal_slider_tool.setOrientation(Qt.Orientation.Horizontal)
-    self.horizontal_slider_tool.setValue(0)
-    self.horizontal_slider_tool.setValue(globalconfig["transparent_tool"])
-    self.horizontal_slider_tool.valueChanged.connect(
-        functools.partial(changeHorizontal_tool, self)
-    )
+    horizontal_slider_tool = QSlider()
+    horizontal_slider_tool.setMaximum(100)
+    horizontal_slider_tool.setMinimum(1)
+    horizontal_slider_tool.setOrientation(Qt.Orientation.Horizontal)
+    horizontal_slider_tool.setValue(0)
+    horizontal_slider_tool.setValue(globalconfig.get("transparent_tool", 50))
 
-    self.horizontal_slider_tool_label = QLabel()
-    self.horizontal_slider_tool_label.setText(
-        "{}%".format(globalconfig["transparent_tool"])
+    horizontal_slider_tool_label = QLabel()
+    horizontal_slider_tool.valueChanged.connect(
+        functools.partial(
+            changeHorizontal_tool, horizontal_slider_tool, horizontal_slider_tool_label
+        )
     )
-    return getboxlayout(
-        [self.horizontal_slider_tool, self.horizontal_slider_tool_label]
+    horizontal_slider_tool_label.setText(
+        "{}%".format(globalconfig.get("transparent_tool", 50))
     )
+    return getboxlayout([horizontal_slider_tool, horizontal_slider_tool_label])
 
 
 def createfontcombo():
@@ -163,13 +201,15 @@ def opensettingwindow(self):
 def createbtnthemelight(self):
     self.btnthemelight = getIconButton(functools.partial(opensettingwindow, self))
     lightsetting = getget_setting_window()
-    self.btnthemelight.setVisible(bool(lightsetting))
+    if not bool(lightsetting):
+        self.btnthemelight.hide()
     return self.btnthemelight
 
 
 def checkthemesettingvisandapply(self, _):
     lightsetting = getget_setting_window()
-    self.btnthemelight.setVisible(bool(lightsetting))
+    if not bool(lightsetting):
+        self.btnthemelight.hide()
     gobject.base.setcommonstylesheet()
 
 
@@ -202,6 +242,12 @@ def __rs():
     )
 
 
+def switch_darklight():
+    darklight = globalconfig["darklight2"]
+    for widget in QApplication.allWidgets():
+        QApplication.postEvent(widget, DarkLightSettingChangedEvent(darklight))
+
+
 def uisetting(self):
     windoweffects = [
         getsmalllabel("窗口特效"),
@@ -216,6 +262,7 @@ def uisetting(self):
             "WindowBackdrop",
             callback=lambda _: gobject.base.setcommonstylesheet(),
             static=True,
+            default=3,
         ),
         "",
         getsmalllabel("强制直角"),
@@ -234,69 +281,61 @@ def uisetting(self):
     ]
     if not gobject.sys_ge_win_11:
         list(windoweffects.append(("", windoweffects.pop(3))[0]) for _ in range(3))
-    __ = [
+    __ = mainuisetting(self) + [
         [
             dict(
-                title="主界面",
                 type="grid",
-                grid=[
-                    [
-                        dict(
-                            type="grid",
-                            grid=([__rs],),
-                        )
-                    ],
-                    [
-                        dict(
-                            type="grid",
-                            grid=(
-                                [
-                                    "游戏窗口移动时同步移动",
-                                    D_getsimpleswitch(
-                                        globalconfig,
-                                        "movefollow",
-                                    ),
-                                    "",
-                                    "自动隐藏",
-                                    D_getsimpleswitch(globalconfig, "autodisappear"),
-                                    lambda: createdynamicswitch(self),
-                                    getboxlayout(
-                                        [lambda: createdynamicdelay(self), "(s)"]
-                                    ),
-                                ],
-                                [
-                                    "游戏失去焦点时取消置顶",
-                                    D_getsimpleswitch(
-                                        globalconfig,
-                                        "focusnotop",
-                                    ),
-                                    "",
-                                    "自动调整高度",
-                                    D_getsimpleswitch(globalconfig, "adaptive_height"),
-                                    D_getsimplecombobox(
-                                        ["向上", "向下"], globalconfig, "top_align"
-                                    ),
-                                    getboxlayout(
-                                        [
-                                            "最小高度",
-                                            D_getspinbox(
-                                                0, 9999, globalconfig, "min_auto_height"
-                                            ),
-                                            "px",
-                                        ]
-                                    ),
-                                ],
-                            ),
-                        ),
-                    ],
-                ],
+                grid=([__rs],),
             )
         ],
         [
             dict(
                 type="grid",
-                title="其他界面",
                 grid=(
+                    [
+                        "游戏窗口移动时同步移动",
+                        D_getsimpleswitch(
+                            globalconfig,
+                            "movefollow",
+                        ),
+                        "",
+                        "自动隐藏",
+                        D_getsimpleswitch(globalconfig, "autodisappear", default=False),
+                        lambda: createdynamicswitch(self),
+                        getboxlayout([lambda: createdynamicdelay(self), "(s)"]),
+                    ],
+                    [
+                        "游戏失去焦点时取消置顶",
+                        D_getsimpleswitch(
+                            globalconfig,
+                            "focusnotop",
+                        ),
+                        "",
+                        "自动调整高度",
+                        D_getsimpleswitch(
+                            globalconfig, "adaptive_height", default=True
+                        ),
+                        D_getsimplecombobox(
+                            ["向上", "向下"],
+                            globalconfig,
+                            "top_align",
+                            default=0,
+                        ),
+                        getboxlayout(
+                            [
+                                "最小高度",
+                                D_getspinbox(0, 9999, globalconfig, "min_auto_height"),
+                                "px",
+                            ]
+                        ),
+                    ],
+                ),
+            ),
+        ],
+        [
+            functools.partial(
+                createfoldgrid,
+                (
                     [
                         dict(
                             type="grid",
@@ -313,6 +352,7 @@ def uisetting(self):
                                         "settingfontsize",
                                         double=True,
                                         callback=lambda _: gobject.base.setcommonstylesheet(),
+                                        default=12,
                                     ),
                                     "",
                                     getsmalllabel("加粗"),
@@ -320,6 +360,7 @@ def uisetting(self):
                                         globalconfig,
                                         "settingfontbold",
                                         callback=lambda _: gobject.base.setcommonstylesheet(),
+                                        default=False,
                                     ),
                                 ]
                             ],
@@ -342,7 +383,7 @@ def uisetting(self):
                                         "darklight2",
                                         lambda _: (
                                             gobject.base.setcommonstylesheet(),
-                                            gobject.base.switch_darklight(),
+                                            switch_darklight(),
                                         ),
                                     ),
                                 ],
@@ -369,11 +410,12 @@ def uisetting(self):
                         )
                     ],
                 ),
-            ),
+                "其他界面",
+            )
         ],
     ]
 
-    return mainuisetting(self) + __
+    return __
 
 
 def createdynamicswitch(self):
@@ -384,13 +426,17 @@ def createdynamicswitch(self):
         )
 
     return D_getsimplecombobox(
-        ["窗口", "文本"], globalconfig, "autodisappear_which", callback=__
+        ["窗口", "文本"],
+        globalconfig,
+        "autodisappear_which",
+        callback=__,
+        default=0,
     )()
 
 
 def createdynamicdelay(self):
     self.disappear_delay = D_getspinbox(
-        [1, 0][globalconfig["autodisappear_which"]],
+        [1, 0][globalconfig.get("autodisappear_which", 0)],
         100,
         globalconfig,
         "disappear_delay",
@@ -401,26 +447,6 @@ def createdynamicdelay(self):
 def mainuisetting(self):
 
     return [
-        [
-            dict(
-                title="文本区",
-                type="grid",
-                grid=(
-                    [
-                        "背景颜色",
-                        D_getcolorbutton(
-                            self,
-                            globalconfig,
-                            "backcolor",
-                            callback=lambda _: gobject.base.translation_ui.set_color_transparency(),
-                        ),
-                        "",
-                        "不透明度",
-                        functools.partial(createhorizontal_slider, self),
-                    ],
-                ),
-            ),
-        ],
         [
             dict(
                 title="工具栏",
@@ -436,9 +462,68 @@ def mainuisetting(self):
                         ),
                         "",
                         "不透明度",
-                        functools.partial(createhorizontal_slider_tool, self),
+                        createhorizontal_slider_tool,
                     ]
                 ],
+            ),
+        ],
+        [
+            dict(
+                title="文本区",
+                type="grid",
+                hiderows=[2],
+                name="textareaobject",
+                parent=self,
+                grid=(
+                    [
+                        "背景颜色",
+                        D_getcolorbutton(
+                            self,
+                            globalconfig,
+                            "backcolor",
+                            callback=lambda _: gobject.base.translation_ui.set_color_transparency(),
+                        ),
+                        "",
+                        "不透明度",
+                        createhorizontal_slider,
+                    ],
+                    [
+                        "背景图片",
+                        D_getIconButton(
+                            icon="fa.picture-o",
+                            tips="背景图片",
+                            callback=lambda: self.textareaobject.layout().setRowVisible(
+                                2, not self.textareaobject.layout().rowVisible(2)
+                            ),
+                        ),
+                        "",
+                        "不透明度",
+                        createhorizontal_slider_pic,
+                    ],
+                    [
+                        "图片",
+                        (
+                            lambda: getsimplepatheditor(
+                                globalconfig.get(
+                                    "backgroundpic",
+                                    "https://image.lunatranslator.org/luna.jpg",
+                                ),
+                                False,
+                                False,
+                                filter1=getimagefilefilter(),
+                                callback=lambda _: (
+                                    globalconfig.__setitem__("backgroundpic", _),
+                                    gobject.base.translation_ui.translate_text.setbackgroudimageandopt(),
+                                ),
+                                clearable=False,
+                                icons=("fa.folder-open",),
+                                editable=True,
+                                btnatleft=True,
+                            ),
+                            0,
+                        ),
+                    ],
+                ),
             ),
         ],
     ]

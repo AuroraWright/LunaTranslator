@@ -63,10 +63,10 @@ def createsomecontrols(
         vRsys = functools.partial(__vRsys, kRsys, kRsysDf)
 
         def __vR(kDWM, vRsys):
-            return globalconfig[kDWM] == 0 and not vRsys()
+            return globalconfig.get(kDWM, 0) == 0 and not vRsys()
 
         def __yinyinguse(kDWM, vRsys):
-            return globalconfig[kDWM] != 0 and not vRsys()
+            return globalconfig.get(kDWM, 0) != 0 and not vRsys()
 
         vR = functools.partial(__vR, kDWM, vRsys)
         if not vR():
@@ -74,7 +74,10 @@ def createsomecontrols(
         yinyinguse = functools.partial(__yinyinguse, kDWM, vRsys)
         __shadowxx = getsmalllabel("阴影")()
         __shadowxx2 = getsimpleswitch(
-            globalconfig, kshadow, callback=functools.partial(___, callbackDWM)
+            globalconfig,
+            kshadow,
+            callback=functools.partial(___, callbackDWM),
+            default=True,
         )
 
         def __cb2(
@@ -137,6 +140,7 @@ def createsomecontrols(
                         callbackR,
                         callbackDWM,
                     ),
+                    default=0,
                 ),
                 __shadowxx,
                 __shadowxx2,
@@ -250,7 +254,7 @@ class WordViewTooltip(resizableframeless, DraggableQWidget):
             if (
                 focused_widget
                 and focused_widget.window()
-                and focused_widget.window().parent() == self
+                and (self in (focused_widget, focused_widget.window().parent() == self))
             ):
                 pass
             else:
@@ -285,36 +289,32 @@ class WordViewTooltip(resizableframeless, DraggableQWidget):
             False,
             globalconfig.get("WordViewTooltipRadiusSys", gobject.sys_ge_win_11),
         )
-        radiu_valid = globalconfig["WordViewTooltipDWM"] == 0 and not (
+        radiu_valid = globalconfig.get("WordViewTooltipDWM", 0) == 0 and not (
             gobject.sys_ge_win_11
             and globalconfig.get("WordViewTooltipRadiusSys", gobject.sys_ge_win_11)
         )
         color = globalconfig["WordViewTooltipColor"]
         r = globalconfig["WordViewTooltipRadius"]
-        self.w.setStyleSheet(
-            r""" 
+        self.w.setStyleSheet(r""" 
         QLabel{background: %s; 
         border-radius: %spx}
- """
-            % (color, r * radiu_valid)
-        )
-        self.w2.setStyleSheet(
-            r""" 
+ """ % (color, r * radiu_valid))
+        self.w2.setStyleSheet(r""" 
         QLabel{background: %s;border-radius: 0px; }
- """
-            % (globalconfig["WordViewTooltipContentColor"])
-        )
+ """ % (globalconfig["WordViewTooltipContentColor"]))
 
     def seteffect(self):
-        if globalconfig["WordViewTooltipDWM"] == 0:
+        if globalconfig.get("WordViewTooltipDWM", 0) == 0:
             NativeUtils.clearEffect(int(self.winId()))
-        elif globalconfig["WordViewTooltipDWM"] == 1:
+        elif globalconfig.get("WordViewTooltipDWM", 0) == 1:
             NativeUtils.setAcrylicEffect(
-                int(self.winId()), globalconfig["WordViewTooltipDWM_1"], 0x00FFFFFF
+                int(self.winId()),
+                globalconfig.get("WordViewTooltipDWM_1", True),
+                0x00FFFFFF,
             )
-        elif globalconfig["WordViewTooltipDWM"] == 2:
+        elif globalconfig.get("WordViewTooltipDWM", 0) == 2:
             NativeUtils.setAeroEffect(
-                int(self.winId()), globalconfig["WordViewTooltipDWM_1"]
+                int(self.winId()), globalconfig.get("WordViewTooltipDWM_1", True)
             )
 
     def __load(self):
@@ -379,7 +379,9 @@ class WordViewTooltip(resizableframeless, DraggableQWidget):
                 tips="语音合成",
             )
         )
-        buttons.addStretch(1)
+        self.wordlabel = QLabel()
+        self.wordlabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        buttons.addWidget(self.wordlabel)
         searchword = lambda anki: (
             self.close(),
             gobject.base.searchwordW.move(self.pos()),
@@ -415,11 +417,13 @@ class WordViewTooltip(resizableframeless, DraggableQWidget):
         self.view.use_bg_color_parser = True
         self.setCentralWidget(w)
         self.view.first_result_shown.connect(self.showresult)
-        self.view.from_webview_search_word.connect(self.view.searchword)
+        self.view.from_webview_search_word.connect(
+            lambda t: (self.view.searchword(t), self.wordlabel.setText(t))
+        )
         self.view.from_webview_search_word_in_new_window.connect(
             lambda w: gobject.base.searchwordW.searchwinnewwindow(w)
         )
-        self.view.setStyleSheet("background:transparent")
+        self.view.tab.setStyleSheet("background:transparent")
         self.view.internalsizechanged.connect(self.w2.resize)
         self.view.internalmoved.connect(
             lambda pos: self.w2.move(self.view.mapToParent(pos))
@@ -465,6 +469,7 @@ class WordViewTooltip(resizableframeless, DraggableQWidget):
         if append:
             word = self.view.currWord + word
         unuse = globalconfig[("ignoredict_S_click", "ignoredict_S_hover")[fromhover]]
+        self.wordlabel.setText(word)
         self.view.searchword(word, sentence, unuse=unuse)
 
     def showresult(self):

@@ -7,6 +7,7 @@ from gui.usefulwidget import closeashidewindow, WebviewWidget, Exteditor
 from gui.dynalang import LAction
 from urllib.parse import quote
 from myutils.wrapper import threader
+from textio.textsource.ocrtext import ocrtext
 from traceback import print_exc
 from gui.setting.display_text import extrahtml
 from network.server.servicecollection_1 import WSForEach, transhistwsoutputsave
@@ -19,20 +20,11 @@ class somecommon:
 
     def calllunaloadready(self):
 
-        self.debugeval(
-            "showhideorigin({})".format(int(globalconfig["history"]["showorigin"]))
-        )
-        self.debugeval(
-            "showhidetransname({})".format(
-                int(globalconfig["history"]["showtransname"])
-            )
-        )
-        self.debugeval(
-            "showhidetrans({})".format(int(globalconfig["history"]["showtrans"]))
-        )
-        self.debugeval(
-            "showhidetime({})".format(int(globalconfig["history"]["showtime"]))
-        )
+        self.showhideraw()
+        self.showtransname()
+        self.showtrans()
+        self.showhidetime()
+        self.autoscroll()
         self.setf()
         self.refresh()
 
@@ -67,6 +59,11 @@ class somecommon:
             'getnewtrans({},"{}","{}");'.format(
                 sentence[0], quote(sentence[1]), quote(sentence[2])
             )
+        )
+
+    def autoscroll(self):
+        self.debugeval(
+            "autoscroll({})".format(int(gobject.tempconfig.get("autoscroll", True)))
         )
 
     def showhideraw(self):
@@ -264,6 +261,11 @@ class wvtranshist(WebviewWidget, somecommon):
     reloadx = pyqtSignal()
 
     def scrollend(self):
+        gobject.tempconfig["autoscroll"] = not gobject.tempconfig.get(
+            "autoscroll", True
+        )
+        self.autoscroll()
+        self.p.autoscroll()
         self.debugeval("scrollend()")
 
     def autosavecb(self):
@@ -271,14 +273,20 @@ class wvtranshist(WebviewWidget, somecommon):
         if globalconfig["history"]["autosave"]:
             sharedfunctions.autosavecheckifneedninit(self.p.trace)
 
-    def __init__(self, p):
+    def __init__(self, p: "transhist"):
         super().__init__(p, loadext=globalconfig["history"]["webviewLoadExt"])
         self.bind("calllunaloadready", self.calllunaloadready)
+        gobject.tempconfig = {}
         self.pluginsedit.connect(functools.partial(Exteditor, self))
         self.reloadx.connect(self.appendext)
         nexti = self.add_menu_noselect(0, lambda: _TR("清空"), self.clear)
-        nexti = self.add_menu_noselect(nexti, lambda: _TR("滚动到最后"), self.scrollend)
         nexti = self.add_menu_noselect(nexti, lambda: _TR("字体"), self.seletcfont)
+        nexti = self.add_menu_noselect(
+            nexti,
+            lambda: _TR("自动滚动到最后"),
+            self.scrollend,
+            getchecked=lambda: gobject.tempconfig.get("autoscroll", True),
+        )
         nexti = self.add_menu_noselect(nexti)
         nexti = self.add_menu_noselect(
             nexti,
@@ -321,6 +329,23 @@ class wvtranshist(WebviewWidget, somecommon):
             lambda: _TR("显示时间"),
             self.showhidetime_,
             getchecked=lambda: globalconfig["history"]["showtime"],
+        )
+        nexti = self.add_menu_noselect(
+            nexti, getuse=lambda: isinstance(gobject.base.textsource, ocrtext)
+        )
+
+        def _():
+            globalconfig["suspendocrwhentranshistshow"] = not globalconfig.get(
+                "suspendocrwhentranshistshow", False
+            )
+            p.maybexocr()
+
+        nexti = self.add_menu_noselect(
+            nexti,
+            lambda: _TR("打开窗口时暂停自动OCR"),
+            callback=_,
+            getchecked=lambda: globalconfig.get("suspendocrwhentranshistshow", False),
+            getuse=lambda: isinstance(gobject.base.textsource, ocrtext),
         )
         nexti = self.add_menu_noselect(nexti)
 
@@ -501,6 +526,9 @@ class Qtranshist(QPlainTextEdit):
         webview2qt = LAction("使用Webview2显示", menu)
         webview2qt.setCheckable(True)
         webview2qt.setChecked(globalconfig["history"]["usewebview2"])
+        suspendocr = LAction("打开窗口时暂停自动OCR")
+        suspendocr.setCheckable(True)
+        suspendocr.setChecked(globalconfig.get("suspendocrwhentranshistshow", False))
         if len(self.textCursor().selectedText()):
             menu.addAction(copy)
             menu.addAction(search)
@@ -508,8 +536,8 @@ class Qtranshist(QPlainTextEdit):
             menu.addAction(tts)
         else:
             menu.addAction(qingkong)
-            menu.addAction(scrolltoend)
             menu.addAction(font)
+            menu.addAction(scrolltoend)
             menu.addSeparator()
             menu.addAction(baocun)
             if windows.GetKeyState(windows.VK_CONTROL) < 0:
@@ -521,12 +549,18 @@ class Qtranshist(QPlainTextEdit):
             menu.addAction(hideshowtransname)
             menu.addAction(hidetime)
             menu.addSeparator()
+            if isinstance(gobject.base.textsource, ocrtext):
+                menu.addAction(suspendocr)
+                menu.addSeparator()
             menu.addAction(webview2qt)
 
         action = menu.exec(QCursor.pos())
         if action == qingkong:
             self.clear()
             self.p.trace.clear()
+        elif action == suspendocr:
+            globalconfig["suspendocrwhentranshistshow"] = suspendocr.isChecked()
+            self.parent().maybexocr()
         elif action == baocunfmt:
             sharedfunctions.savesrt(self, self.p.trace)
         elif action == webview2qt:
@@ -626,6 +660,7 @@ class transhist(closeashidewindow):
         self.setWindowTitle("历史文本")
         self.setWindowIcon(qtawesome.icon("fa.history"))
         self.state = 0
+        self.__didsuspended = False
 
     def __load(self):
         if self.state != 0:
@@ -637,6 +672,28 @@ class transhist(closeashidewindow):
     def showEvent(self, e):
         super().showEvent(e)
         self.__load()
+        self.maybesuspendocr()
+
+    def maybexocr(self):
+        if globalconfig.get("suspendocrwhentranshistshow", False):
+            self.maybesuspendocr()
+        else:
+            self.mayberesumeocr()
+
+    def maybesuspendocr(self):
+        if globalconfig.get("suspendocrwhentranshistshow", False) and isinstance(
+            gobject.base.textsource, ocrtext
+        ):
+            gobject.base.textsource.pause_recognition()
+            self.__didsuspended = True
+
+    def mayberesumeocr(self):
+        if self.__didsuspended and isinstance(gobject.base.textsource, ocrtext):
+            gobject.base.textsource.resume_recognition()
+
+    def hideEvent(self, e):
+        self.mayberesumeocr()
+        super().hideEvent(e)
 
     def setf(self):
         WSForEach(transhistwsoutputsave, lambda _: _.setf())
@@ -657,14 +714,18 @@ class transhist(closeashidewindow):
         WSForEach(transhistwsoutputsave, lambda _: _.showhideraw())
         sharedfunctions.ifformatchangedrewriteautosave(self.trace)
 
+    def autoscroll(self):
+        WSForEach(transhistwsoutputsave, lambda _: _.autoscroll())
+        sharedfunctions.ifformatchangedrewriteautosave(self.trace)
+
     def getnewsentence(self, sentence):
         tm = time.time()
         line = (0, (tm, sentence))
         self.trace.append(line)
         sharedfunctions.autosave(line)
         if self.state == 2:
-            self.textOutput.getnewsentence(self.trace[-1])
-        WSForEach(transhistwsoutputsave, lambda _: _.getnewsentence(self.trace[-1]))
+            self.textOutput.getnewsentence(line)
+        WSForEach(transhistwsoutputsave, lambda _: _.getnewsentence(line))
 
     def getnewtrans(self, api, sentence):
         tm = time.time()
@@ -672,8 +733,8 @@ class transhist(closeashidewindow):
         self.trace.append(line)
         sharedfunctions.autosave(line)
         if self.state == 2:
-            self.textOutput.getnewtrans(self.trace[-1])
-        WSForEach(transhistwsoutputsave, lambda _: _.getnewtrans(self.trace[-1]))
+            self.textOutput.getnewtrans(line)
+        WSForEach(transhistwsoutputsave, lambda _: _.getnewtrans(line))
 
     def loadviewer(self, shoudong=False):
         if self.textOutput:

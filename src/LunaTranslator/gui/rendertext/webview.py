@@ -39,18 +39,18 @@ class somecommon(dataget):
     def calllunaloadready(self):
         self.colorset.clear()
         self.ts_klass.clear()
-        self.setselectable(globalconfig["selectable"])
-        self.showhideerror(globalconfig["showtranexception"])
-        self.showhideorigin(globalconfig["isshowrawtext"])
-        self.showhidetranslate(globalconfig["showfanyi"])
-        self.showhidename(globalconfig["showfanyisource"])
-        self.showatcenter(globalconfig["showatcenter"])
-        self.showtextareabackground(globalconfig["text_area_background"])
+        self.setselectable(globalconfig.get("selectable", True))
+        self.showhideerror(globalconfig.get("showtranexception", True))
+        self.showhideorigin(globalconfig.get("isshowrawtext", True))
+        self.showhidetranslate(globalconfig.get("showfanyi", True))
+        self.showhidename(globalconfig.get("showfanyisource", False))
+        self.showatcenter(globalconfig.get("showatcenter", True))
+        self.showtextareabackground(globalconfig.get("text_area_background", False))
         self.setTextAreaBackStyle()
         self.showhideclick()
-        self.showhidert(globalconfig["isshowhira"])
+        self.showhidert(globalconfig.get("isshowhira", True))
         self.setfontstyle()
-        self.setdisplayrank(globalconfig["displayrank"])
+        self.setdisplayrank(globalconfig.get("displayrank", 0))
         self.sethovercolor(globalconfig["hovercolor"])
         self.settooltipsstyle(
             globalconfig["word_hover_bg_color"],
@@ -58,12 +58,23 @@ class somecommon(dataget):
             globalconfig["word_hover_border"],
             globalconfig["word_hover_border_R"],
         )
-        self.verticalhorizontal(globalconfig["verticalhorizontal"])
-        self.setwordhoveruse(globalconfig["word_hover_action_usewb2"])
-        self.set_word_hover_show_word_info(globalconfig["word_hover_show_word_info"])
+        self.verticalhorizontal(globalconfig.get("verticalhorizontal", False))
+        self.setwordhoveruse(globalconfig.get("word_hover_action_usewb2", False))
+        self.set_word_hover_show_word_info(globalconfig.get("word_hover_show_word_info", False))
+        self.setbackgroudimageandopt()
         self.refreshcontent()
 
     # js api
+    def setbackgroudimageandopt(self):
+        use = not globalconfig.get("backtransparent", False)
+        opt = globalconfig.get("transparent_pic", 0) / 100 if use else 0
+        url: str = globalconfig.get(
+            "backgroundpic", "https://image.lunatranslator.org/luna.jpg"
+        )
+        if not any((url.lower().startswith(_)) for _ in ("https://", "http://")):
+            url = os.path.abspath(url).replace("\\", "/")
+        self.debugeval('setbackgroudimageandopt(  "{}",{});'.format(quote(url), opt))
+
     def sethovercolor(self, color):
         self.debugeval('sethovercolor("{}")'.format(self._qcolor_as_rgba(color)))
 
@@ -80,14 +91,14 @@ class somecommon(dataget):
         self.debugeval("showtextareabackground({})".format(int(show)))
 
     def setTextAreaBackStyle(self, **_):
-        c = QColor(globalconfig["text_area_background_color"])
+        c = QColor(globalconfig.get("text_area_background_color", "#ff0000"))
         self.debugeval(
             "setTextAreaBackStyle({}, {}, {}, '{}', {})".format(
-                globalconfig["text_area_background_r"],
-                globalconfig["text_area_background_w"],
-                globalconfig["text_area_background_h"],
+                globalconfig.get("text_area_background_r", 5),
+                globalconfig.get("text_area_background_w", 5),
+                globalconfig.get("text_area_background_h", 5),
                 c.name(QColor.NameFormat.HexRgb),
-                globalconfig["text_area_background_alpha"] / 100,
+                globalconfig.get("text_area_background_alpha", 50) / 100,
             )
         )
 
@@ -403,9 +414,11 @@ class TextBrowser(WebviewWidget, somecommon):
         )
 
     def __init__(self, parent) -> None:
-        super().__init__(parent, transp=True, loadext=globalconfig["webviewLoadExt"])
+        super().__init__(
+            parent, transp=True, loadext=globalconfig.get("webviewLoadExt", True)
+        )
         # webview2当会执行alert之类的弹窗js时，若qt窗口不可视，会卡住
-        self.setMouseTracking(globalconfig["dragable"])
+        self.setMouseTracking(globalconfig.get("dragable", True))
         nexti = self.add_menu(0, lambda: _TR("查词"), self.menusearchword)
         nexti = self.add_menu(
             nexti,
@@ -420,14 +433,14 @@ class TextBrowser(WebviewWidget, somecommon):
         i = self.add_menu_noselect(0, lambda: _TR("清空"), self.___cleartext)
 
         def __cb():
-            globalconfig["dragable"] = not globalconfig["dragable"]
-            self.setMouseTracking(globalconfig["dragable"])
+            globalconfig["dragable"] = not globalconfig.get("dragable", True)
+            self.setMouseTracking(globalconfig.get("dragable", True))
 
         i = self.add_menu_noselect(
             i,
             lambda: _TR("可拖动的"),
             __cb,
-            getchecked=lambda: globalconfig["dragable"],
+            getchecked=lambda: globalconfig.get("dragable", True),
         )
 
         def __cb2():
@@ -440,6 +453,16 @@ class TextBrowser(WebviewWidget, somecommon):
             __cb2,
             getchecked=lambda: globalconfig["hidetools"],
         )
+        i = self.add_menu_noselect(
+            i,
+            lambda: _TR("鼠标滚动查看历史文本"),
+            lambda: globalconfig.__setitem__(
+                "enable_wheel_history",
+                not globalconfig.get("enable_wheel_history", True),
+            ),
+            getchecked=lambda: globalconfig.get("enable_wheel_history", True),
+        )
+        self.bind("callwheelEvent", gobject.base.wheelhistory.emit)
         self.bind("calllunaclickedword", gobject.base.clickwordcallback)
         self.bind("calllunaMouseMove", self.calllunaMouseMove)
         self.bind("calllunaMousePress", self.calllunaMousePress)
@@ -458,7 +481,9 @@ class TextBrowser(WebviewWidget, somecommon):
         self._switchcursor.connect(self.switchcursor)
         self.window().isDragging.connect(self._isDragging)
         self._isDragging.connect(
-            lambda b: self.setselectable(False if b else globalconfig["selectable"])
+            lambda b: self.setselectable(
+                False if b else globalconfig.get("selectable", True)
+            )
         )
         self.loadex()
         self.__tooltipshelper.connect(lambda f: f())
@@ -600,7 +625,9 @@ class TextBrowser(WebviewWidget, somecommon):
             tooltipswidget.hidetooltipwindow()
 
     def calllunaMouseMove(self, x, y):
-        if globalconfig["selectable"] and globalconfig["selectableEx"]:
+        if globalconfig.get("selectable", True) and globalconfig.get(
+            "selectableEx", False
+        ):
             return
         pos = self.parsexyaspos(x, y)
         event = QMouseEvent(

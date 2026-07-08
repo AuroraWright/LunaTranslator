@@ -3,9 +3,11 @@ from qtsymbols import *
 import gobject
 import os, subprocess, functools
 import time, NativeUtils, hashlib
-from myutils.config import savehook_new_data, globalconfig, mayberelpath
+from urllib.parse import quote
+from myutils.config import savehook_new_data, globalconfig, relpath, _TR
 from myutils.wrapper import threader
-from myutils.utils import qimage2binary
+from myutils.utils import qimage2binary, get_time_stamp
+from traceback import print_exc
 
 
 def clipboard_set_image(p: QImage):
@@ -20,102 +22,98 @@ def clipboard_set_image(p: QImage):
     NativeUtils.ClipBoard.image = qimage2binary(p)
 
 
-@threader
-def grabwindow(
-    app="PNG", callback_origin=None, tocliponly=False, usewgc=False, screenshot=False
-):
-    tmsp = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-    if tocliponly:
-        fname = ""
-        uid = None
-    elif callback_origin or tocliponly:
-        if callback_origin:
-            fname = gobject.gettempdir(tmsp)
-        else:
-            fname = ""
-        uid = None
-    else:
+def __getuidandfname(app):
+    tmsp = get_time_stamp(forfilename=True)
+    tmsp += "." + app
+    hwndx = gobject.base.hwnd
+    if not hwndx:
+        hwndx = windows.GetForegroundWindow()
+    hwndx = windows.GetAncestor(hwndx)
+    gamepath = windows.GetProcessFileName(windows.GetWindowThreadProcessId(hwndx))
+    exename = os.path.splitext(os.path.basename(gamepath))[0]
+    uid = gobject.base.gameuid
+    screenshot_savepath: str = globalconfig.get("screenshot_savepath", "")
 
-        hwndx = gobject.base.hwnd
-        if not hwndx:
-            hwndx = windows.GetForegroundWindow()
-        hwndx = windows.GetAncestor(hwndx)
-        gamepath = windows.GetProcessFileName(windows.GetWindowThreadProcessId(hwndx))
-        exename = os.path.splitext(os.path.basename(gamepath))[0]
-        uid = gobject.base.gameuid
-        screenshot_savepath: str = globalconfig.get("screenshot_savepath", "")
+    class __Exception(Exception):
+        pass
 
+    try:
+        if not screenshot_savepath:
+            raise __Exception()
         try:
-            if not screenshot_savepath:
-                raise Exception()
-            dirname = screenshot_savepath.format(exename=exename)
-            os.makedirs(dirname, exist_ok=True)
-            fname = os.path.join(dirname, tmsp)
+            if "{exename}" in screenshot_savepath:
+                dirname = screenshot_savepath.format(exename=exename)
+            else:
+                raise __Exception()
         except:
-            fname = mayberelpath(
-                gobject.getcachedir(r"screenshot\{}\{}".format(exename, tmsp))
-            )
+            try:
+                if "{}" in screenshot_savepath:
+                    dirname = screenshot_savepath.format(exename)
+                else:
+                    raise __Exception()
+            except:
+                dirname = screenshot_savepath
+                tmsp = exename + "-" + tmsp
+        os.makedirs(dirname, exist_ok=True)
+        fname = os.path.join(dirname, tmsp)
+    except Exception as e:
+        if not isinstance(e, __Exception):
+            print_exc()
+        fname = gobject.getcachedir(r"screenshot\{}\{}".format(exename, tmsp))
+    return uid, relpath(fname)
 
-    def callback_1(callback_origin, uid, tocliponly, p: QPixmap, fn):
-        if p.isNull():
-            return
-        if tocliponly:
-            clipboard_set_image(p)
-            if screenshot:
-                gobject.base.displayinfomessage(
-                    "saved to clipboard", "<msg_info_refresh>"
-                )
-            return
-        p.save(fn)
-        if screenshot:
-            gobject.base.displayinfomessage(
-                "saved to " + os.path.dirname(fn), "<msg_info_refresh>"
-            )
-        if callback_origin:
-            callback_origin(os.path.abspath(fn))
-        if uid:
-            if "imagepath_all" not in savehook_new_data[uid]:
-                savehook_new_data[uid]["imagepath_all"] = []
-            savehook_new_data[uid]["imagepath_all"].append(fn)
 
-    callback = functools.partial(callback_1, callback_origin, uid, tocliponly)
+def callback_1(callback_origin, tocliponly: bool, app, p: QPixmap):
+    if p.isNull():
+        return False
+    if tocliponly:
+        clipboard_set_image(p)
+        gobject.base.displayinfomessage("saved to clipboard", "<msg_info_refresh>")
+        return True
+    if callback_origin:
+        callback_origin(p)
+        return True
+    uid, fname = __getuidandfname(app)
+    p.save(fname)
+    gobject.base.translation_ui.showMarkDownSig.emit(
+        "{}\n[{}](OPEN-{}) [{}](OPEN-{}) [{}](SCREENSHOTSETTING)".format(
+            _TR("已保存为： {}").format(fname),
+            _TR("打开图片"),
+            quote(fname),
+            _TR("打开路径"),
+            quote(os.path.dirname(fname)),
+            _TR("保存路径"),
+        )
+    )
+    if uid:
+        if "imagepath_all" not in savehook_new_data[uid]:
+            savehook_new_data[uid]["imagepath_all"] = []
+        savehook_new_data[uid]["imagepath_all"].append(fname)
+    return True
+
+
+@threader
+def grabwindow(app="PNG", callback=None, tocliponly=False):
+    callback_2 = functools.partial(callback_1, callback, tocliponly, app)
+
+    hwnd = windows.FindWindow(
+        "Window_Magpie_967EB565-6F73-4E94-AE53-00CC42592A22", None
+    )
+    if hwnd:
+        p = safepixmap(NativeUtils.WinRT.capture_window(hwnd, blackborderremove=True))
+        if callback_2(p):
+            return
 
     hwnd = gobject.base.hwnd
     if not hwnd:
         return
     hwnd = windows.GetAncestor(hwnd)
-    if ((not screenshot) and (not usewgc)) or (
-        screenshot and globalconfig["screenshot_method"]["gdi"]
-    ):
-        p = safepixmap(NativeUtils.GdiGrabWindow(hwnd))
-        callback(p, fname + "_gdi." + app)
-    isshit = (not callback_origin) and (not tocliponly)
-    if ((not screenshot) and (usewgc or (p.isNull() or isshit))) or (
-        screenshot and globalconfig["screenshot_method"]["winrt"]
-    ):
-
-        @threader
-        def _():
-            p = safepixmap(NativeUtils.WinRT.capture_window(hwnd))
-            callback(p, fname + "_winrt." + app)
-
-        _()
-
-    if ((not screenshot) and (usewgc or isshit)) or (
-        screenshot and globalconfig["screenshot_method"]["magpie"]
-    ):
-
-        hwnd = windows.FindWindow(
-            "Window_Magpie_967EB565-6F73-4E94-AE53-00CC42592A22", None
-        )
-        if hwnd:
-
-            @threader
-            def _():
-                p = safepixmap(NativeUtils.WinRT.capture_window(hwnd))
-                callback(p, fname + "_winrt_magpie." + app)
-
-            _()
+    p = safepixmap(NativeUtils.GdiGrabWindow(hwnd))
+    if callback_2(p):
+        return
+    p = safepixmap(NativeUtils.WinRT.capture_window(hwnd))
+    if callback_2(p):
+        return
 
 
 def getcurrexe():
@@ -226,7 +224,7 @@ def safepixmap(bs):
 
 
 def subprochiderun(
-    cmd, cwd=None, encoding="utf8", run=True, env=None
+    cmd: "str|list[str]", cwd=None, encoding="utf8", run=True, env=None
 ) -> "subprocess.CompletedProcess|subprocess.Popen":
 
     startupinfo = subprocess.STARTUPINFO()
@@ -238,6 +236,7 @@ def subprochiderun(
         cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        stdin=subprocess.PIPE,
         startupinfo=startupinfo,
         encoding=encoding,
         env=env,

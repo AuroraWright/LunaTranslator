@@ -52,18 +52,22 @@ Tuy nhiên, đôi khi bạn có thể muốn sử dụng nhiều địa chỉ gi
     Trong prompt hệ thống tùy chỉnh và tin nhắn người dùng, bạn có thể sử dụng các trường để tham chiếu thông tin:
     - `{sentence}`: Văn bản cần dịch
     - `{srclang}` và `{tgtlang}`: Ngôn ngữ nguồn và ngôn ngữ đích. Nếu chỉ sử dụng tiếng Anh trong prompt, chúng sẽ được thay thế bằng bản dịch tiếng Anh của tên ngôn ngữ. Ngược lại, chúng sẽ được thay thế bằng bản dịch tên ngôn ngữ trong ngôn ngữ UI hiện tại.
-    - `{contextOriginal[N]}` và `{contextTranslation[N]}` và `{contextBoth[N]}`: N câu lịch sử văn bản gốc, bản dịch và cả hai. N không liên quan đến "số lượng ngữ cảnh đi kèm" và cần được thay thế bằng một số nguyên khi nhập vào.
+    - `{contextOriginal[N]}` và `{contextTranslation[N]}` và `{contextBoth[N]}`: N câu lịch sử văn bản gốc, bản dịch và cả hai. Nếu đầu vào là `contextBoth[N]`, giá trị của `附带上下文个数` sẽ được tham chiếu; nếu đầu vào là `contextBoth[10]`, số lượng 10 đã nhập sẽ được sử dụng.
     - `{DictWithPrompt[XXXXX]}`: Trường này có thể tham chiếu các mục trong "Danh sách Dịch Thuật Ngữ Riêng". **Nếu không tìm thấy mục phù hợp, trường này sẽ bị xóa để tránh làm hỏng nội dung dịch**. Ở đây, `XXXXX` là một đoạn hướng dẫn LLM sử dụng các mục đã cho để tối ưu hóa bản dịch. Nó có thể được tùy chỉnh hoặc vô hiệu hóa tin nhắn tùy chỉnh của người dùng để sử dụng lời nhắc mặc định.
 
 1. #### Temperature / max tokens / top p / frequency penalty
 
     Đối với một số nền tảng và mô hình, các tham số như `top p` và `frequency penalty` có thể không được chấp nhận bởi giao diện, hoặc tham số `max tokens` đã bị loại bỏ và thay bằng `max completion tokens`. Việc kích hoạt hoặc hủy kích hoạt công tắc có thể giải quyết những vấn đề này.
 
-1. #### Reasoning effort
+1. #### reasoning effort
+    Kiểm soát cường độ suy luận được hỗ trợ bởi một số nền tảng.
 
-    Đối với nền tảng Gemini, tùy chọn sẽ tự động ánh xạ thành `thinkingBudget` của Gemini, quy tắc ánh xạ: 
+    Đối với nền tảng Gemini, các tùy chọn sẽ tự động được ánh xạ tới `thinkingBudget` của Gemini. Quy tắc ánh xạ như sau:
     
-    none/minimal->0 (tắt suy nghĩ, nhưng không áp dụng cho model Gemini-2.5-Pro), low->512, medium->-1 (kích hoạt suy nghĩ động), high/xhigh->24576.
+    none/minimal -> 0 (tắt suy luận, không áp dụng cho mô hình Gemini-2.5-Pro), low -> 512, medium -> -1 (bật suy luận động), high/xhigh -> 24576.
+
+1. #### thinking.type
+    Công tắc chuyển đổi chế độ suy luận được hỗ trợ bởi một số nền tảng.
 
 1. #### Các tham số khác
 
@@ -119,18 +123,9 @@ Tuy nhiên, đôi khi bạn có thể muốn sử dụng nhiều địa chỉ gi
 
 Thay thế `{endpoint}` và `{deployName}` bằng endpoint và deployName của bạn.
 
-== Deepinfra
-
-**API Key** https://deepinfra.com/dash/api_keys
-
 == Cerebras
 
 **API Key** https://cloud.cerebras.ai/  ->  API Keys
-
-== Chutes
-
-**API Key** https://chutes.ai/app/api
-
 
 :::
 
@@ -141,6 +136,10 @@ Thay thế `{endpoint}` và `{deployName}` bằng endpoint và deployName của 
 == DeepSeek
 
 **API Key** https://platform.deepseek.com/api_keys
+
+== Xiaomi MiMo
+
+**API Key** https://platform.xiaomimimo.com/#/console/api-keys
 
 == Alibaba Cloud Bailian Large Model
 
@@ -165,14 +164,6 @@ Thay thế `{endpoint}` và `{deployName}` bằng endpoint và deployName của 
 **API Key** https://bigmodel.cn/usercenter/apikeys
 
 **model** https://bigmodel.cn/dev/howuse/model
-
-== Lingyi Wanwu
-
-**API Key** https://platform.lingyiwanwu.com/apikeys
-
-== SiliconFlow
-
-**API Key** https://cloud-hk.siliconflow.cn/account/ak
 
 == iFlytek Spark Large Model
 
@@ -208,7 +199,17 @@ Bạn cũng có thể sử dụng các công cụ chuyển tiếp API như [new-
 Để biết phương pháp sử dụng, bạn có thể tham khảo [bài viết này](https://www.newapi.ai/en/docs/apps/luna-translator).
 
 
-### Mô hình triển khai ngoại tuyến
+## Các mô hình dịch thuật ngoại tuyến cụ thể
 
-Bạn cũng có thể sử dụng các công cụ như [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama) để triển khai các mô hình, sau đó điền địa chỉ và mô hình.
+Có một số mô hình lớn được thiết kế đặc biệt cho dịch thuật ngoại tuyến hoặc được tinh chỉnh cho các tình huống cụ thể.
 
+Hầu hết các mô hình, sau khi triển khai, có thể được gọi trực tiếp bằng **giao diện tổng quát cho mô hình lớn**. Tuy nhiên, một số mô hình có thể yêu cầu sử dụng định dạng prompt chuyên dụng để phát huy hiệu quả dịch thuật tốt hơn.
+
+Giao diện này được thiết kế dành riêng cho các mô hình yêu cầu định dạng prompt chuyên dụng như vậy. Do đó, giao diện này không cung cấp cài đặt prompt tùy chỉnh theo người dùng, mà sử dụng định dạng prompt do nhà phát hành mô hình cung cấp.
+
+Hiện tại, giao diện này hỗ trợ các mô hình sau:
+
+| Tác giả | Mô hình | Ngôn ngữ |
+| ---- | ---------- | ---------- | 
+| tencent | Hy-MT2 | Đa năng |
+| SakuraLLM | SakuraLLM & GalTransl | Tiếng Nhật -> Tiếng Trung |

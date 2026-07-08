@@ -41,7 +41,7 @@ class tooltipssetting(LDialog):
             "word_hover_DWM",
             "word_hover_DWM_1",
             (globalconfig["rendertext_using"] != "webview")
-            or (not globalconfig["word_hover_action_usewb2"]),
+            or (not globalconfig.get("word_hover_action_usewb2", False)),
         )
         formLayout.addRow("圆角", spin1)
         if lay:
@@ -104,15 +104,17 @@ class tooltipswidget(QMainWindow, dataget):
             tooltipswidget.tooltipwindow._seteffect()
 
     def _seteffect(self):
-        if globalconfig["word_hover_DWM"] == 0:
+        if globalconfig.get("word_hover_DWM", 0) == 0:
             NativeUtils.clearEffect(int(self.winId()))
-        elif globalconfig["word_hover_DWM"] == 1:
+        elif globalconfig.get("word_hover_DWM", 0) == 1:
             NativeUtils.setAcrylicEffect(
-                int(self.winId()), globalconfig["word_hover_DWM_1"], 0x00FFFFFF
+                int(self.winId()),
+                globalconfig.get("word_hover_DWM_1", True),
+                0x00FFFFFF,
             )
-        elif globalconfig["word_hover_DWM"] == 2:
+        elif globalconfig.get("word_hover_DWM", 0) == 2:
             NativeUtils.setAeroEffect(
-                int(self.winId()), globalconfig["word_hover_DWM_1"]
+                int(self.winId()), globalconfig.get("word_hover_DWM_1", True)
             )
 
     tooltipwindow: "tooltipswidget" = None
@@ -134,7 +136,7 @@ class tooltipswidget(QMainWindow, dataget):
             int(self.winId()), False, globalconfig.get("word_hover_border_R_SYS", False)
         )
 
-        radiu_valid = globalconfig["word_hover_DWM"] == 0 and not (
+        radiu_valid = globalconfig.get("word_hover_DWM", 0) == 0 and not (
             gobject.sys_ge_win_11 and globalconfig.get("word_hover_border_R_SYS", False)
         )
         self.qlabel.setStyleSheet(
@@ -156,12 +158,7 @@ class tooltipswidget(QMainWindow, dataget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | self.windowFlags())
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        windows.SetWindowLong(
-            int(self.winId()),
-            windows.GWL_EXSTYLE,
-            windows.GetWindowLong(int(self.winId()), windows.GWL_EXSTYLE)
-            | windows.WS_EX_TRANSPARENT,
-        )
+        windows.MouseTrans.set(self.winId())
         qlabel = TextEdit(self)
         self.qlabel = qlabel
         self._setstyle()
@@ -192,9 +189,7 @@ class tooltipswidget(QMainWindow, dataget):
     def tracetooltipwindow(word: WordSegResult, pos):
         skip = False
         if globalconfig["usesearchword_S_hover"]:
-            result = gobject.base.checkkeypresssatisfy(
-                "searchword_S_hover", False
-            )
+            result = gobject.base.checkkeypresssatisfy("searchword_S_hover", False)
             result = result == -1 or result == True
             skip = result
             wordwhich = lambda k: (word.word, word.prototype)[
@@ -211,7 +206,7 @@ class tooltipswidget(QMainWindow, dataget):
             return
         if gobject.base.WordViewTooltip.isVisible():
             return
-        if globalconfig["word_hover_show_word_info"]:
+        if globalconfig.get("word_hover_show_word_info", False):
 
             try:
                 if not tooltipswidget.tooltipwindow:

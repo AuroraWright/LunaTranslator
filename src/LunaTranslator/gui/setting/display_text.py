@@ -194,6 +194,7 @@ class otherdisplaysetting(PopupWidget):
                 globalconfig,
                 "displayrank",
                 callback=gobject.base.translation_ui.translate_text.setdisplayrank,
+                default=0,
             ),
         )
         form.addRow(
@@ -203,6 +204,7 @@ class otherdisplaysetting(PopupWidget):
                 globalconfig,
                 "verticalhorizontal",
                 callback=gobject.base.translation_ui.verticalhorizontal,
+                default=False,
             ),
         )
         # form.addRow(
@@ -238,7 +240,7 @@ def resetgroudswitchcallback(self, group):
         )
         _btn2 = getIconButton(
             callback=functools.partial(Exteditor, self),
-            enable=globalconfig["webviewLoadExt"],
+            enable=globalconfig.get("webviewLoadExt", True),
         )
         switch2 = getsimpleswitch(
             globalconfig,
@@ -247,6 +249,7 @@ def resetgroudswitchcallback(self, group):
                 gobject.base.translation_ui.translate_text.loadinternal(True, True),
                 _btn2.setEnabled(x),
             ),
+            default=True,
         )
         self.goodfontsettingsformlayout.addRow(
             getboxlayout(
@@ -316,16 +319,22 @@ def _createseletengeinecombo(self):
     return self.seletengeinecombo
 
 
-def GetFormForLineHeight(parent, dic, callback):
+def GetFormForLineHeight(parent, dic, callback, wide=False):
     form = LFormLayout(parent)
-    form.addRow(
+    __ = [
         "上边距",
         getspinbox(-9999, 9999, dic, "marginTop", callback=callback, default=0),
-    )
-    form.addRow(
+        "",
         "下边距",
         getspinbox(-9999, 9999, dic, "marginBottom", callback=callback, default=0),
-    )
+    ]
+    if wide:
+        __[0] = getsmalllabel(__[0])
+        __[3] = getsmalllabel(__[3])
+        form.addRow(getboxlayout(__))
+    else:
+        form.addRow(__[0], __[1])
+        form.addRow(__[3], __[4])
     value = getboxwidget(
         [
             getspinbox(
@@ -338,66 +347,74 @@ def GetFormForLineHeight(parent, dic, callback):
                 step=0.01,
                 default=1,
             ),
-            "倍",
+            getsmalllabel("倍"),
         ],
     )
     value.setEnabled(not dic.get("lineHeightNormal", True))
-    lineheigth = getboxlayout(
-        [
-            getboxlayout(
-                [
-                    "默认",
-                    getsimpleswitch(
-                        dic,
-                        "lineHeightNormal",
-                        callback=lambda _: (
-                            value.setEnabled(not _),
-                            callback(),
-                        ),
-                        default=True,
-                    ),
-                ],
+    __ = [
+        getsmalllabel("默认"),
+        getsimpleswitch(
+            dic,
+            "lineHeightNormal",
+            callback=lambda _: (
+                value.setEnabled(not _),
+                callback(),
             ),
-            value,
-        ],
-        lc=QVBoxLayout,
-    )
-    form.addRow(SplitLine())
+            default=True,
+        ),
+    ]
+    if wide:
+        __.append(value)
+        lineheigth = getboxlayout(__)
+    else:
+        __.append("")
+        lineheigth = getboxlayout(
+            [
+                getboxlayout(__),
+                value,
+            ],
+            lc=QVBoxLayout,
+        )
+        form.addRow(SplitLine())
     form.addRow("行高", lineheigth)
 
 
-class Spacesetting(PopupWidget):
+class Spacesetting(NQGroupBox):
     def __init__(self, parent, trans):
         super().__init__(parent)
         GetFormForLineHeight(
             self,
             globalconfig[["lineheights", "lineheightstrans"][trans]],
             mayberealtimesetfont,
+            wide=True,
         )
-        self.display()
 
 
-class TextAreaBack(PopupWidget):
+class TextAreaBack(NQGroupBox):
     def __init__(self, parent):
         super().__init__(parent)
         form = LFormLayout(self)
         form.addRow(
             "颜色",
-            getcolorbutton(
-                self,
-                globalconfig,
-                "text_area_background_color",
-                callback=gobject.base.translation_ui.translate_text.setTextAreaBackStyle,
-            ),
-        )
-        form.addRow(
-            "不透明度",
-            getspinbox(
-                0,
-                100,
-                globalconfig,
-                "text_area_background_alpha",
-                callback=gobject.base.translation_ui.translate_text.setTextAreaBackStyle,
+            getboxlayout(
+                [
+                    getcolorbutton(
+                        self,
+                        globalconfig,
+                        "text_area_background_color",
+                        callback=gobject.base.translation_ui.translate_text.setTextAreaBackStyle,
+                        default="#ff0000",
+                    ),
+                    getsmalllabel("不透明度"),
+                    getspinbox(
+                        0,
+                        100,
+                        globalconfig,
+                        "text_area_background_alpha",
+                        callback=gobject.base.translation_ui.translate_text.setTextAreaBackStyle,
+                        default=50,
+                    ),
+                ]
             ),
         )
         for text, key in (
@@ -415,9 +432,9 @@ class TextAreaBack(PopupWidget):
                     double=True,
                     step=0.2,
                     callback=gobject.base.translation_ui.translate_text.setTextAreaBackStyle,
+                    default=5,
                 ),
             )
-        self.display()
 
 
 def vistranslate_rank(self):
@@ -447,6 +464,7 @@ def _showhidefy(self):
         globalconfig,
         "showfanyi",
         callback=functools.partial(__changeuibuttonstate2, self),
+        default=True,
     )
     gobject.base.show_fany_switch.connect(btn.setChecked)
     return btn
@@ -457,6 +475,7 @@ def __xianshi(self):
         globalconfig,
         "isshowrawtext",
         callback=functools.partial(__changeuibuttonstate, self),
+        default=True,
     )
     gobject.base.show_original_switch.connect(btn.setChecked)
     return btn
@@ -468,6 +487,9 @@ def xianshigrid_style(self):
             dict(
                 title="原文",
                 type="grid",
+                hiderows=[2],
+                name="yuanwenobject",
+                parent=self,
                 grid=(
                     [
                         "字体",
@@ -510,17 +532,17 @@ def xianshigrid_style(self):
                             globalconfig,
                             "showbold",
                             callback=mayberealtimesetfont,
+                            default=False,
                         ),
                         "",
                         "间距",
                         D_getIconButton(
-                            callback=functools.partial(
-                                Spacesetting,
-                                self,
-                                False,
-                            )
+                            callback=lambda: self.yuanwenobject.layout().setRowVisible(
+                                2, not self.yuanwenobject.layout().rowVisible(2)
+                            ),
                         ),
                     ],
+                    [(functools.partial(Spacesetting, self, False), 0)],
                 ),
             ),
         ],
@@ -528,6 +550,9 @@ def xianshigrid_style(self):
             dict(
                 title="译文",
                 type="grid",
+                hiderows=[2],
+                name="yiwenobject",
+                parent=self,
                 grid=(
                     [
                         "字体",
@@ -569,19 +594,26 @@ def xianshigrid_style(self):
                             globalconfig,
                             "showbold_trans",
                             callback=mayberealtimesetfont,
+                            default=False,
                         ),
                         "",
                         "间距",
                         D_getIconButton(
-                            callback=functools.partial(Spacesetting, self, True)
+                            callback=lambda: self.yiwenobject.layout().setRowVisible(
+                                2, not self.yiwenobject.layout().rowVisible(2)
+                            ),
                         ),
                     ],
+                    [(functools.partial(Spacesetting, self, True), 0)],
                 ),
             ),
         ],
         [
             dict(
                 type="grid",
+                hiderows=[2],
+                name="otherobject",
+                parent=self,
                 grid=(
                     [
                         "居中显示",
@@ -589,6 +621,7 @@ def xianshigrid_style(self):
                             globalconfig,
                             "showatcenter",
                             callback=gobject.base.translation_ui.translate_text.showatcenter,
+                            default=True,
                         ),
                         "",
                         "显示错误信息",
@@ -596,11 +629,14 @@ def xianshigrid_style(self):
                             globalconfig,
                             "showtranexception",
                             callback=lambda x: changeshowerrorstate(self, x),
+                            default=True,
                         ),
                         "",
                         "",
                         "收到翻译时才刷新",
-                        D_getsimpleswitch(globalconfig, "refresh_on_get_trans"),
+                        D_getsimpleswitch(
+                            globalconfig, "refresh_on_get_trans", default=False
+                        ),
                     ],
                     [
                         "显示翻译器名称",
@@ -608,6 +644,7 @@ def xianshigrid_style(self):
                             globalconfig,
                             "showfanyisource",
                             callback=gobject.base.translation_ui.translate_text.showhidename,
+                            default=False,
                         ),
                         "",
                         "固定翻译显示顺序",
@@ -619,9 +656,15 @@ def xianshigrid_style(self):
                             globalconfig,
                             "text_area_background",
                             callback=gobject.base.translation_ui.translate_text.showtextareabackground,
+                            default=False,
                         ),
-                        D_getIconButton(callback=functools.partial(TextAreaBack, self)),
+                        D_getIconButton(
+                            callback=lambda: self.otherobject.layout().setRowVisible(
+                                2, not self.otherobject.layout().rowVisible(2)
+                            ),
+                        ),
                     ],
+                    [(functools.partial(TextAreaBack, self), 0)],
                 ),
             ),
         ],

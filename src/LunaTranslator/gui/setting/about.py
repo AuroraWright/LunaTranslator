@@ -18,7 +18,6 @@ from gui.usefulwidget import (
     LinkLabel,
     SClickableLabel,
     VisLFormLayout,
-    D_getIconButton,
     tabadd_lazy,
 )
 from gui.setting.setting_year import yearsummary
@@ -111,6 +110,7 @@ def updatexx(self):
                         else ""
                     ),
                 ),
+                default=True,
             ),
             getsmalllabel(""),
             getsmalllabel("最新版本"),
@@ -136,7 +136,7 @@ def _progresssignal4(
 ):
     downloadprogress.setValue(val)
     downloadprogress.setFormat(text)
-    if (val or text) and globalconfig["autoupdate"]:
+    if (val or text) and globalconfig.get("autoupdate", True):
         updatelayout.setRowVisible(2, True)
 
 
@@ -174,9 +174,9 @@ class MDLabel1(MDLabel):
 
 def get_about_info():
     lang = getlanguse()
-    t3 = "如果使用中遇到困难，可以查阅[使用说明](/)、观看[我的B站视频](https://space.bilibili.com/592120404/video)，也欢迎加入[QQ群](https://qm.qq.com/q/mPSu3sG5ri)。"
+    t3 = "如果使用中遇到困难，可以查阅[使用说明](/)、观看[我的B站视频](https://space.bilibili.com/592120404/video)，也欢迎加入[QQ群](https://lunatranslator.org/Resource/QQGroup)。"
     t2 = "软件维护不易，如果您感觉该软件对你有帮助，欢迎通过[爱发电](https://afdian.com/a/HIllya51)，或[微信扫码](WEIXIN)赞助，您的支持将成为软件长期维护的助力，谢谢~"
-    t5 = "如果使用中遇到困難，可以查閱[使用說明](/)、觀看[我的 B 站影片](https://space.bilibili.com/592120404/video)，也歡迎加入 [Discord](https://discord.com/invite/ErtDwVeAbhtB)／[QQ 群](https://qm.qq.com/q/mPSu3sG5ri)。"
+    t5 = "如果使用中遇到困難，可以查閱[使用說明](/)、觀看[我的 B 站影片](https://space.bilibili.com/592120404/video)，也歡迎加入 [Discord](https://discord.com/invite/ErtDwVeAbhtB)／[QQ 群](https://lunatranslator.org/Resource/QQGroup)。"
     t6 = "如果使用中遇到困难，可以查阅[使用说明](/)，也欢迎加入[Discord](https://discord.com/invite/ErtDwVeAbB)。"
     t4 = "软件维护不易，如果您感觉该软件对你有帮助，欢迎通过[patreon](https://patreon.com/HIllya51)支持我，您的支持将成为软件长期维护的助力，谢谢~"
     if lang == Languages.Chinese:
@@ -285,7 +285,7 @@ class delayloadsvg(QSvgWidget):
         return super().event(a0)
 
     def loadh(self):
-        h = QFontMetricsF(self.font()).height()
+        h = QFontMetricsF(self.font(), self).height()
         renderer = self.renderer()
         if renderer != None:
             size = renderer.defaultSize()

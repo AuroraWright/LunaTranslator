@@ -2,17 +2,25 @@ import threading
 import re, os
 import time, gobject, windows
 from qtsymbols import *
-import zhconv, functools
+import zhconv, functools, shutil
 from myutils.config import (
     globalconfig,
     savehook_new_data,
     dynamiclink,
+    savehook_new_list,
     findgameuidofpath,
     _TR,
+    uid2gamepath,
 )
 from main import checkintegrity
 from textio.textsource.textsourcebase import basetext
-from myutils.utils import getlangtgt, safe_escape, stringfyerror
+from myutils.utils import (
+    getlangtgt,
+    safe_escape,
+    stringfyerror,
+    find_or_create_uid,
+    find_or_create_uid_for_emu,
+)
 from myutils.kanjitrans import kanjitrans
 from myutils.hwnd import test_injectable, ListProcess
 from myutils.wrapper import threader
@@ -37,6 +45,13 @@ from ctypes import (
     c_float,
 )
 from ctypes.wintypes import DWORD, LPCWSTR
+
+
+class HOSTINFO:
+    Console = 0
+    Warning = 1
+    EmuWarning = 2
+    EmuConnected = 3
 
 
 class ThreadParam(Structure):
@@ -89,6 +104,7 @@ HookInsertHandler = CFUNCTYPE(None, DWORD, c_uint64, c_wchar_p)
 EmbedCallback = CFUNCTYPE(None, c_wchar_p, ThreadParam)
 QueryHistoryCallback = CFUNCTYPE(None, c_wchar_p)
 I18NQueryCallback = CFUNCTYPE(c_void_p, c_wchar_p)
+EmuGameInfoCallback = CFUNCTYPE(None, c_wchar_p, c_wchar_p, c_wchar_p)
 
 
 class texthook(basetext):
@@ -127,8 +143,8 @@ class texthook(basetext):
 
     def init(self):
 
-        self.pids = []
-        self.maybepids = []
+        self.pids: "dict[str,list[int]]" = {0: []}
+        self.maybepids: "list[int]" = []
         self.maybepidslock = threading.Lock()
         self.keepref = []
         self.selectedhook = []
@@ -137,6 +153,7 @@ class texthook(basetext):
         self.multiselectedcollectorlock = threading.Lock()
         self.lastflushtime = 0
         self.runonce_line = ""
+        self.emugameid = None
         gobject.base.autoswitchgameuid = False
         self.initdll()
         self.delaycollectallselectedoutput()
@@ -169,7 +186,7 @@ class texthook(basetext):
         self.Luna_InsertPCHooks = LunaHost.Luna_InsertPCHooks
         self.Luna_InsertPCHooks.argtypes = (DWORD, c_int)
         self.Luna_Settings = LunaHost.Luna_Settings
-        self.Luna_Settings.argtypes = c_int, c_bool, c_int, c_int, c_int
+        self.Luna_Settings.argtypes = c_int, c_bool, c_int, c_int, c_int, c_bool
         self.Luna_Start = LunaHost.Luna_Start
         self.Luna_Start.argtypes = (
             ProcessEvent,
@@ -205,8 +222,8 @@ class texthook(basetext):
             FindHooksCallback_t,
             c_wchar_p,
         )
-        self.Luna_EmbedSettings = LunaHost.Luna_EmbedSettings
-        self.Luna_EmbedSettings.argtypes = (
+        self.Luna_SettingsEx = LunaHost.Luna_SettingsEx
+        self.Luna_SettingsEx.argtypes = (
             DWORD,
             c_uint32,
             c_uint8,
@@ -217,6 +234,7 @@ class texthook(basetext):
             c_bool,
             c_bool,
             c_float,
+            c_bool,
         )
         self.Luna_CheckIsUsingEmbed = LunaHost.Luna_CheckIsUsingEmbed
         self.Luna_CheckIsUsingEmbed.argtypes = (ThreadParam,)
@@ -238,10 +256,25 @@ class texthook(basetext):
             HookInsertHandler(self.newhookinsert),
             EmbedCallback(self.getembedtext),
             I18NQueryCallback(self.i18nQueryCallback),
+            EmuGameInfoCallback(self.EmuGameInfoCallback),
         ]
         self.keepref += procs
         self.Luna_Start(*procs)
         self.setlang()
+
+    def EmuGameInfoCallback(self, _id, title, version):
+        text = "{} {} {}".format(_id, title, version)
+        gobject.base.displayinfomessage(text, "<msg_info_refresh>")
+        gobject.base.hookselectdialog.sysmessagesignal.emit(
+            HOSTINFO.Console, "[Game] " + text
+        )
+        uid = find_or_create_uid_for_emu(savehook_new_list, _id, self.gameuid, title)
+        if uid not in savehook_new_list:
+            savehook_new_list.insert(0, uid)
+        uid2gamepath[uid] = uid2gamepath[self.gameuid]
+        self.pids[uid] = self.pids[self.gameuid]
+        self.emugameid = _id
+        self.gameuid = uid
 
     def i18nQueryCallback(self, querytext: str):
         return self.Luna_AllocString(_TR(querytext))
@@ -249,8 +282,8 @@ class texthook(basetext):
     def listprocessm(self):
         cachefname = gobject.gettempdir("{}.txt".format(time.time()))
         arch = "64" if self.is64bit else "32"
-        exe = os.path.abspath("files/shareddllproxy{}.exe".format(arch))
-        pid = " ".join([str(_) for _ in self.pids])
+        exe = os.path.abspath("files/LunaSubprocess{}.exe".format(arch))
+        pid = " ".join([str(_) for _ in self.pids[self.gameuid]])
         subprocess.run('"{}"  listpm "{}" {}'.format(exe, cachefname, pid))
 
         with open(cachefname, "r", encoding="utf-16-le") as ff:
@@ -282,7 +315,7 @@ class texthook(basetext):
     def autohookblacklist(self):
         return (r"C:\Windows\explorer.exe",)
 
-    def connecthwnd(self, hwnd):
+    def connecthwnd(self, hwnd, force=False):
         if (
             gobject.base.AttachProcessDialog
             and gobject.base.AttachProcessDialog.isVisible()
@@ -298,11 +331,17 @@ class texthook(basetext):
             return
         uid, reflist = findgameuidofpath(name_)
         if not uid:
-            return
+            if force:
+                uid = find_or_create_uid(
+                    savehook_new_list, name_, windows.GetWindowText(hwnd)
+                )
+                savehook_new_list.insert(0, uid)
+            else:
+                return
         pids = ListProcess(name_)
         if self.ending:
             return
-        if len(self.pids):
+        if len(self.pids[self.gameuid]):
             return
         if globalconfig["startgamenototop"] == False:
             idx = reflist.index(uid)
@@ -310,9 +349,14 @@ class texthook(basetext):
         self.start(hwnd, pids, name_, uid, autostart=True)
         return True
 
+    def hwndChanged(self, hwnd):
+        pass
+        # 没啥必要，而且不好处理切换问题，先不加了。
+        # self.connecthwnd(hwnd, force=True)
+
     @threader
     def autohookmonitorthread(self):
-        while (not self.ending) and (len(self.pids) == 0):
+        while (not self.ending) and (len(self.pids[self.gameuid]) == 0):
             try:
                 hwnd = windows.GetForegroundWindow()
                 hwnd = windows.GetAncestor(hwnd)
@@ -333,19 +377,30 @@ class texthook(basetext):
     def start(self, hwnd, pids, gamepath, gameuid, autostart=False):
         for pid in pids:
             self.waitend(pid)
+        self.emugameid = None
         gobject.base.hwnd = hwnd
+        issame = gameuid == self.gameuid
         self.gameuid = gameuid
+        self.pids[gameuid] = []
         self.setsettings()
-        self.detachall()
+        if not issame:
+            self.detachall()
         _filename, _ = os.path.splitext(os.path.basename(gamepath))
-        sqlitef = gobject.gettranslationrecorddir(
-            "{}_{}.sqlite".format(_filename, gameuid)
+        if savehook_new_data[gameuid].get("emugameid"):
+            _filename = savehook_new_data[gameuid].get("emugameid")
+        try:
+            shutil.move("translation_record", gobject.getcachedir("translation_record"))
+        except:
+            pass
+        sqlitef = gobject.getcachedir(
+            "translation_record/{}_{}.sqlite".format(_filename, gameuid)
         )
+
         self.startsql(sqlitef)
         if autostart:
             autostarthookcode = self.hconfig.get("hook", [])
             needinserthookcode = self.hconfig.get("needinserthookcode", [])
-            injecttimeout = self.hconfig.get("inserthooktimeout", 250) / 1000
+            injecttimeout = self.hconfig.get("inserthooktimeout", 500) / 1000
         else:
             injecttimeout = 0
             autostarthookcode = []
@@ -361,7 +416,7 @@ class texthook(basetext):
         if (
             len(autostarthookcode) == 0
             and len(self.hconfig.get("embedablehook", [])) == 0
-            and globalconfig["autoopenselecttext"]
+            and globalconfig.get("autoopenselecttext", True)
         ):
             gobject.base.hookselectdialog.realshowhide.emit(True)
         self.injectproc(injecttimeout, pids)
@@ -372,8 +427,11 @@ class texthook(basetext):
         return ret[0]
 
     def removeproc(self, pid):
-        self.pids.remove(pid)
-        if len(self.pids) == 0:
+        if pid not in self.pids[self.gameuid]:
+            # 不detach，直接hook新游戏，发生uid切换。
+            return
+        self.pids[self.gameuid].remove(pid)
+        if len(self.pids[self.gameuid]) == 0:
             self.gameuid = 0
             self.autohookmonitorthread()
 
@@ -390,7 +448,7 @@ class texthook(basetext):
             return
         gobject.base.translation_ui.showMarkDownSig.emit(
             _TR(
-                "正在等待DLL注入到游戏中……\n如果等待时间过长，可能是被杀毒软件拦截，请自行检查相关设置。"
+                "正在等待DLL注入到游戏中……\n如果等待时间过长，可能是被Windows Defender或其他杀毒软件拦截。\n请[添加Windows Defender排除项](WDADDEXCEPTION)，或检查其他相关设置后重试。"
             )
             + "\n[{}]({})".format(
                 _TR("说明"), dynamiclink("README.html#anchor-waitdll", docs=True)
@@ -402,7 +460,7 @@ class texthook(basetext):
 
     def injectdll(self, injectpids, bit, dll):
 
-        injecter = os.path.abspath("files/shareddllproxy{}.exe".format(bit))
+        injecter = os.path.abspath("files/LunaSubprocess{}.exe".format(bit))
         pid = " ".join([str(_) for _ in injectpids])
         for _ in (0,):
             if not test_injectable(injectpids):
@@ -450,14 +508,14 @@ class texthook(basetext):
             windows.OpenProcess(windows.SYNCHRONIZE, False, pid)
         )
         with self.maybepidslock:
-            if len(self.pids) == 0 and len(self.maybepids):
+            if len(self.pids[self.gameuid]) == 0 and len(self.maybepids):
                 # 如果进程连接，则剔除maybepids
                 # 当进程结束，且发现是被试探过&未曾连接，则重试
                 self.maybepids.clear()
                 self.autohookmonitorthread()
 
     def onprocconnect(self, pid):
-        self.pids.append(pid)
+        self.pids[self.gameuid].append(pid)
         try:
             self.maybepids.remove(pid)
         except:
@@ -465,14 +523,14 @@ class texthook(basetext):
         for hookcode in self.needinserthookcode:
             self.Luna_InsertHookCode(pid, hookcode)
         if self.hconfig.get("insertpchooks_string", False):
+            self.InsertPCHooks(pid)
+        gobject.base.displayinfomessage(self.hconfig["title"], "<msg_info_refresh>")
+        self.set_settings_ex(pid)
+
+    def InsertPCHooks(self, pid: int = None):
+        for pid in [pid] if pid else self.pids[self.gameuid]:
             self.Luna_InsertPCHooks(pid, 0)
             self.Luna_InsertPCHooks(pid, 1)
-        gobject.base.displayinfomessage(self.hconfig["title"], "<msg_info_refresh>")
-        self.flashembedsettings(pid)
-
-    def InsertPCHooks(self, which):
-        for pid in self.pids:
-            self.Luna_InsertPCHooks(pid, which)
 
     def newhookinsert(self, pid, addr, hcode):
         if hcode in self.hconfig.get("removeforeverhook", []):
@@ -532,18 +590,22 @@ class texthook(basetext):
             for line in lines:
                 line = line.split(space) if space else line
                 while len(line):
-                    newlines.append(space.join(line[:length]))
-                    line = line[length:]
+                    __line = line[0]
+                    line.pop(0)
+                    while len(line) and (len(__line + space + line[0]) <= length):
+                        __line += space + line[0]
+                        line.pop(0)
+                    newlines.append(__line)
             trans = "\n".join(newlines)
         return trans
 
-    def flashembedsettings(self, pid=None):
+    def set_settings_ex(self, pid=None):
         if pid:
             pids = [pid]
         else:
-            pids = self.pids.copy()
+            pids = self.pids[self.gameuid].copy()
         for pid in pids:
-            self.Luna_EmbedSettings(
+            self.Luna_SettingsEx(
                 pid,
                 int(1000 * self.embedconfig["timeout_translate"]),
                 2,  # static_data["charsetmap"][globalconfig['embedded']['changecharset_charset']]
@@ -558,6 +620,7 @@ class texthook(basetext):
                 self.embedconfig["clearText"],
                 self.embedconfig["changefontsize_use"],
                 self.embedconfig["changefontsize"],
+                True,
             )
 
     def onremovehook(self, hc, hn: bytes, tp):
@@ -613,6 +676,7 @@ class texthook(basetext):
             self.codepage(),
             self.config["maxBufferSize"],
             self.config["maxHistorySize"],
+            False,
         )
 
     def codepage(self):
@@ -644,7 +708,7 @@ class texthook(basetext):
     @threader
     def findhook(self, usestruct, addresses):
         savefound: "dict[str, list]" = {}
-        pids = self.pids.copy()
+        pids = self.pids[self.gameuid].copy()
         cntref = []
 
         def __callback(cntref: list, hcode, text):
@@ -658,16 +722,21 @@ class texthook(basetext):
         for pid in pids:
             self.Luna_FindHooks(pid, usestruct, _callback, addresses)
 
+        searchdeadline = time.time() + usestruct.searchTime / 1000 + 60
         while True:
             lastsize = len(cntref)
             time.sleep(2)
-            if lastsize == len(cntref) and lastsize != 0:
+            if (
+                (lastsize == len(cntref) and lastsize != 0)
+                or time.time() > searchdeadline
+                or self.ending
+            ):
                 break
         gobject.base.hookselectdialog.getfoundhooksignal.emit(savefound)
 
     def inserthook(self, hookcode):
         succ = True
-        for pid in self.pids.copy():
+        for pid in self.pids[self.gameuid].copy():
             succ = self.Luna_InsertHookCode(pid, hookcode) and succ
         if succ == False:
             QMessageBox.critical(
@@ -702,7 +771,6 @@ class texthook(basetext):
             self.multiselectedcollector.append((key, text))
 
     def handle_output(self, hc, hn: bytes, tp, output):
-
         key = (hc, hn.decode("utf8"), tp)
         if key in self.selectedhook:
             if len(self.selectedhook) == 1:
@@ -740,5 +808,6 @@ class texthook(basetext):
         time.sleep(0.1)
 
     def detachall(self):
-        for pid in self.pids.copy():
-            self.Luna_DetachProcess(pid)
+        for _ in self.pids.values():
+            for pid in _.copy():
+                self.Luna_DetachProcess(pid)

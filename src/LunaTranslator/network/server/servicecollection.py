@@ -64,6 +64,7 @@ class internalservicemainuiws(WSHandler, somecommon_1):
         args = message.get("args", tuple())
         dict(
             calllunaloadready=self.calllunaloadready,
+            callwheelEvent=gobject.base.wheelhistory.emit,
             calllunaclickedword=gobject.base.clickwordcallback,
         )[function](*args)
 
@@ -314,6 +315,7 @@ class PageManyInOne(HTTPHandler):
 
     def parse(self, _):
         return FileResponse(r"LunaTranslator\htmlcode\service\manyinone.html")
+
 
 class PageIndex(HTTPHandler):
     path = "/"

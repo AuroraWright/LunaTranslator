@@ -141,6 +141,14 @@ namespace
         s = re::sub(s, R"(#[A-Za-z]+\[[\d\-,\.]*\])");
         buffer->from(s);
     }
+    void PCSG00689(TextBuffer *buffer, HookParam *hp)
+    {
+        static std::wstring last;
+        auto s = buffer->strW();
+        if (endWith(last, s))
+            buffer->clear();
+        last = s;
+    }
     void PCSG00935_2(TextBuffer *buffer, HookParam *hp)
     {
         static std::string last;
@@ -1019,6 +1027,14 @@ namespace
         s = re::sub(s, LR"(　*<br>　*)");
         buffer->from(s);
     }
+    void PCSG00543(TextBuffer *buffer, HookParam *hp)
+    {
+        static std::wstring last;
+        auto s = buffer->strW();
+        if (endWith(last, s))
+            return buffer->clear();
+        last = s;
+    }
 }
 
 struct emfuncinfoX
@@ -1027,6 +1043,10 @@ struct emfuncinfoX
     emfuncinfo info;
 };
 static const emfuncinfoX emfunctionhooks_1[] = {
+    // 冴えない彼女の育てかた -blessing flowers-
+    {0x80014426, {FULL_STRING | CODEC_UTF16, 0xb, 0, 0, PCSG00543, "PCSG00543"}}, // 这作可以用来锚定不同版本模拟器的偏移量。搜索后这条很明显。然后再用任意另一作验证即可。
+    // ToLOVEる ダークネス トゥループリンセス
+    {0x8097D494, {FULL_STRING | CODEC_UTF16, 1, 0, 0, PCSG00689, "PCSG00689"}},
     // オメルタ CODE:TYCOON 戒
     {0x800BB456, {FULL_STRING, 5, 0, 0, 0, "PCSG00789"}},
     // 大図書館の羊飼い -Library Party-

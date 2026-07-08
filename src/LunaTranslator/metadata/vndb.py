@@ -1,13 +1,8 @@
 import requests, re
-from myutils.config import savehook_new_data
-from myutils.utils import initanewitem, gamdidchangedtask
-import functools
 import time
 from qtsymbols import *
 from metadata.abstract import common
-from gui.gamemanager.common import getreflist, getalistname
-from myutils.wrapper import threader
-from gui.usefulwidget import manybuttonlayout
+from gui.usefulwidget import getsimpleswitch
 
 
 def saferequestvndb(proxy, method, url, json=None, headers=None):
@@ -40,13 +35,13 @@ def safegetvndbjson(proxy, url, json=None, headers=None):
     return saferequestvndb(proxy, "POST", url, json, headers)
 
 
-def gettitlefromjs(js):
+def gettitlefromjs(js, main=True):
     try:
 
         for _ in js["titles"]:
-            main = _["main"]
+            _main = _["main"]
             title = _["title"]
-            if main:
+            if _main == main:
                 return title
 
         raise Exception()
@@ -97,13 +92,14 @@ def getcharnamemapbyid(proxy, vid):
                     "=",
                     ["id", "=", vid],
                 ],
-                "fields": "name,original",
+                "fields": "name,original,aliases,sex",
                 "results": results,
             },
         )
         if not js["more"]:
             break
         results += 10
+
     namemap = {}
     try:
         for r in js["results"]:
@@ -111,13 +107,31 @@ def getcharnamemapbyid(proxy, vid):
             # 英语游戏没有original
             if not _o:
                 _o = r["name"]
-            namemap[_o] = r["name"]
+            _s = r["sex"][0] if r["sex"] else ""
+            aliases = r["aliases"]
+            aliases_formatted = []
+
+            if aliases:
+                if len(aliases) % 2 == 0 and not all(a.isascii() for a in aliases):
+                    aliases_formatted = [
+                        (aliases[i], aliases[i + 1], _s)
+                        for i in range(0, len(aliases) - 1, 2)
+                    ]
+                else:
+                    aliases_formatted = [(a, a, _s) for a in aliases]
+
+            for original, name, sex in [(_o, r["name"], _s)] + aliases_formatted:
+                if original in namemap and namemap[original]["sex"] != sex:
+                    namemap[original]["sex"] = ""
+                else:
+                    namemap[original] = {"name": name, "sex": sex}
     except:
         pass
+
     return namemap
 
 
-def getinfosbyvid(proxy, vid):
+def getinfosbyvid(proxy, vid, main=True):
     js = safegetvndbjson(
         proxy,
         "vn",
@@ -144,7 +158,7 @@ def getinfosbyvid(proxy, vid):
         rates = [_["rating"] for _ in js["results"][0]["tags"]]
 
         return dict(
-            title=gettitlefromjs(js["results"][0]),
+            title=gettitlefromjs(js["results"][0], main=main),
             img=js["results"][0]["image"]["url"] if js["results"][0]["image"] else None,
             sc=imgs,
             dev=dev,
@@ -155,179 +169,14 @@ def getinfosbyvid(proxy, vid):
 
 class vndbsettings(QFormLayout):
 
-    @property
-    def headers(self):
-        return {
-            "Authorization": "Token " + self._ref.config["Token"],
-        }
-
-    @property
-    def userid(self):
-        return saferequestvndb(
-            self._ref.proxy, "GET", "authinfo", headers=self.headers
-        )["id"]
-
-    def querylist(self, title):
-
-        userid = self.userid
-        pagei = 1
-        collectresults = []
-        while True:
-            json_data = {
-                "user": userid,
-                "fields": (
-                    "id, vn.title,vn.titles.title,vn.titles.main" if title else "id"
-                ),
-                "sort": "vote",
-                "results": 100,
-                "page": pagei,
-            }
-            pagei += 1
-            response = saferequestvndb(
-                self._ref.proxy, "POST", "ulist", json=json_data, headers=self.headers
-            )
-            collectresults += response["results"]
-            if not response["more"]:
-                break
-        return collectresults
-
-    def getalistname_download(self, uid):
-        reflist = getreflist(uid)
-        collectresults = self.querylist(True)
-        thislistvids = [
-            savehook_new_data[gameuid].get(self._ref.idname, 0) for gameuid in reflist
-        ]
-        collect = {}
-        for gameuid in savehook_new_data:
-            vid = savehook_new_data[gameuid].get(self._ref.idname, 0)
-            if not vid:
-                continue
-            collect[vid] = gameuid
-
-        for item in collectresults:
-            title = gettitlefromjs(item["vn"])
-            vid = int(item["id"][1:])
-            if vid in thislistvids:
-                continue
-
-            if vid in collect:
-                gameuid = collect[vid]
-            else:
-                gameuid = initanewitem(title)
-                savehook_new_data[gameuid][self._ref.idname] = vid
-                gamdidchangedtask(self._ref.typename, self._ref.idname, gameuid)
-            reflist.insert(0, gameuid)
-
-    def getalistname_upload(self, uid):
-        reflist = getreflist(uid)
-        vids = [int(item["id"][1:]) for item in self.querylist(False)]
-
-        for gameuid in reflist:
-            vid = savehook_new_data[gameuid].get(self._ref.idname, 0)
-            if not vid:
-                continue
-            if vid in vids:
-                continue
-            saferequestvndb(
-                self._ref.proxy,
-                "PATCH",
-                "ulist/v{}".format(vid),
-                json={
-                    "labels_set": [1],
-                },
-                headers=self.headers,
-            )
-
-    def singleupload_existsoverride(self, gameuid):
-        vid = savehook_new_data[gameuid].get(self._ref.idname, 0)
-        if not vid:
-            return
-
-        saferequestvndb(
-            self._ref.proxy,
-            "PATCH",
-            "ulist/v{}".format(vid),
-            json={
-                "labels_set": [1],
-                # "labels_unset": [1],
-                # "vote" :100
-            },
-            headers=self.headers,
-        )
-
-    showhide = pyqtSignal(bool)
-
-    @threader
-    def checkvalid(self, k):
-        self.showhide.emit(False)
-        self.lbinfo.setText("")
-        t = time.time()
-        self.tm = t
-        if k != self._ref.config["Token"]:
-            self._ref.config["Token"] = k
-        response = saferequestvndb(
-            self._ref.proxy, "GET", "authinfo", headers=self.headers
-        )
-        if t != self.tm:
-            return
-        print(response)
-        if isinstance(response, dict) and response.get("username"):
-            info = "username: " + response.get("username")
-            self.showhide.emit(True)
-        else:
-            info = response
-            self.showhide.emit(False)
-        self.lbinfo.setText(info)
-
     def __init__(self, layout: QVBoxLayout, _ref: common, gameuid: str) -> None:
         super().__init__(None)
         layout.addLayout(self)
         self.tm = None
         self._ref = _ref
-        vbox = QVBoxLayout()
-        s = QLineEdit()
-        self.lbinfo = QLabel()
-        s.textChanged.connect(self.checkvalid)
-        s.setText(_ref.config["Token"])
-        ww = QWidget()
-        fl2 = QFormLayout(ww)
-        fl2.setContentsMargins(0, 0, 0, 0)
-        ww.hide()
-        self.fl2 = ww
-        self.showhide.connect(self.fl2.setVisible)
-        self._token = s
-        vbox.addWidget(s)
-        vbox.addWidget(self.lbinfo)
-        self.addRow("Token", vbox)
-        btn = manybuttonlayout(
-            (
-                (
-                    "上传游戏",
-                    functools.partial(self.singleupload_existsoverride, gameuid),
-                ),
-                (
-                    "上传游戏列表",
-                    functools.partial(
-                        getalistname,
-                        ww,
-                        self.getalistname_upload,
-                        title="上传游戏列表",
-                    ),
-                ),
-                (
-                    "获取游戏列表",
-                    functools.partial(
-                        getalistname,
-                        ww,
-                        self.getalistname_download,
-                        title="添加到列表",
-                    ),
-                ),
-            )
+        self.addRow(
+            "title - main", getsimpleswitch(_ref.config, "title-main", default=True)
         )
-
-        fl2.addRow(btn)
-        self.addRow(ww)
 
 
 class searcher(common):
@@ -363,7 +212,7 @@ class searcher(common):
 
     def searchfordata(self, _vid):
         vid = "v{}".format(_vid)
-        infos = getinfosbyvid(self.proxy, vid)
+        infos = getinfosbyvid(self.proxy, vid, main=self.config.get("title-main", True))
         namemap = getcharnamemapbyid(self.proxy, vid)
 
         return {
@@ -372,5 +221,5 @@ class searcher(common):
             "images": [infos["img"]] + self.getreleasecvfromhtml(_vid) + infos["sc"],
             "webtags": infos["tags"],
             "developers": infos["dev"],
-            "description": infos["description"]
+            "description": infos["description"],
         }

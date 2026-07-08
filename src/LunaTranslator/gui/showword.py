@@ -12,7 +12,11 @@ import requests
 import gobject
 import windows
 import NativeUtils
+import traceback
+from collections import Counter
+from urllib.parse import urlparse
 import myutils.ankiconnect as anki
+from collections import OrderedDict
 from myutils.hwnd import grabwindow
 from myutils.config import globalconfig, static_data, _TR, dynamiclink
 from myutils.utils import (
@@ -68,6 +72,77 @@ def cishusX():
         if os.path.isfile("LunaTranslator/cishu/{}.py".format(K)):
             __.append(K)
     return __
+
+
+class pastepathEdit(QLineEdit):
+
+    def __parseclipboard(self):
+        f = NativeUtils.ClipBoard.files
+        if f and os.path.isfile(f[0]):
+            self.setText(f[0])
+            return
+        t = NativeUtils.ClipBoard.text
+        if os.path.isfile(t):
+            self.setText(t)
+        elif t.startswith('"') and t.endswith('"') and os.path.isfile(t[1:-1]):
+            self.setText(t[1:-1])
+
+    def keyPressEvent(self, e: QKeyEvent):
+        if (
+            e.modifiers() == Qt.KeyboardModifier.ControlModifier
+            and e.key() == Qt.Key.Key_V
+        ):
+            self.__parseclipboard()
+        super().keyPressEvent(e)
+
+
+class pasteimageEdit(QLineEdit):
+    def __parseclipboard(self):
+        f = NativeUtils.ClipBoard.files
+        if (
+            f
+            and os.path.splitext(f[0])[1][1:] in getimageformatlist()
+            and os.path.isfile(f[0])
+        ):
+            self.setText(f[0])
+            return
+        t = NativeUtils.ClipBoard.text
+        if os.path.splitext(t)[1][1:] in getimageformatlist() and os.path.isfile(t):
+            self.setText(t)
+        elif (
+            t.startswith('"')
+            and t.endswith('"')
+            and os.path.splitext(t[1:-1])[1][1:] in getimageformatlist()
+            and os.path.isfile(t[1:-1])
+        ):
+            self.setText(t[1:-1])
+        else:
+            t = NativeUtils.ClipBoard.image
+            if not t:
+                return
+
+            image = QImage()
+            if not image.loadFromData(t):
+                return
+            if image.isNull():
+                return
+            fname = gobject.gettempdir("{}.{}".format(uuid.uuid4(), getimageformat()))
+            image.save(fname)
+            self.setText(fname)
+
+    def keyPressEvent(self, e: QKeyEvent):
+        if (
+            e.modifiers() == Qt.KeyboardModifier.ControlModifier
+            and e.key() == Qt.Key.Key_V
+        ):
+            self.__parseclipboard()
+        super().keyPressEvent(e)
+
+
+def sc_callback(cb, p: QPixmap):
+    fname = gobject.gettempdir("{}.{}".format(uuid.uuid4(), getimageformat()))
+    p.save(fname)
+    cb(fname)
 
 
 class AnkiWindow(QWidget):
@@ -172,7 +247,7 @@ class AnkiWindow(QWidget):
         self.refreshhtml.connect(self.refreshhtmlfunction)
         self.tabs.currentChanged.connect(self.ifshowrefresh)
         self.orientswitch = threeswitch(self, icons=["fa.arrows-h", "fa.arrows-v"])
-        self.orientswitch.selectlayout(globalconfig["anki_Orientation_V"])
+        self.orientswitch.selectlayout(globalconfig.get("anki_Orientation_V", True))
         self.orientswitch.btnclicked.connect(self.selectlayout)
         self.orientswitch.sizeChanged.connect(self.do_resize)
 
@@ -180,7 +255,7 @@ class AnkiWindow(QWidget):
         globalconfig["anki_Orientation_V"] = i
         self.refsearchw.spliter.setOrientation(
             Qt.Orientation.Vertical
-            if globalconfig["anki_Orientation_V"]
+            if globalconfig.get("anki_Orientation_V", True)
             else Qt.Orientation.Horizontal
         )
 
@@ -519,11 +594,7 @@ class AnkiWindow(QWidget):
 
         soundbutton2 = IconButton("fa.music", tips="语音合成")
         soundbutton2.clicked.connect(self.langdu2)
-        cropbutton = getIconButton(
-            icon="fa.crop",
-            callback=functools.partial(self.crophide, False),
-            tips="截图",
-        )
+
         cropbutton2 = getIconButton(
             icon="fa.crop",
             callback=functools.partial(self.crophide, True),
@@ -532,19 +603,12 @@ class AnkiWindow(QWidget):
         grabwindowbtn = getIconButton(
             icon="fa.camera",
             callback=lambda: grabwindow(
-                getimageformat(),
-                functools.partial(self.settextsignal.emit, self.editpath),
+                callback=functools.partial(
+                    sc_callback,
+                    functools.partial(self.settextsignal.emit, self.editpath),
+                )
             ),
-            tips="窗口截图_gdi",
-        )
-        grabwindowbtn2 = getIconButton(
-            icon="fa.camera",
-            callback=lambda: grabwindow(
-                getimageformat(),
-                functools.partial(self.settextsignal.emit, self.editpath),
-                usewgc=True,
-            ),
-            tips="窗口截图_winrt",
+            tips="窗口截图",
         )
 
         def createtbn(target: QLineEdit):
@@ -575,11 +639,11 @@ class AnkiWindow(QWidget):
                         self.setTextCursor(cursor)
                 return super().keyPressEvent(e)
 
-        self.audiopath = QLineEdit()
+        self.audiopath = pastepathEdit()
         self.audiopath.setReadOnly(True)
-        self.audiopath_sentence = QLineEdit()
+        self.audiopath_sentence = pastepathEdit()
         self.audiopath_sentence.setReadOnly(True)
-        self.editpath = QLineEdit()
+        self.editpath = pasteimageEdit()
         self.editpath.setReadOnly(True)
         self.viewimagelabel = pixmapviewer()
         self.editpath.textChanged.connect(self.wrappedpixmap)
@@ -717,10 +781,8 @@ class AnkiWindow(QWidget):
                                 [
                                     LLabel("截图"),
                                     self.editpath,
-                                    cropbutton,
                                     cropbutton2,
                                     grabwindowbtn,
-                                    grabwindowbtn2,
                                     folder_open3,
                                     functools.partial(createtbn, self.editpath),
                                 ]
@@ -1048,26 +1110,52 @@ class kpQTreeView(QTreeView):
             super().keyPressEvent(e)
 
 
-class HistoryViewer(QWidget):
+class HistoryViewer(QListView):
     SentenceRole = Qt.ItemDataRole.UserRole + 100
     IndexRole = Qt.ItemDataRole.UserRole + 101
 
     def showmenu(self, _):
-        idx = self.listview.indexAt(_)
+        idx = self.indexAt(_)
         if not idx.isValid():
             return
-        item = self.model.itemFromIndex(idx)
+        item = self.model_.itemFromIndex(idx)
         menu = QMenu(self)
         delete = LAction("删除", menu)
         label = LAction("收藏", menu)
+        daochu = LAction("导出", menu)
         label.setCheckable(True)
         label.setChecked(item.text() in globalconfig["wordlabel2"])
         if self.historshoucangjia == 0:
             menu.addAction(delete)
         menu.addAction(label)
+        if self.historshoucangjia != 0:
+            menu.addAction(daochu)
         action = menu.exec(QCursor.pos())
         if action == delete:
             self.deleteindex(idx)
+        elif action == daochu:
+            text = ""
+            maybehassentence = OrderedDict()
+            for _, w, s, t, __ in gobject.base.somedatabase.allwords():
+                isshoucangde = w in globalconfig["wordlabel2"]
+                if isshoucangde and (w not in maybehassentence):
+                    maybehassentence[w] = s
+            for w in reversed(globalconfig["wordlabel2"]):
+                t = "<li><strong>"
+                t += w
+                t += "</strong>"
+                s = maybehassentence.get(w)
+                if s:
+                    t += "<br>&nbsp;&nbsp;&nbsp;"
+                    t += s
+                t += "</li>"
+                text += t
+            ff = QFileDialog.getSaveFileName(self, directory="save.html")
+            if ff[0] == "":
+                return
+            with open(ff[0], "w", encoding="utf8") as ff:
+                ff.write("<ul>{}</ul>".format(text))
+
         elif action == label:
             if label.isChecked():
                 if self.historshoucangjia == 0:
@@ -1093,42 +1181,40 @@ class HistoryViewer(QWidget):
 
     def deleteindex(self, index: QModelIndex):
         if index.isValid():
-            item = self.model.itemFromIndex(index)
+            item = self.model_.itemFromIndex(index)
             id_ = item.data(self.IndexRole)
-            self.model.removeRow(index.row())
+            self.model_.removeRow(index.row())
             gobject.base.somedatabase.removewhich(id_)
 
     def keyPressEvent(self, e: QKeyEvent):
         if (e.key() == Qt.Key.Key_Delete) and (self.historshoucangjia == 0):
-            index = self.listview.currentIndex()
+            index = self.currentIndex()
             self.deleteindex(index)
         return super().keyPressEvent(e)
 
     def __init__(self, parent: "searchwordW"):
         super(HistoryViewer, self).__init__(parent)
         self.historshoucangjia = 0
-        listview = QListView()
-        self.listview = listview
-        listview.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.model = QStandardItemModel(listview)
-        listview.setModel(self.model)
-        listview.doubleClicked.connect(self.selectwhich)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.model_ = QStandardItemModel(self)
+        self.setModel(self.model_)
+        self.doubleClicked.connect(self.selectwhich)
         v = QHBoxLayout(self)
-        v.addWidget(listview)
+        v.addWidget(self)
         v.setContentsMargins(0, 0, 0, 0)
         self.ref = parent
-        listview.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        listview.customContextMenuRequested.connect(self.showmenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showmenu)
 
     def selectwhich(self, index: QModelIndex):
-        item = self.model.itemFromIndex(index)
+        item = self.model_.itemFromIndex(index)
         w = item.text()
         s = item.data(self.SentenceRole)
         self.ref.search_function(w, s, False, isfromhist=True)
 
     def refresh(self, who):
         self.historshoucangjia = who
-        self.model.clear()
+        self.model_.clear()
         maybehassentence = {}
         for _, w, s, t, __ in gobject.base.somedatabase.allwords():
             isshoucangde = w in globalconfig["wordlabel2"]
@@ -1148,7 +1234,7 @@ class HistoryViewer(QWidget):
                 item.setData(
                     QBrush(Qt.GlobalColor.cyan), Qt.ItemDataRole.BackgroundRole
                 )
-            self.model.appendRow([item])
+            self.model_.appendRow([item])
         for w in reversed(globalconfig["wordlabel2"]):
             item = QStandardItem(w)
             s = maybehassentence.get(w)
@@ -1156,7 +1242,7 @@ class HistoryViewer(QWidget):
                 item.setToolTip(s)
                 item.setData(s, self.SentenceRole)
             item.setData(_, self.IndexRole)
-            self.model.appendRow([item])
+            self.model_.appendRow([item])
 
 
 class showdiction(QWidget):
@@ -1319,7 +1405,7 @@ class showdiction(QWidget):
 class WordViewer(QWidget):
     from_webview_search_word = pyqtSignal(str)
     from_webview_search_word_in_new_window = pyqtSignal(str)
-    __show_dict_result = pyqtSignal(object, str, str)
+    __show_dict_result = pyqtSignal(object, str, object)
     first_result_shown = pyqtSignal()
     use_bg_color_parser = False
 
@@ -1367,7 +1453,7 @@ class WordViewer(QWidget):
             )
 
     @tryprint
-    def __show_dict_result_function(self, timestamp, k, res):
+    def __show_dict_result_function(self, timestamp, k, res: "str|Exception"):
         if self.current != timestamp:
             return
         if not res:
@@ -1407,7 +1493,7 @@ class WordViewer(QWidget):
             if k in globalconfig["ignoredict"]:
                 continue
             v = self.cache_results_highlighted.get(k, self.cache_results[k])
-            if len(v) == 0:
+            if (not v) or (isinstance(v, Exception)):
                 continue
             thisp = self.thisps.get(k, 0)
 
@@ -1631,6 +1717,17 @@ class WordViewer(QWidget):
             r"LunaTranslator\htmlcode\uiwebview\dictionary.html", "r", encoding="utf8"
         ) as ff:
             frame = ff.read()
+        if isinstance(html, Exception):
+            exp = html
+            html = _TR("错误")
+            html += "<br>"
+            html += stringfyerror(exp)
+            html += "<br><hr>"
+            html += "<br>".join(
+                traceback.format_exception(type(exp), exp, exp.__traceback__)
+            )
+            html += '<script>document.querySelector("#luna_dict_internal_view > article").style.backgroundColor="rgba(0,0,0,0)"</script>'
+            use_github_md_css = True
         if use_github_md_css:
             with open(
                 r"files\static\github-markdown-css\template.html", "r", encoding="utf8"
@@ -1759,7 +1856,7 @@ class searchwordW(closeashidewindow):
         _.move(_.pos() + QPoint(20, 20))
         _.search_word.emit(word, None, False)
 
-    def _createnewwindowsearch(self, _):
+    def _createnewwindowsearch(self, *_):
         word = self.searchtext.text()
         self.searchwinnewwindow(word)
 
@@ -1826,6 +1923,13 @@ class searchwordW(closeashidewindow):
             self.searchtext.setText(action.text())
             self.search(action.text())
 
+    def maybeusecachesentence(self):
+        if not self.wordviewer.save_sentence:
+            return None
+        if self.searchtext.text() in self.wordviewer.save_sentence:
+            return self.wordviewer.save_sentence
+        return None
+
     def setupUi(self):
         self.historys = []
         self.setWindowTitle("查词")
@@ -1848,10 +1952,13 @@ class searchwordW(closeashidewindow):
         self.searchlayout.addWidget(self.searchtext)
         searchbutton = getIconButton(
             icon="fa.search",
-            callback=lambda: self.search(self.searchtext.text()),
-            callback2=self._createnewwindowsearch,
+            callback=lambda: self.search(
+                self.searchtext.text(), sentence=self.maybeusecachesentence()
+            ),
             tips="查词",
         )
+        searchbutton.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        searchbutton.customContextMenuRequested.connect(self.searchbutton_contextmenu)
         self.searchtext.returnPressed.connect(searchbutton.clicked.emit)
 
         self.searchlayout.addWidget(searchbutton)
@@ -1888,7 +1995,7 @@ class searchwordW(closeashidewindow):
         self.isfirstshowleftwidgets = True
         self.spliter.setOrientation(
             Qt.Orientation.Vertical
-            if globalconfig["anki_Orientation_V"]
+            if globalconfig.get("anki_Orientation_V", True)
             else Qt.Orientation.Horizontal
         )
 
@@ -1907,6 +2014,48 @@ class searchwordW(closeashidewindow):
         self.spliter.setStretchFactor(1, 0)
         self.ankiwindow.setMinimumHeight(1)
         self.ankiwindow.setMinimumWidth(1)
+
+    def searchbutton_contextmenu(self, *_):
+        links = globalconfig["useopenlinklink1"]
+        menu = QMenu(self)
+        newwindow = LAction("在新窗口中查词", menu)
+        menu.addAction(newwindow)
+        menu.addSeparator()
+        __dict = {}
+        checkdump = []
+        for link in links:
+            checkdump.append(urlparse(link).netloc)
+        count = Counter(checkdump)
+        for link in links:
+            netloc = urlparse(link).netloc
+            ac = QAction(link if count[netloc] > 1 else netloc, menu)
+            menu.addAction(ac)
+            __dict[ac] = link
+
+        menu.addSeparator()
+        editlist = LAction("设置")
+        menu.addAction(editlist)
+        action = menu.exec(QCursor.pos())
+        if action == newwindow:
+            self._createnewwindowsearch()
+            return
+        if editlist == action:
+            listediter(
+                self,
+                "设置",
+                globalconfig["useopenlinklink1"],
+                exec=True,
+                icon="fa.link",
+            )
+            return
+        link: str = __dict.get(action)
+        if not link:
+            return
+        os.startfile(
+            link.replace("{word}", self.searchtext.text()).replace(
+                "{sentence}", self.maybeusecachesentence()
+            )
+        )
 
     def maybecreateleftsplitter(self):
         if self.isfirstshowleftwidgets:
@@ -1997,10 +2146,12 @@ class searchwordW(closeashidewindow):
         self.ankiwindow.remarks.setPlainText(gobject.base.currenttranslate)
         if globalconfig["ankiconnect"]["autocrop"]:
             grabwindow(
-                getimageformat(),
-                functools.partial(
-                    self.ankiwindow.settextsignal.emit, self.ankiwindow.editpath
-                ),
+                callback=functools.partial(
+                    sc_callback,
+                    functools.partial(
+                        self.ankiwindow.settextsignal.emit, self.ankiwindow.editpath
+                    ),
+                )
             )
 
     def __parsehistory(self, word, append, sentence, isfromhist):

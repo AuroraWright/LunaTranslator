@@ -6,7 +6,6 @@ from myutils.utils import (
     checkpostlangmatch,
     loadpostsettingwindowmethod,
 )
-from myutils.post import processfunctions
 from myutils.config import globalconfig, postprocessconfig, static_data
 from gui.usefulwidget import (
     D_getIconButton,
@@ -23,7 +22,7 @@ from gui.inputdialog import (
     postconfigdialog,
     autoinitdialog,
     autoinitdialog_items,
-    postconfigdialog2x,
+    stringreplacedialog,
 )
 
 
@@ -54,23 +53,14 @@ def getcomparelayout(self):
 def setTab7_lazy(self, basel: QLayout):
     grids = [
         [
-            ("预处理方法", 6),
             "",
+            ("预处理方法", 6),
             "",
             "",
             getcenterX("调整执行顺序"),
             ("", 5),
         ]
     ]
-    for k in postprocessconfig:
-        if k not in globalconfig["postprocess_rank"]:
-            globalconfig["postprocess_rank"].append(k)
-    _bads = []
-    for _ in globalconfig["postprocess_rank"]:
-        if _ not in processfunctions:
-            _bads.append(_)
-    for _ in _bads:
-        globalconfig["postprocess_rank"].remove(_)
     sortlist: list = globalconfig["postprocess_rank"]
     savelist = []
     savelay = []
@@ -113,6 +103,8 @@ def setTab7_lazy(self, basel: QLayout):
                 )
 
     for i, post in enumerate(sortlist):
+        if post not in postprocessconfig:
+            continue
         if post == "_11":
             config = D_getIconButton(
                 callback=lambda: selectdebugfile("mypost.py"), icon="fa.edit"
@@ -122,11 +114,7 @@ def setTab7_lazy(self, basel: QLayout):
 
                 if post == "stringreplace":
                     callback = functools.partial(
-                        postconfigdialog2x,
-                        self,
-                        postprocessconfig[post]["args"]["internal"],
-                        postprocessconfig[post]["name"],
-                        ["原文内容", "替换为"],
+                        stringreplacedialog, self, postprocessconfig[post]
                     )
                 elif isinstance(
                     list(postprocessconfig[post]["args"].values())[0], dict

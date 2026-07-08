@@ -22,6 +22,9 @@ from myutils.config import (
 from gui.usefulwidget import (
     saveposwindow,
     IconButton,
+    getspinbox,
+    SplitLine,
+    getcolorbutton,
     threeswitch,
     getsimplecombobox,
     request_delete_ok,
@@ -31,7 +34,9 @@ from gui.usefulwidget import (
     MyInputDialog,
 )
 from gui.gamemanager.common import (
+    getfonteditor,
     dialog_syssetting,
+    loadrecentlist,
     tagitem,
     startgamecheck,
     loadvisinternal,
@@ -40,7 +45,6 @@ from gui.gamemanager.common import (
     calculatetagidx,
     getreflist,
     getpixfunction,
-    showcountgame,
     addgamesingle,
     addgamebatch,
     addgamebatch_x,
@@ -50,10 +54,12 @@ from gui.gamemanager.common import (
 @Singleton
 class dialog_savedgame_integrated(saveposwindow):
 
-    def selectlayout(self, type):
-        self.syssettingbtn.setVisible(type != 0)
+    def selectlayout(self, type, init=False):
+        if not init:
+            self.syssettingbtn.setVisible(type != 0)
         try:
             globalconfig["gamemanager_integrated_internal_layout"] = type
+            self.do_resize()
             klass = [
                 dialog_savedgame_legacy,
                 dialog_savedgame_v3,
@@ -76,6 +82,7 @@ class dialog_savedgame_integrated(saveposwindow):
             | Qt.WindowType.WindowCloseButtonHint,
             poslist=globalconfig["savegamedialoggeo"],
         )
+        self.setWindowTitle("游戏管理")
         self.setWindowIcon(
             qtawesome.icon(globalconfig["toolbutton"]["buttons"]["gamepad_new"]["icon"])
         )
@@ -86,29 +93,58 @@ class dialog_savedgame_integrated(saveposwindow):
         self.internallayout.addWidget(QWidget())
         self.setCentralWidget(w)
 
-        self.switch = threeswitch(self, icons=["fa.list", "fa.th-list", "fa.th"])
-        self.switch.btnclicked.connect(self.selectlayout)
+        self.switch = threeswitch(
+            self,
+            icons=["fa.list", "fa.th-list", "fa.th"],
+            Direction=QBoxLayout.Direction.TopToBottom,
+        )
         self.syssettingbtn = IconButton(icon="fa.gear", parent=self, tips="界面设置")
-        self.syssettingbtn.clicked.connect(self.syssetting)
+        self.syssettingbtn.clicked.connect(lambda: dialog_syssetting(self.__internal))
         self.syssettingbtn.sizeChanged.connect(self.do_resize)
         self.switch.sizeChanged.connect(self.do_resize)
         self.show()
-        self.switch.selectlayout(globalconfig["gamemanager_integrated_internal_layout"])
+        self.switch.selectlayout(globalconfig.get("gamemanager_integrated_internal_layout", 2))
+        self.switch.btnclicked.connect(self.selectlayout)
+        self.selectlayout(globalconfig.get("gamemanager_integrated_internal_layout", 2), True)
 
-    def syssetting(self):
-        dialog_syssetting(
-            self.__internal,
-            type_=globalconfig["gamemanager_integrated_internal_layout"],
-        )
+    def showEvent(self, a0):
+        self.__check()
+        return super().showEvent(a0)
+
+    def __check(self):
+        if not (self.hasFocus() and self.underMouse()):
+            if globalconfig.get("gamemanager_integrated_internal_layout", 2) != 0:
+                self.switch.hide()
+            self.syssettingbtn.hide()
 
     def resizeEvent(self, e: QResizeEvent):
         self.do_resize()
 
     def do_resize(self, _=None):
-        x = self.width() - self.switch.width()
-        self.switch.move(x, 0)
-        x -= self.syssettingbtn.width()
-        self.syssettingbtn.move(x, 0)
+        if globalconfig.get("gamemanager_integrated_internal_layout", 2) in (2,):
+            self.switch.setDirection(QBoxLayout.Direction.TopToBottom)
+            self.switch.move(0, self.height() - self.switch.height())
+            self.syssettingbtn.move(
+                0, self.height() - self.switch.height() - self.syssettingbtn.height()
+            )
+        else:
+            self.switch.setDirection(QBoxLayout.Direction.LeftToRight)
+            x = self.width() - self.switch.width()
+            self.switch.move(x, 0)
+            x -= self.syssettingbtn.width()
+            self.syssettingbtn.move(x, 0)
+
+    def leaveEvent(self, a0):
+        if globalconfig.get("gamemanager_integrated_internal_layout", 2) != 0:
+            self.switch.hide()
+        self.syssettingbtn.hide()
+        return super().leaveEvent(a0)
+
+    def enterEvent(self, a0):
+        self.switch.show()
+        if globalconfig.get("gamemanager_integrated_internal_layout", 2) != 0:
+            self.syssettingbtn.show()
+        return super().enterEvent(a0)
 
 
 class TagWidget(QWidget):
@@ -122,7 +158,6 @@ class TagWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-
         self.lineEdit = FocusCombo()
         if exfoucus:
             self.lineEdit.setLineEdit(FQLineEdit())
@@ -221,7 +256,18 @@ class TagWidget(QWidget):
         self.__calltagschanged(signal)
 
 
-class IMGWidget(QLabel):
+class imagehelper:
+    def size(self):
+        return QSizeF(self.p.width() - 2 * self.p.margin, self.p.imageheight)
+
+    def height(self):
+        return self.size().height()
+
+    def width(self):
+        return self.size().width()
+
+    def rect(self):
+        return QRectF(QPoint(0, 0), self.size())
 
     def adaptsize(self, size: QSize):
 
@@ -252,17 +298,19 @@ class IMGWidget(QLabel):
         elif globalconfig["imagewrapmode"] == 3:
             return QSizeF(size)
 
-    def setimg(self, pixmap: QPixmap):
+    def setimg(self):
+        self._setimg(self._pixmap)
+
+    def _setimg(self, pixmap: QPixmap):
         if pixmap.isNull():
             return
         if not (self.height() and self.width()):
             return
-        radius = globalconfig["dialog_savegame_layout"]["radius2"]
-        if self.__last == (radius, self.size(), globalconfig["imagewrapmode"]):
+        if self.__last == (self.size(), globalconfig["imagewrapmode"]):
             return
-        self.__last = (radius, self.size(), globalconfig["imagewrapmode"])
-        rate = self.devicePixelRatioF()
-        newpixmap = QPixmap(self.size() * rate)
+        self.__last = (self.size(), globalconfig["imagewrapmode"])
+        rate = self.p.devicePixelRatioF()
+        newpixmap = QPixmap((self.size() * rate).toSize())
         newpixmap.setDevicePixelRatio(rate)
         newpixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(newpixmap)
@@ -270,14 +318,9 @@ class IMGWidget(QLabel):
             QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform
         )
         rectf = self.getrect(pixmap.size())
-
-        path = QPainterPath()
-        path.addRoundedRect(QRectF(self.rect()), radius, radius)
-        painter.setClipPath(path)
-
         painter.drawPixmap(rectf, pixmap, QRectF(pixmap.rect()))
         painter.end()
-        self.setPixmap(newpixmap)
+        self.pixmap = newpixmap
 
     def getrect(self, size):
         size = self.adaptsize(size)
@@ -287,62 +330,11 @@ class IMGWidget(QLabel):
         rect.setSize(size)
         return rect
 
-    def resizeEvent(self, a0):
-        self.setimg(self._pixmap)
-        return super().resizeEvent(a0)
-
-    def __init__(self, p, pixmap) -> None:
-        super().__init__(p)
-        self.setScaledContents(True)
-        if type(pixmap) != QPixmap:
-            pixmap = pixmap()
+    def __init__(self, p: "ItemWidget", pixmap) -> None:
+        self.p = p
         self._pixmap = pixmap
         self.__last = None
-
-    def switch(self):
-        self.setimg(self._pixmap)
-
-
-class AntiAliasingLabel(QFrame):
-    def paintEvent(self, a0):
-        dialog_savegame_layout = globalconfig["dialog_savegame_layout"]
-        w: ItemWidget = self.parent()
-        hasFocus = dialog_savegame_layout["onselectcolor2"] if w.isfucked else None
-        background = dialog_savegame_layout[
-            (
-                "backcolor2",
-                "onfilenoexistscolor2",
-            )[self.objectName() == "savegame_existsFalse"]
-        ]
-        bordercolor = dialog_savegame_layout[
-            (
-                "borderColor",
-                "borderColor2",
-            )[w.isfucked]
-        ]
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        offset = dialog_savegame_layout["borderW"]
-        radius = dialog_savegame_layout["radius"]
-        color1 = QColor(bordercolor)
-        if color1.alpha() == 0:
-            offset = 0
-        rect = QRectF(self.rect())
-        painter.setPen(Qt.PenStyle.NoPen)
-        path_outer = QPainterPath()
-        path_outer.addRoundedRect(rect, radius, radius)
-        if color1.alpha():
-            inner_rect = rect.adjusted(offset, offset, -offset, -offset)
-            inner_radius = max(0, radius - offset)
-            path_inner = QPainterPath()
-            path_inner.addRoundedRect(inner_rect, inner_radius, inner_radius)
-            ring_path = path_outer.subtracted(path_inner)
-            painter.fillPath(ring_path, color1)
-        else:
-            path_inner = path_outer
-        painter.fillPath(path_inner, QColor(background))
-        if hasFocus:
-            painter.fillPath(path_inner, QColor(hasFocus))
+        self.pixmap = QPixmap()
 
 
 class ItemWidget(QWidget):
@@ -362,7 +354,7 @@ class ItemWidget(QWidget):
     def click(self):
         try:
             self.isfucked = True
-            self.maskshowfileexists.update()
+            self.update()
             if self != ItemWidget.globallashfocus:
                 ItemWidget.clearfocus()
             ItemWidget.globallashfocus = self
@@ -375,70 +367,168 @@ class ItemWidget(QWidget):
 
     def focusOut(self):
         self.isfucked = False
-        self.maskshowfileexists.update()
+        self.update()
         self.focuschanged.emit(False, self.gameuid)
 
     def mouseDoubleClickEvent(self, e):
         self.doubleclicked.emit(self.gameuid)
 
     def resizeEvent(self, a0: QResizeEvent) -> None:
-        self.maskshowfileexists.resize(a0.size())
+        self.resizeobjects()
+
+    def resizeobjects(self):
+        self._img.setimg()
+        self.update()
+
+    def event(self, e: QEvent):
+        if e.type() == QEvent.Type.FontChange:
+            self.resizeobjects()
+        return super().event(e)
 
     def others(self):
-        self.l.setContentsMargins(
-            *(
-                [
-                    globalconfig["dialog_savegame_layout"]["margin2"]
-                    + globalconfig["dialog_savegame_layout"]["borderW"]
-                ]
-                * 4
-            )
-        )
-
-        if self._img._pixmap.isNull():
-            pass
-        else:
-            self._lb.setFixedHeight(globalconfig["dialog_savegame_layout"]["textH"])
-            self._img.switch()
+        self.resizeobjects()
 
     def __init__(self, gameuid) -> None:
         super().__init__()
         self.isfucked = False
         self.gameuid = gameuid
-        self.maskshowfileexists = AntiAliasingLabel(self)
-        self.l = QVBoxLayout(self)
-        self.l.setSpacing(0)
-        self.l.setContentsMargins(
-            *(
-                [
-                    globalconfig["dialog_savegame_layout"]["margin2"]
-                    + globalconfig["dialog_savegame_layout"]["borderW"]
-                ]
-                * 4
-            )
-        )
+
         for image in savehook_new_data[gameuid].get("imagepath_all", []):
             fr = extradatas["imagefrom"].get(image)
             if fr:
                 targetmod.get(fr).dispatchdownloadtask(image)
 
-        self._img = IMGWidget(self, getpixfunction(gameuid))
-        self._lb = QLabel(self)
-        if self._img._pixmap.isNull():
-            self.l.addStretch(1)
-        else:
-            self._lb.setFixedHeight(globalconfig["dialog_savegame_layout"]["textH"])
-            self.l.addWidget(self._img)
-        self._lb.setText(savehook_new_data[gameuid]["title"])
-        self._lb.setWordWrap(True)
-        self._lb.setObjectName("savegame_textfont1")
-        self._lb.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.l.addWidget(self._lb)
+        self._img = imagehelper(self, getpixfunction(gameuid))
         exists = os.path.exists(get_launchpath(gameuid))
-        self.maskshowfileexists.setObjectName("savegame_exists" + str(exists))
+        self.setObjectName("savegame_exists" + str(exists))
+        self.setToolTip(savehook_new_data[gameuid]["title"])
+
+    @property
+    def margin(self):
+        return (
+            globalconfig["dialog_savegame_layout"]["margin2"]
+            + globalconfig["dialog_savegame_layout"]["borderW"]
+        )
+
+    @property
+    def imageheight(self):
+        if globalconfig["dialog_savegame_layout"]["layout"] == "updown":
+            return self.height() - self.margin * 2 - self.textareaheight
+        if globalconfig["dialog_savegame_layout"]["layout"] == "overlay":
+            return self.height() - self.margin * 2
+
+    @property
+    def textcolor(self):
+        return QColor(globalconfig["dialog_savegame_layout"]["textColor"])
+
+    @property
+    def textfont(self):
+        font = QFont()
+        fontstring = globalconfig.get("savegame_textfont1", "")
+        if not fontstring:
+            return font
+        font.fromString(fontstring)
+        return font
+
+    @property
+    def textareaheight(self):
+        h = QFontMetricsF(self.textfont, self).height()
+        h = globalconfig["dialog_savegame_layout"]["textH2"] * h
+        return h
+
+    def paintEvent(self, a0):
+        dialog_savegame_layout = globalconfig["dialog_savegame_layout"]
+        hasFocus = dialog_savegame_layout["onselectcolor2"] if self.isfucked else None
+        background = dialog_savegame_layout[
+            (
+                "backcolor2",
+                "onfilenoexistscolor2",
+            )[self.objectName() == "savegame_existsFalse"]
+        ]
+        bordercolor = dialog_savegame_layout[
+            (
+                "borderColor",
+                "borderColor2",
+            )[self.isfucked]
+        ]
+        painter = QPainter(self)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        path_inner = self.get_inter_path()
+        path_out = self.get_out_path()
+        painter.fillPath(path_out.subtracted(path_inner), QColor(bordercolor))
+        painter.fillPath(path_inner, QColor(hasFocus if hasFocus else background))
+
+        content_path = self.get_shrunk_rounded_rect_path(
+            QRectF(self.rect()), self.radius, self.margin
+        )
+
+        painter.setClipPath(content_path)
+        painter.drawPixmap(self.margin, self.margin, self._img.pixmap)
+
+        self.drawbottomtextareacolor(painter, content_path)
+        self.drawtextinpath(painter, content_path)
+
+    def drawtextinpath(self, painter: QPainter, path: QPainterPath):
+        rect = path.boundingRect()
+        cutter = QRectF(
+            rect.left(),
+            rect.bottom() - self.textareaheight,
+            rect.width(),
+            self.textareaheight,
+        )
+        text = savehook_new_data[self.gameuid]["title"]
+        painter.setFont(self.textfont)
+        pen = QPen()
+        pen.setColor(self.textcolor)
+        painter.setPen(pen)
+        painter.drawText(
+            cutter, Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap, text
+        )
+
+    def drawbottomtextareacolor(self, painter: QPainter, path: QPainterPath):
+        rect = path.boundingRect()
+        cutter = QRectF(
+            rect.left(), rect.top(), rect.width(), rect.height() - self.textareaheight
+        )
+        cutter_path = QPainterPath()
+        cutter_path.addRect(cutter)
+        result_path = path.subtracted(cutter_path)
+        painter.fillPath(
+            result_path, QColor(globalconfig["dialog_savegame_layout"]["textbackColor"])
+        )
+
+    def get_out_path(self):
+        dialog_savegame_layout = globalconfig["dialog_savegame_layout"]
+        radius = dialog_savegame_layout["radius"]
+        rect = QRectF(self.rect())
+        path_outer = QPainterPath()
+        path_outer.addRoundedRect(rect, radius, radius)
+        return path_outer
+
+    @property
+    def radius(self):
+        return globalconfig["dialog_savegame_layout"]["radius"]
+
+    def get_inter_path(self):
+        dialog_savegame_layout = globalconfig["dialog_savegame_layout"]
+        offset = dialog_savegame_layout["borderW"]
+        radius = dialog_savegame_layout["radius"]
+        return self.get_shrunk_rounded_rect_path(QRectF(self.rect()), radius, offset)
+
+    def get_shrunk_rounded_rect_path(self, rect: QRectF, r, shrink_width):
+        shrunk_rect = rect.adjusted(
+            shrink_width, shrink_width, -shrink_width, -shrink_width
+        )
+        new_rx = max(0.0, r - shrink_width)
+        new_ry = max(0.0, r - shrink_width)
+        path = QPainterPath()
+        if shrunk_rect.width() > 0 and shrunk_rect.height() > 0:
+            path.addRoundedRect(shrunk_rect, new_rx, new_ry)
+        return path
 
 
-class dialog_savedgame_new(QWidget):
+class dialog_savedgame_new(QSplitter):
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -467,7 +557,6 @@ class dialog_savedgame_new(QWidget):
             except:
                 self.flow.widget(idx2 - 1).click()
 
-            showcountgame(self._parent, len(self.idxsave))
         except:
             print_exc()
 
@@ -482,7 +571,6 @@ class dialog_savedgame_new(QWidget):
             self.idxsave.pop(idx)
             self.idxsave.insert(0, uid)
             self.flow.totop1(idx)
-        showcountgame(self._parent, len(self.idxsave))
 
     def clicked3_batch(self):
         addgamebatch(self.addgame, self.reflist)
@@ -490,15 +578,21 @@ class dialog_savedgame_new(QWidget):
     def clicked3(self):
         addgamesingle(self, self.addgame, self.reflist)
 
+    @property
+    def reflistx(self):
+        if self.reflist != 1:
+            return self.reflist
+        return loadrecentlist()
+
     def tagschanged(self, tags):
         self.currtags = tags
         newtags = tags
         self.idxsave.clear()
         ItemWidget.clearfocus()
-        self.formLayout.removeWidget(self.flow)
         self.flow.hide()
         self.flow.deleteLater()
         self.flow = lazyscrollflow(self.keypressed)
+        self.flow.setObjectName("NOBORDER")
         self.flow.bgclicked.connect(ItemWidget.clearfocus)
         self.flow.setsize(
             QSize(
@@ -507,9 +601,9 @@ class dialog_savedgame_new(QWidget):
             )
         )
         self.flow.setSpacing(globalconfig["dialog_savegame_layout"]["margin"])
-        self.formLayout.insertWidget(self.formLayout.count(), self.flow)
+        self.flowcontainer.addWidget(self.flow)
         idx = 0
-        for k in self.reflist:
+        for k in self.reflistx:
             if newtags != self.currtags:
                 break
             notshow = False
@@ -547,8 +641,6 @@ class dialog_savedgame_new(QWidget):
                 continue
             self.newline(k, idx == 0)
             idx += 1
-
-        showcountgame(self._parent, idx)
         self.flow.directshow()
 
     def showmenu(self, p):
@@ -576,25 +668,29 @@ class dialog_savedgame_new(QWidget):
             elif os.path.exists(os.path.dirname(lc)):
                 menu.addAction(opendir)
             menu.addAction(gamesetting)
-            menu.addAction(delgame)
+            if self.reftagid not in (1,):
+                menu.addAction(delgame)
             menu.addSeparator()
-            __vis, __uid = loadvisinternal(True, self.reftagid)
+            __vis, __uid = loadvisinternal(
+                True, self.reftagid, recent=False, global_=False
+            )
             if __uid:
                 addtolist = LMenu("添加到列表", menu)
                 menu.addMenu(addtolist)
                 for _ in range(len(__vis)):
-                    a = QAction(__vis[_], addtolist)
+                    a = LAction(__vis[_], addtolist)
                     a.setData(__uid[_])
                     addtolist.addAction(a)
         else:
-            if self.reftagid:
+            if self.reftagid not in (None, 1):
                 menu.addAction(editname)
             menu.addAction(addlist)
-            if self.reftagid:
+            if self.reftagid not in (None, 1):
                 menu.addAction(dellist)
             menu.addSeparator()
-            menu.addAction(addgame)
-            menu.addAction(batchadd)
+            if self.reftagid not in (1,):
+                menu.addAction(addgame)
+                menu.addAction(batchadd)
             menu.addSeparator()
         action = menu.exec(self.mapToGlobal(p))
         if action == startgame:
@@ -673,6 +769,7 @@ class dialog_savedgame_new(QWidget):
         self.reftagid = uid
         self.reflist = getreflist(uid)
         self.tagschanged(self.currtags)
+        self.vislistcombo.setFocus()
 
     def loadcombo(self, init):
         vis, uid = loadvisinternal()
@@ -687,7 +784,6 @@ class dialog_savedgame_new(QWidget):
             "currvislistuid",
             self.resetcurrvislist,
             internal=uid,
-            static=True,
         )
         self.__layout.insertWidget(0, self.vislistcombo)
 
@@ -697,7 +793,7 @@ class dialog_savedgame_new(QWidget):
         else:
             self.tagswidget.removeTag((_TR("存在"), tagitem.TYPE_EXISTS, None))
 
-    def callchange(self):
+    def callchange(self, _=None):
         self.flow.setsize(
             QSize(
                 globalconfig["dialog_savegame_layout"]["itemw"],
@@ -711,21 +807,113 @@ class dialog_savedgame_new(QWidget):
                 continue
             _.others()
 
-    def setstyle(self):
-        key = "savegame_textfont1"
-        fontstring = globalconfig.get(key, "")
-        _style = """background-color: rgba(255,255,255, 0);"""
-        if fontstring:
-            _f = QFont()
-            _f.fromString(fontstring)
-            _style += "font-size:{}pt;".format(_f.pointSize())
-            _style += 'font-family:"{}";'.format(_f.family())
-        style = "#{}{{ {} }}".format(key, _style)
-        self.setStyleSheet(style)
+    def createsettings(self, formLayout: QFormLayout):
+
+        for i, (key, name) in enumerate(
+            [
+                ("itemw", "宽度"),
+                ("itemh", "高度"),
+                ("margin", "边距_inter"),
+                ("margin2", "边距_intra"),
+                ("radius", "圆角"),
+                ("borderW", "边框宽度"),
+            ]
+        ):
+            minv = 0 if i >= 2 else 32
+            spin = getspinbox(minv, 1000, globalconfig["dialog_savegame_layout"], key)
+            formLayout.addRow(name, spin)
+            if "radius" == key:
+                spin.valueChanged.connect(self.callchange)
+            elif "borderW" == key:
+                spin.valueChanged.connect(
+                    lambda _: (self.callchange(), self.callchange())
+                )
+            else:
+                spin.valueChanged.connect(self.callchange)
+
+        formLayout.addRow(
+            "缩放",
+            getsimplecombobox(
+                ["填充", "适应", "拉伸", "居中"],
+                globalconfig,
+                "imagewrapmode",
+                callback=self.callchange,
+            ),
+        )
+
+        formLayout.addRow(SplitLine())
+        for key, name in [
+            ("backcolor2", "颜色"),
+            ("onselectcolor2", "颜色_选中时"),
+            ("onfilenoexistscolor2", "游戏不存在时颜色"),
+            ("borderColor", "边框颜色"),
+            ("borderColor2", "边框颜色_选中时"),
+        ]:
+            formLayout.addRow(
+                name,
+                getcolorbutton(
+                    self,
+                    globalconfig["dialog_savegame_layout"],
+                    key,
+                    callback=self.callchange,
+                    alpha=True,
+                ),
+            )
+        formLayout.addRow(SplitLine())
+        formLayout.addRow(
+            "文字区_高度",
+            getspinbox(
+                0,
+                1000,
+                globalconfig["dialog_savegame_layout"],
+                "textH2",
+                callback=self.callchange,
+                double=False,
+            ),
+        )
+        formLayout.addRow(
+            "文字区_布局",
+            getsimplecombobox(
+                ["上下", "悬浮"],
+                globalconfig["dialog_savegame_layout"],
+                "layout",
+                callback=self.callchange,
+                internal=["updown", "overlay"],
+            ),
+        )
+        formLayout.addRow(
+            "字体",
+            getfonteditor(
+                d=globalconfig,
+                k="savegame_textfont1",
+                callback=lambda _: self.callchange(),
+            ),
+        )
+        formLayout.addRow(
+            "颜色_文字",
+            getcolorbutton(
+                self,
+                globalconfig["dialog_savegame_layout"],
+                "textColor",
+                callback=self.callchange,
+            ),
+        )
+        formLayout.addRow(
+            "颜色_文字区",
+            getcolorbutton(
+                self,
+                globalconfig["dialog_savegame_layout"],
+                "textbackColor",
+                callback=self.callchange,
+                alpha=True,
+            ),
+        )
 
     reference = None
 
     def sortgamecallback(self):
+        if self.reflist == 1:
+            return
         menu = QMenu(self)
         sortbytime = LAction("按添加时间排序", menu)
         sortbytime.setIcon(qtawesome.icon("fa.sort-numeric-asc"))
@@ -764,15 +952,33 @@ class dialog_savedgame_new(QWidget):
             )
             self.tagschanged(self.currtags)
 
+    def event(self, e: QEvent):
+        if e.type() == QEvent.Type.FontChange:
+            self.topw.setFixedHeight(self.topw.sizeHint().height())
+        return super().event(e)
+
+    def createHandle(self):
+        class MySplitterHandle(QSplitterHandle):
+            def paintEvent(self1, event):
+                if self1.underMouse():
+                    super().paintEvent(event)
+                else:
+                    pass
+
+        return MySplitterHandle(self.orientation(), self)
+
     def __init__(self, parent) -> None:
         super().__init__(parent)
         self._parent = parent
-        self.setstyle()
         dialog_savedgame_new.reference = self
-        formLayout = QVBoxLayout(self)
-        formLayout.setContentsMargins(0, 0, 0, 0)
-        formLayout.setSpacing(0)
-        layout = QHBoxLayout()
+        self.setObjectName("NOBORDER")
+        self.setOrientation(Qt.Orientation.Vertical)
+        self.setHandleWidth(1)
+        _w = QWidget()
+        self.topw = _w
+        layout = QHBoxLayout(_w)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         self.setAcceptDrops(True)
         self.__layout = layout
         self.loadcombo(True)
@@ -783,21 +989,20 @@ class dialog_savedgame_new(QWidget):
 
         self.currtags = tuple()
         self.tagswidget.tagschanged.connect(self.tagschanged)
-        self.___ = threeswitch(self, [None, None, None, None])
-        self.___.setStyleSheet("background:transparent")
         layout.addWidget(self.tagswidget)
         layout.addWidget(
             getIconButton(
                 icon="fa.sort-amount-asc", callback=self.sortgamecallback, tips="排序"
             )
         )
-        layout.addWidget(self.___)
-        formLayout.addLayout(layout)
+        self.addWidget(_w)
+        __ = QWidget()
+        self.flowcontainer = QHBoxLayout(__)
+        self.flowcontainer.setContentsMargins(0, 0, 0, 0)
         self.flow = QWidget()
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showmenu)
-        formLayout.addWidget(self.flow)
-        self.formLayout = formLayout
+        self.addWidget(__)
         self.savebutton = []
 
         self.idxsave = []
@@ -808,6 +1013,13 @@ class dialog_savedgame_new(QWidget):
         else:
             self.tagschanged(tuple())
         self.installEventFilter(self)
+
+        def __(_):
+            globalconfig["dialogsplit"] = self.sizes()
+
+        if "dialogsplit" in globalconfig:
+            self.setSizes(globalconfig["dialogsplit"])
+        self.splitterMoved.connect(__)
 
     def eventFilter(self, obj, _):
         try:
@@ -861,6 +1073,8 @@ class dialog_savedgame_new(QWidget):
             pass
 
     def moverank(self, dx):
+        if self.reflist == 1:
+            return
         game = self.currentfocusuid
 
         idx1 = self.idxsave.index(game)

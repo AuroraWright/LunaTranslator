@@ -1,10 +1,11 @@
 from translator.basetranslator import basetrans, GptTextWithDict, GptDict
-import json, requests, hmac, hashlib, NativeUtils, re, functools
+import json, requests, hmac, hashlib, NativeUtils, re, functools, random, types
 from datetime import datetime, timezone
 from myutils.utils import (
     APIType,
     common_list_models,
     common_parse_normal_response,
+    common_parse_gemini_response_text,
     common_create_gemini_request,
     common_create_gpt_data,
 )
@@ -33,14 +34,17 @@ def stream_event_parser(response: requests.Response):
         if response_data == "[DONE]":
             break
         try:
-            json_data = json.loads(response_data)
+            json_data: dict = json.loads(response_data)
         except:
             raise Exception(response_data)
         yield json_data
 
 
 def commonparseresponse_good(
-    response: requests.Response, hidethinking: bool, markdown2html: bool
+    response: requests.Response,
+    hidethinking: bool,
+    markdown2html: bool,
+    getmodelhook: list = None,
 ):
     message = ""
     thinkcnt = 0
@@ -48,6 +52,8 @@ def commonparseresponse_good(
     isreasoning_content = False
     unsafethinkonce = True
     for json_data in stream_event_parser(response):
+        if getmodelhook is not None and json_data.get("model"):
+            getmodelhook.append(json_data.get("model"))
         try:
             if len(json_data["choices"]) == 0:
                 continue
@@ -97,7 +103,7 @@ def commonparseresponse_good(
                         else:
                             yield msg
             rs = json_data["choices"][0].get("finish_reason")
-            if rs and rs != "null":
+            if rs and rs != "null" and not (msg or reasoning_content):
                 break
         except:
             raise Exception(json_data)
@@ -106,22 +112,37 @@ def commonparseresponse_good(
 
 def parseresponsegemini(response: requests.Response, markdown2html: bool):
     line = ""
+    _gemini_text_line = re.compile(r'^"text"\s*:\s*("(?:\\.|[^"\\])*")\s*,?$')
     for __x in response.iter_lines(decode_unicode=True):
         __x = __x.strip()
-        if not __x.startswith('"text":'):
+        if not __x:
             continue
+        if __x.startswith("data: "):
+            __x = __x[6:].strip()
+            if __x == "[DONE]":
+                break
         try:
-            __x = json.loads("{" + __x + "}")["text"]
+            text = common_parse_gemini_response_text(json.loads(__x))
         except:
-            # gemini-3-flash 之后还有别的东西
+            text = None
+        if text is None:
+            match = _gemini_text_line.match(__x)
+            if not match:
+                continue
+            try:
+                text = json.loads(match.group(1))
+            except:
+                # Some Gemini variants add non-text fields around text chunks.
+                continue
+        if not text:
             continue
-        line += __x
+        line += text
         if markdown2html:
             _msg = NativeUtils.Markdown2Html(line)
             yield "\0"
             yield "LUNASHOWHTML" + _msg
         else:
-            yield __x
+            yield text
     return line
 
 
@@ -158,12 +179,13 @@ def parseresponseQWENMT(response: requests.Response):
                 continue
             delta: dict = json_data["choices"][0].get("delta", {})
             msg: str = delta.get("content", None)
-            if msg.startswith(message):
-                yield msg[len(message) :]
-            else:
-                yield "\0"
-                yield msg
-            message = msg
+            if msg:
+                if msg.startswith(message):
+                    yield msg[len(message) :]
+                else:
+                    yield "\0"
+                    yield msg
+                message = msg
             rs = json_data["choices"][0].get("finish_reason")
             if rs and rs != "null":
                 break
@@ -178,6 +200,7 @@ def parsestreamresp(
     hidethinking: bool,
     markdown2html: bool,
     model: str,
+    getmodelhook=None,
 ):
     if (response.status_code != 200) and (
         not response.headers["Content-Type"].startswith("text/event-stream")
@@ -189,11 +212,11 @@ def parsestreamresp(
         respmessage = yield from parseresponsegemini(response, markdown2html)
     elif apitype == APIType.claude:
         respmessage = yield from parseresponseclaude(response)
-    elif model == "qwen-mt-turbo" and apitype == APIType.aliyuncs:
+    elif model.startswith("qwen-mt-") and apitype == APIType.aliyuncs:
         respmessage = yield from parseresponseQWENMT(response)
     else:
         respmessage = yield from commonparseresponse_good(
-            response, hidethinking, markdown2html
+            response, hidethinking, markdown2html, getmodelhook=getmodelhook
         )
     return respmessage
 
@@ -252,6 +275,18 @@ class gptcommon(basetrans):
     def langmap(self):
         return Languages.createenglishlangmap()
 
+    def result_cache_key(self, src, tgt, sentence):
+        __ = {}
+        __.update(self.rawconfig)
+        if "modellistcache" in __:
+            __.pop("modellistcache")
+        return (
+            src,
+            tgt,
+            sentence,
+            str(__),
+        )
+
     def __init__(self, typename):
         self.context = []
         self.context_for_cache = []
@@ -272,7 +307,7 @@ class gptcommon(basetrans):
         apitype = APIType(self.config.get("API接口地址", ""))
         if apitype == APIType.gemini:
             response = self.request_gemini(apitype, messages, extrabody, extraheader)
-        elif apitype == APIType.gemini:
+        elif apitype == APIType.claude:
             response = self.req_claude(
                 messages, extrabody, extraheader, self.config.get("cachecontext", False)
             )
@@ -312,13 +347,17 @@ class gptcommon(basetrans):
         self.context_for_cache.append({"role": "assistant", "content": respmessage})
 
     def __parse_qwen_mt_turbo(self, apitype: APIType, messages: list):
-        if self.config["model"] == "qwen-mt-turbo" and apitype == APIType.aliyuncs:
+        if self.config["model"].startswith("qwen-mt-") and apitype == APIType.aliyuncs:
             if messages and messages[0]["role"] == "system":
                 messages.pop(0)
         return messages
 
     def __replace_history(self, which, match: re.Match):
-        n = int(match.group(1))
+        n = (
+            self.config["附带上下文个数"]
+            if match.group(1) == "N"
+            else int(match.group(1))
+        )
         __message: "list[dict]" = []
         self._gpt_common_parse_context(__message, self.context, n)
         check = lambda k: (which == 2) or (k == ("user", "assistant")[which])
@@ -327,9 +366,9 @@ class gptcommon(basetrans):
 
     def __parsecontextN(self, query):
         for k, b in (
-            (r"\{contextOriginal\[(\d+)\]\}", 0),
-            (r"\{contextTranslation\[(\d+)\]\}", 1),
-            (r"\{contextBoth\[(\d+)\]\}", 2),
+            (r"\{contextOriginal\[(N|[\d+])\]\}", 0),
+            (r"\{contextTranslation\[(N|[\d+])\]\}", 1),
+            (r"\{contextBoth\[(N|[\d+])\]\}", 2),
         ):
             query = re.sub(k, functools.partial(self.__replace_history, b), query)
         return query

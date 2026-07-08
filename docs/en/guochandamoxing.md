@@ -52,7 +52,7 @@ However, sometimes you may want to use multiple different API interface addresse
     Custom system prompts and user messages can use fields to reference some information:
     - `{sentence}`: The text to be translated
     - `{srclang}` and `{tgtlang}`: Source language and target language. If only English is used in the prompt, they will be replaced with the English translation of the language names. Otherwise, they will be replaced with the translation of the language names in the current UI language.
-    - `{contextOriginal[N]}` and `{contextTranslation[N]}` and `{contextBoth[N]}`: N pieces of historical original text, translations, and both. N is unrelated to the "number of accompanying contexts" and should be replaced with an integer when input.
+    - `{contextOriginal[N]}` and `{contextTranslation[N]}` and `{contextBoth[N]}`: N pieces of historical original text, translations, and both. If the input is `contextBoth[N]`, the value of `附带上下文个数` will be referenced; if the input is `contextBoth[10]`, the entered count of 10 will be used.
     - `{DictWithPrompt[XXXXX]}`: This field can reference entries from the "Proper Noun Translation" list. **If no matching entry is found, this field will be cleared to avoid disrupting the translation content**. Here, `XXXXX` is a prompt that guides the LLM to use the given entries for optimizing the translation. It can be customized, or you can disable custom user messages to use the default prompt.
 
 
@@ -60,11 +60,15 @@ However, sometimes you may want to use multiple different API interface addresse
 
     For certain models on some platforms, parameters like `top p` and `frequency penalty` may not be accepted by the interface, or the `max tokens` parameter may have been deprecated and replaced with `max completion tokens`. Activating or deactivating the switch can resolve these issues.
 
-1. #### Reasoning Effort  
+1. #### reasoning effort
+    Control for reasoning intensity supported by some platforms.
 
-    For the Gemini platform, this option will automatically map to Gemini's `thinkingBudget`. The mapping rules are as follows:  
+    For the Gemini platform, options are automatically mapped to Gemini's `thinkingBudget`. The mapping rules are:
     
-    none/minimal -> 0 (disable thinking, but not applicable to the Gemini-2.5-Pro model), low -> 512, medium -> -1 (enable dynamic thinking), high/xhigh -> 24576.
+    none/minimal -> 0 (disable thinking; not applicable to Gemini-2.5-Pro), low -> 512, medium -> -1 (enable dynamic thinking), high/xhigh -> 24576.
+
+1. #### thinking.type
+    Switch for thinking modes supported by some platforms.
 
 1. #### Other Parameters  
 
@@ -120,17 +124,9 @@ However, sometimes you may want to use multiple different API interface addresse
 
 Replace `{endpoint}` and `{deployName}` with your endpoint and deployName.
 
-== Deepinfra
-
-**API Key** https://deepinfra.com/dash/api_keys
-
 == Cerebras
 
 **API Key** https://cloud.cerebras.ai/  ->  API Keys
-
-== Chutes
-
-**API Key** https://chutes.ai/app/api
 
 :::
 
@@ -141,6 +137,10 @@ Replace `{endpoint}` and `{deployName}` with your endpoint and deployName.
 == DeepSeek
 
 **API Key** https://platform.deepseek.com/api_keys
+
+== Xiaomi MiMo
+
+**API Key** https://platform.xiaomimimo.com/#/console/api-keys
 
 == Alibaba Cloud Bailian Large Model
 
@@ -161,14 +161,6 @@ Replace `{endpoint}` and `{deployName}` with your endpoint and deployName.
 == Zhipu AI
 
 **API Key** https://bigmodel.cn/usercenter/apikeys
-
-== Lingyi Wanwu
-
-**API Key** https://platform.lingyiwanwu.com/apikeys
-
-== SiliconFlow
-
-**API Key** https://cloud-hk.siliconflow.cn/account/ak
 
 == iFlytek Spark Large Model
 
@@ -203,7 +195,17 @@ You can also use API relay tools such as [new-api](https://github.com/QuantumNou
 
 For usage methods, you can refer to [this article](https://www.newapi.ai/en/docs/apps/luna-translator).
 
-### Offline Deployment Model
+## Specific Offline Translation Models
 
-You can also use tools like [llama.cpp](https://github.com/ggerganov/llama.cpp), [ollama](https://github.com/ollama/ollama) to deploy models, and then fill in the address and model.
+There are offline large language models specifically designed for offline translation or fine-tuned for particular scenarios.
 
+After deploying most models, you can directly call them using the **general-purpose API for large language models**. However, some models may require a dedicated prompt format to achieve better translation performance.
+
+This interface is designed specifically for models that require such dedicated prompt formats. Therefore, this interface does not provide user-customizable prompt settings; instead, it uses the prompt format provided by the model publisher.
+
+Currently, this interface supports the following models:
+
+| Author | Model | Languages |
+| ---- | ---------- | ---------- | 
+| tencent | Hy-MT2 | General |
+| SakuraLLM | SakuraLLM & GalTransl | Japanese -> Chinese |

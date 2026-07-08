@@ -202,7 +202,7 @@ DECLARE_API bool OcrIsProviderAvailable(const wchar_t *provider)
     return false;
 }
 
-std::vector<std::string> ListpenVINODeviceTypes()
+std::vector<std::string> ListOpenVINODeviceTypes()
 {
     auto hopenvino = GetModuleHandle(L"openvino.dll");
     if (!hopenvino)
@@ -225,7 +225,7 @@ std::vector<std::string> ListpenVINODeviceTypes()
 
 DECLARE_API void GetOpenVINODeviceTypes(void (*cb)(LPCSTR))
 {
-    for (auto &d : ListpenVINODeviceTypes())
+    for (auto &d : ListOpenVINODeviceTypes())
     {
         cb(d.c_str());
     }
@@ -288,7 +288,7 @@ DECLARE_API OcrLite *OcrInit(const wchar_t *szDetModel, const wchar_t *szRecMode
     else if (isOpenVINOAvailable())
     {
         std::string __;
-        for (auto &&_ : ListpenVINODeviceTypes())
+        for (auto &&_ : ListOpenVINODeviceTypes())
         {
             __ = std::move(_);
             if (__ == device_type)

@@ -1,41 +1,40 @@
 from translator.basetranslator import basetrans, GptTextWithDict, GptDict
 import requests
-import json
-from myutils.config import urlpathjoin
-from language import Languages
+import random
 from translator.gptcommon import list_models
-from myutils.utils import getlangtgt
-
-
-def useExfunction():
-    return getlangtgt() in (Languages.Chinese, Languages.TradChinese)
+from myutils.utils import APIType
+from translator.gptcommon import (
+    createheaders,
+    common_create_gpt_data,
+    parsestreamresp,
+    common_parse_normal_response,
+)
+from language import Languages
+from gui.customparams import *
 
 
 class TS(basetrans):
-    needzhconv = True
 
-    @property
-    def is_version_new(self):
-        return self.config["prompt_version"] in [1, 2, 3]
+    def result_cache_key(self, src, tgt, sentence):
+        __ = {}
+        __.update(self.rawconfig)
+        if "modellistcache" in __:
+            __.pop("modellistcache")
+        return (
+            src,
+            tgt,
+            sentence,
+            str(__),
+        )
 
     def __init__(self, typename):
         super().__init__(typename)
+        self.maybeuse = {}
         self.context = []
+        self.contextReal = []
+        self.__model = None
 
-    def get_client(self, api_url):
-        if api_url[-4:] == "/v1/":
-            api_url = api_url[:-1]
-        elif api_url[-3:] == "/v1":
-            pass
-        elif api_url[-1] == "/":
-            api_url += "v1"
-        else:
-            api_url += "/v1"
-        self.api_url = api_url
-        # OpenAI
-        # self.client = OpenAI(api_key="114514", base_url=api_url)
-
-    def make_gpt_dict_text(self, gpt_dict: GptDict):
+    def make_gpt_dict_text(self, gpt_dict: GptDict, needinfo=True, split="->"):
         gpt_dict_text_list = []
         for gpt in gpt_dict:
             src = gpt.src
@@ -43,10 +42,10 @@ class TS(basetrans):
             dst = self.checklangzhconv(self.srclang, gpt.dst)
             info = self.checklangzhconv(self.srclang, gpt.info)
 
-            if info:
-                single = "{}->{} #{}".format(src, dst, info)
+            if info and needinfo:
+                single = "{}{}{} #{}".format(src, split, dst, info)
             else:
-                single = "{}->{}".format(src, dst)
+                single = "{}{}{}".format(src, split, dst)
             gpt_dict_text_list.append(single)
 
         gpt_dict_raw_text = "\n".join(gpt_dict_text_list)
@@ -71,12 +70,10 @@ class TS(basetrans):
                 )
             messages.append({"role": "assistant", "content": "\n".join(__zh)})
 
-    def make_messages(self, query, gpt_dict: GptDict = None):
-        contextnum = (
-            self.config["append_context_num"] if self.config["use_context"] else 0
-        )
-        prompt_version = self.config["prompt_version"]
-        if prompt_version == 0:
+    def sakura_make_messages(
+        self, contextnum, prompt_version, query, gpt_dict: GptDict = None
+    ):
+        if prompt_version == "SakuraLLM v0.9":
             messages = [
                 {
                     "role": "system",
@@ -87,7 +84,7 @@ class TS(basetrans):
             messages.append(
                 {"role": "user", "content": "将下面的日文文本翻译成中文：" + query}
             )
-        elif prompt_version == 1:
+        elif prompt_version == "SakuraLLM v0.10":
             messages = [
                 {
                     "role": "system",
@@ -104,7 +101,7 @@ class TS(basetrans):
                 + query
             )
             messages.append({"role": "user", "content": content})
-        elif prompt_version == 2:
+        elif prompt_version == "SakuraLLM v1.0":
             messages = [
                 {
                     "role": "system",
@@ -123,13 +120,13 @@ class TS(basetrans):
             else:
                 content = "将下面的日文文本翻译成中文：" + query
             messages.append({"role": "user", "content": content})
-        elif prompt_version in (3, 4):
+        elif prompt_version in ("GalTransl", "SakuraLLM v1.5"):
             messages = [
                 {
                     "role": "system",
                     "content": (
                         "你是一个视觉小说翻译模型，可以通顺地使用给定的术语表以指定的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的特殊符号，也不要擅自增加或减少换行。"
-                        if prompt_version == 3
+                        if prompt_version == "GalTransl"
                         else "你是一个日本二次元领域的日语翻译模型，可以流畅通顺地以日本轻小说/漫画/Galgame的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。"
                     ),
                 }
@@ -159,161 +156,137 @@ class TS(basetrans):
             messages.append({"role": "user", "content": content})
         return messages
 
-    def send_request(self, messages, is_test=False, **kwargs):
-        extra_query = {
-            "do_sample": bool(self.config["do_sample"]),
-            "num_beams": int(self.config["num_beams"]),
-            "repetition_penalty": float(self.config["repetition_penalty"]),
-        }
-
-        # OpenAI
-        # output = self.client.chat.completions.create(
-        data = dict(
-            model=self.config["model"],
-            messages=messages,
-            temperature=float(self.config["temperature"]),
-            top_p=float(self.config["top_p"]),
-            max_tokens=1 if is_test else int(self.config["max_new_token"]),
-            frequency_penalty=float(
-                kwargs.get("frequency_penalty", self.config["frequency_penalty"])
-            ),
-            seed=-1,
-            extra_query=extra_query,
-            stream=False,
-        )
-        try:
-            output = self.proxysession.post(
-                urlpathjoin(self.api_url, "chat/completions"), json=data
-            )
-
-        except requests.exceptions.RequestException as e:
-            raise ValueError("无法连接Sakura API，可能未正确部署Sakura模型")
-        try:
-            yield output.json()
-        except:
-            raise Exception(output)
-
-    def send_request_stream(self, messages, is_test=False, **kwargs):
-        extra_query = {
-            "do_sample": bool(self.config["do_sample"]),
-            "num_beams": int(self.config["num_beams"]),
-            "repetition_penalty": float(self.config["repetition_penalty"]),
-        }
-
-        # OpenAI
-        # output = self.client.chat.completions.create(
-        data = dict(
-            model=self.config["model"],
-            messages=messages,
-            temperature=float(self.config["temperature"]),
-            top_p=float(self.config["top_p"]),
-            max_tokens=1 if is_test else int(self.config["max_new_token"]),
-            frequency_penalty=float(
-                kwargs.get("frequency_penalty", self.config["frequency_penalty"])
-            ),
-            seed=-1,
-            extra_query=extra_query,
-            stream=True,
-        )
-        try:
-            output = self.proxysession.post(
-                urlpathjoin(self.api_url, "chat/completions"),
-                json=data,
-                stream=True,
-            )
-        except requests.exceptions.RequestException:
-            raise ValueError("无法连接Sakura API，可能未正确部署Sakura模型")
-
-        if (not output.headers["Content-Type"].startswith("text/event-stream")) and (
-            output.status_code != 200
-        ):
-            raise Exception(output)
-        for chunk in output.iter_lines():
-            response_data: str = chunk.decode("utf-8").strip()
-            if not response_data.startswith("data: "):
-                continue
-            response_data = response_data[6:]
-            if not response_data:
-                continue
-            if response_data == "[DONE]":
-                break
-            try:
-                res = json.loads(response_data)
-            except:
-                raise Exception(response_data)
-
-            yield res
-
-    def translate(self, query: GptTextWithDict):
-
-        gpt_dict = query.dictionary
-        query: str = query.rawtext if self.is_version_new else query.parsedtext
-
-        self.checkempty("API接口地址")
-        self.get_client(self.config["API接口地址"])
-        frequency_penalty = float(self.config["frequency_penalty"])
-
-        messages = self.make_messages(query, gpt_dict=gpt_dict)
-        if bool(self.config["流式输出"]) == True:
-            output = self.send_request_stream(messages)
-            completion_tokens = 0
-            output_text = ""
-            for o in output:
-                if o["choices"] and (not o["choices"][0]["finish_reason"]):
-                    text_partial = o["choices"][0]["delta"].get("content")
-                    if not text_partial:
-                        continue
-                    output_text += text_partial
-                    yield text_partial
-                    completion_tokens += 1
+    def hymt2_make_messages(self, contextnum, query, gpt_dict: GptDict = None):
+        if not gpt_dict:
+            if self.tgtlang_1 in (Languages.Chinese, Languages.TradChinese):
+                messages = [
+                    {
+                        "role": "user",
+                        "content": f"将以下文本翻译成{self.tgtlang_1.zhsname},注意只需要输出翻译后的结果,不要额外解释:\n\n{query}",
+                    }
+                ]
+            else:
+                messages = [
+                    {
+                        "role": "user",
+                        "content": f"Translate the following text into {self.tgtlang_1.engname}. Note that you should only output the translated result without any additional explanation:\n\n{query}",
+                    }
+                ]
         else:
-            output = self.send_request(messages)
-            for o in output:
-                completion_tokens = o["usage"]["completion_tokens"]
-                output_text = o["choices"][0]["message"]["content"]
-                yield output_text
+            if self.tgtlang_1 in (Languages.Chinese, Languages.TradChinese):
+                messages = [
+                    {
+                        "role": "user",
+                        "content": f"""参考下面的翻译：
+{self.make_gpt_dict_text(gpt_dict, False, '翻译成')}
+将以下文本翻译为{self.tgtlang_1.zhsname}，注意只需要输出翻译后的结果，不要额外解释：\n\n{query}""",
+                    }
+                ]
+            else:
+                messages = [
+                    {
+                        "role": "user",
+                        "content": f"""Reference the following translations:
+{self.make_gpt_dict_text(gpt_dict, False, ' translates to ')}
+Translate the following text into {self.tgtlang_1.engname}. Note that you must ONLY output the translated result without any additional explanation:\n\n{query}""",
+                    }
+                ]
+        if contextnum and len(self.contextReal):
+            l = min(contextnum, len(self.contextReal) // 2)
+            messages = self.contextReal[-2 * l:] + messages
+        return messages
 
-        if bool(self.config["fix_degeneration"]):
-            cnt = 0
-            # print(completion_tokens)
-            while completion_tokens == int(self.config["max_new_token"]):
-                frequency_penalty += 0.1
-                yield "\0"
-                yield "[检测到退化，重试中]"
-                # print("------------------清零------------------")
-                if bool(self.config["流式输出"]) == True:
-                    output = self.send_request_stream(
-                        messages, frequency_penalty=frequency_penalty
-                    )
-                    completion_tokens = 0
-                    output_text = ""
-                    yield "\0"
-                    for o in output:
-                        if o["choices"][0]["finish_reason"] == None:
-                            text_partial = o["choices"][0]["delta"]["content"]
-                            if not text_partial:
-                                continue
-                            output_text += text_partial
-                            yield text_partial
-                            completion_tokens += 1
-                else:
-                    output = self.send_request(
-                        messages, frequency_penalty=frequency_penalty
-                    )
-                    yield "\0"
-                    for o in output:
-                        completion_tokens = o["usage"]["completion_tokens"]
-                        output_text = o["choices"][0]["message"]["content"]
-                        yield output_text
+    def make_messages(self, prompt_version: str, query, gpt_dict: GptDict = None):
+        contextnum = (
+            self.config["append_context_num"] if self.config["use_context"] else 0
+        )
+        if prompt_version == "auto":
+            sysprompt = self._gptlike_createsys(None, None)
+            messages = [{"role": "system", "content": sysprompt}]
+            messages.append({"role": "user", "content": query})
+            self.needzhconv = False
+        elif prompt_version == "GalTransl" or prompt_version.startswith("SakuraLLM"):
+            messages = self.sakura_make_messages(
+                contextnum, prompt_version, query, gpt_dict
+            )
+            self.needzhconv = True
+        elif prompt_version == "Hy-MT2":
+            messages = self.hymt2_make_messages(contextnum, query, gpt_dict)
+            self.needzhconv = False
+        return messages
 
-                cnt += 1
-                if cnt == 3:
-                    output_text = (
-                        "Error：模型无法完整输出或退化无法解决，请调大设置中的max_new_token！！！原输出："
-                        + output_text
-                    )
-                    break
-        if not (query.strip() and output_text.strip()):
+    def maybedetectprompttype(self, prompt_version):
+        if prompt_version != "auto":
+            return prompt_version
+        for m in (self.config["model"], self.__model):
+            if (not m) or (m == "sukinishiro"):
+                continue
+            mlow = m.lower()
+            if "hy-mt2" in mlow:
+                return "Hy-MT2"
+            if "galtransl" in mlow:
+                return "GalTransl"
+            if "sakura" in mlow:
+                if "qwen3-v1.5" in mlow:
+                    return "SakuraLLM v1.5"
+                if "qwen2.5-v1.0" in mlow:
+                    return "SakuraLLM v1.0"
+                if "v0.10" in mlow:
+                    return "SakuraLLM v0.10"
+                if "v0.9" in mlow:
+                    return "SakuraLLM v0.9"
+        return prompt_version
+
+    def translate(self, query_: GptTextWithDict):
+        self.checkempty("API接口地址")
+
+        gpt_dict = query_.dictionary
+        apitype = APIType(self.config.get("API接口地址", ""))
+        prompt_version = self.maybedetectprompttype(self.config["prompt_version_1"])
+        query = (
+            query_.rawtext if prompt_version != "SakuraLLM v0.9" else query_.parsedtext
+        )
+
+        messages = self.make_messages(prompt_version, query, gpt_dict=gpt_dict)
+
+        extrabody, extraheader = getcustombodyheaders(
+            self.config.get("customparams"), **locals()
+        )
+        usingstream = self.config["流式输出"]
+
+        headers = createheaders(
+            apitype,
+            "",
+            self.maybeuse,
+            self.proxy,
+            extraheader,
+        )
+        _json = common_create_gpt_data(self.config, messages, extrabody)
+        response = self.proxysession.post(
+            apitype.finalurl(), headers=headers, json=_json, stream=usingstream
+        )
+        getmodelhook = []
+        try:
+            if usingstream:
+                respmessage = yield from parsestreamresp(
+                    apitype,
+                    response,
+                    True,
+                    False,
+                    self.config["model"],
+                    getmodelhook=getmodelhook,
+                )
+            else:
+                respmessage = common_parse_normal_response(
+                    response, apitype, hidethinking=True, getmodelhook=getmodelhook
+                )
+                yield respmessage
+        except requests.exceptions.RequestException:
+            raise ValueError("无法连接，可能未正确部署Sakura模型")
+        self.__model = getmodelhook[0] if getmodelhook else self.config["model"]
+        if not (query.strip() and respmessage.strip()):
             return
-        self.context.append(query)
-        self.context.append(output_text)
+        self.context.append(query_.rawtext)
+        self.context.append(respmessage)
+        self.contextReal.append({"role": "user", "content": query_.rawtext})
+        self.contextReal.append({"role": "assistant", "content": respmessage})

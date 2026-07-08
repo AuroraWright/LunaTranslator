@@ -57,7 +57,7 @@
     當把滑鼠游標移動到**滑鼠游標穿透視窗按鈕及其左右一個按鈕的區域**時，會自動退出穿透狀態以使用工具按鈕；移出區域時自動恢復穿透狀態。
 
 1. #### <i class="fa fa-lightbulb"></i> <i class="btnstatus2 fa fa-lightbulb"></i> 視窗背景透明 {#anchor-backtransbutton}
-    該按鈕作用僅是一鍵使得翻譯視窗的不透明度切換到 0。這個切換不會使得原本的不透明度設定被遺忘。
+    該按鈕作用僅是一鍵使得翻譯視窗的不透明度切換到 0。當不透明度為0時，滑鼠也會穿透視窗。
 
 1. #### <i class="fa fa-lock"></i> <i class="btnstatus2 fa fa-unlock"></i> 鎖定工具列 {#anchor-locktoolsbutton}
     啟用後工具列將始終顯示。
@@ -202,5 +202,5 @@
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> 查詞 {#anchor-searchwordW}
     如果目前有文字被選取，則會查詢選取的文字並開啟查詞視窗。否則只是開啟或關閉查詞視窗。
 
-1. #### <i class="fa fa-refresh"></i> 重置翻譯狀態 {#anchor-reset_TS_status}
-    重置翻譯狀態，主要針對用於現今日益增長的大模型翻譯需求，可清除保存的上下文和其他資訊。
+1. #### <i class="fa fa-refresh"></i> 重設翻譯狀態 {#anchor-reset_TS_status}
+    重置翻譯狀態，主要針對用於現今日益增長的大模型翻譯需求，可清除儲存的上下文和其他資訊。

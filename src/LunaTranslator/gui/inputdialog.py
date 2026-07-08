@@ -22,6 +22,7 @@ from gui.usefulwidget import (
     getIconButton,
     VisLFormLayout,
     LinkLabel,
+    DarkLightAutoResetIconHelper,
 )
 from gui.dynalang import (
     LFormLayout,
@@ -33,7 +34,7 @@ from gui.dynalang import (
 )
 
 
-class noundictconfigdialog1___(LDialog):
+class noundictconfigdialog1___(LDialog, DarkLightAutoResetIconHelper):
     def newline(self, row, item: dict):
         items = []
         for _ in self.switchcols:
@@ -53,6 +54,9 @@ class noundictconfigdialog1___(LDialog):
         extraX: dict = None,
         need_regex=True,
         dictkeys=None,
+        merged=None,
+        mergek=None,
+        mergedf=None,
     ) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
         self.setWindowTitle(title)
@@ -62,6 +66,17 @@ class noundictconfigdialog1___(LDialog):
         # self.setWindowModality(Qt.ApplicationModal)
         self.reflist = reflist
         formLayout = QVBoxLayout(self)  # 配置layout
+        if merged:
+            formLayout.addLayout(
+                getboxlayout(
+                    [
+                        getsmalllabel("继承默认"),
+                        getsimpleswitch(merged, mergek, default=mergedf),
+                        "",
+                    ],
+                    QHBoxLayout,
+                ),
+            )
         if extraX:
             ttsprocess = extraX.get("ttsprocess_path")
             if not ttsprocess:
@@ -347,7 +362,7 @@ class yuyinzhidingsetting(LDialog):
             else:
                 com.setCurrentIndex(1)
 
-    def __init__(self, parent, reflist) -> None:
+    def __init__(self, parent, reflist, merged=None, mergek=None, mergedf=None) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
 
         self.setWindowTitle("语音指定")
@@ -355,7 +370,17 @@ class yuyinzhidingsetting(LDialog):
         # self.setWindowModality(Qt.ApplicationModal)
         self.reflist = reflist
         formLayout = QVBoxLayout(self)  # 配置layout
-
+        if merged:
+            formLayout.addLayout(
+                getboxlayout(
+                    [
+                        getsmalllabel("继承默认"),
+                        getsimpleswitch(merged, mergek, default=mergedf),
+                        "",
+                    ],
+                    QHBoxLayout,
+                ),
+            )
         self.model = LStandardItemModel()
         self.model.setHorizontalHeaderLabels(["范围", "条件", "正则", "目标", "指定为"])
         table = TableViewW(self, updown=True)
@@ -520,7 +545,7 @@ class SuperComboX(SuperCombo):
 
 
 @Singleton
-class autoinitdialog(LDialog):
+class autoinitdialog(LDialog, DarkLightAutoResetIconHelper):
     def closeEvent(self, a0):
         if not isqt5:
             for _ in self.__qt6fucker:
@@ -569,7 +594,12 @@ class autoinitdialog(LDialog):
                 __list = dd[key].split("|")
             else:
                 __list = dd[key].copy()
-            lineW = listediterline(line["name"], __list, directedit=directedit)
+            lineW = listediterline(
+                line["name"],
+                __list,
+                directedit=directedit,
+                issecret=line.get("issecret", False),
+            )
 
             def __getv(l, directedit):
                 if directedit:
@@ -598,7 +628,7 @@ class autoinitdialog(LDialog):
                 lineW.setCurrentIndex(dd.get(key, 0))
                 self.regist[key] = lineW.currentIndex
             self.cachecombo[key] = lineW
-        elif line["type"] == "listedit_with_name":
+        elif line["type"] == "llm_api_urls":
             lineW = QHBoxLayout()
             combo = SuperComboX()
             combo.setEditable(True)
@@ -608,7 +638,17 @@ class autoinitdialog(LDialog):
                 for _ in static_data["API_URL_PRESETS"]
             ]
             value = [_["value"] for _ in static_data["API_URL_PRESETS"]]
-            icons = [QIcon(_["icon"]) for _ in static_data["API_URL_PRESETS"]]
+            icons = [
+                (
+                    QIcon(_["icon"])
+                    if isinstance(_["icon"], str)
+                    else {
+                        "dark": QIcon(_["icon"]["dark"]),
+                        "light": QIcon(_["icon"]["light"]),
+                    }
+                )
+                for _ in static_data["API_URL_PRESETS"]
+            ]
 
             def __(combo: SuperCombo, index):
                 combo.setCurrentText(combo.getIndexData(index))
@@ -656,12 +696,6 @@ class autoinitdialog(LDialog):
 
             lineW.button(QDialogButtonBox.StandardButton.Ok).setText(_TR("确定"))
             lineW.button(QDialogButtonBox.StandardButton.Cancel).setText(_TR("取消"))
-        elif line["type"] == "lineedit":
-            if not isinstance(dd[key], str):
-                return
-            lineW = QLineEdit(dd[key])
-            lineW.setPlaceholderText(line.get("placeholder", ""))
-            self.regist[key] = lineW.text
         elif line["type"] == "multiline":
             lineW = QPlainTextEdit(dd[key])
             lineW.setPlaceholderText(line.get("placeholder", ""))
@@ -703,6 +737,12 @@ class autoinitdialog(LDialog):
             self.regist[key] = lineW.value
         elif line["type"] == "split":
             lineW = SplitLine()
+        else:  # elif line["type"] == "lineedit":
+            if not isinstance(dd[key], str):
+                return
+            lineW = QLineEdit(dd[key])
+            lineW.setPlaceholderText(line.get("placeholder", ""))
+            self.regist[key] = lineW.text
         return lineW
 
     def save(self, callback=None):
@@ -719,7 +759,7 @@ class autoinitdialog(LDialog):
 
     def __init__(
         self,
-        parent,
+        parent: QWidget,
         dd: "dict",
         title,
         width,
@@ -733,6 +773,7 @@ class autoinitdialog(LDialog):
             Qt.WindowType.WindowCloseButtonHint
             | Qt.WindowType.WindowMaximizeButtonHint,
         )
+        self.setWindowIcon(parent.windowIcon())
         self.setWindowTitle(title)
         self.resize(QSize(width, 10))
         formLayout = VisLFormLayout(self)
@@ -983,5 +1024,16 @@ class noundictconfigdialog1(noundictconfigdialog1___):
     pass
 
 
-def postconfigdialog2x(parent, reflist, title, header):
-    noundictconfigdialog1(parent, reflist, title, header)
+def stringreplacedialog(parent, reflistdict, ischild=False):
+    args = reflistdict["args"]
+    title = reflistdict["name"]
+    reflist = args["internal"]
+    noundictconfigdialog1(
+        parent,
+        reflist,
+        title,
+        ["原文内容", "替换为"],
+        merged=args if ischild else None,
+        mergek="merge",
+        mergedf=False,
+    )

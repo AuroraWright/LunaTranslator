@@ -10,7 +10,7 @@ import shutil
 import copy
 
 
-def __mayberelpath(path):
+def relpath(path):
     try:
         # https://bugs.python.org/issue36689
         # commonpath在低版本上不能跨盘比较
@@ -22,7 +22,7 @@ def __mayberelpath(path):
 
 
 def mayberelpath(path):
-    p = __mayberelpath(path)
+    p = relpath(path)
     if os.path.exists(p):
         return p
     return path
@@ -131,6 +131,11 @@ else:
             continue
         parselist(sub["games"])
 
+if None not in savegametaged:
+    savegametaged.append(None)
+if 1 not in savegametaged:
+    savegametaged.append(1)
+
 try:
     extradatas = _savehook[4]
 except:
@@ -165,7 +170,7 @@ def getdefaultsavehook(title=None):
         # "embedablehook": [],
         # "statistic_wordcount": 0,
         # "hook": [],
-        # "inserthooktimeout": 250,
+        # "inserthooktimeout": 500,
         # "insertpchooks_string": False,
         # "needinserthookcode": [],
         # "removeforeverhook": [],
@@ -232,7 +237,7 @@ class __uid2gamepath:
 uid2gamepath = __uid2gamepath()
 
 # 建立索引，当游戏特别多的时候，节省时间
-gamepath2uid_index = {}
+gamepath2uid_index: "dict[str, list[str]]" = {}
 for uid in savehook_new_data:
     _p = os.path.abspath(savehook_new_data[uid]["gamepath"])
     if _p not in gamepath2uid_index:
@@ -260,6 +265,39 @@ def findgameuidofpath(gamepath, findall=False):
         return uids
     collect = []
     for sub in savegametaged:
+        if sub == 1:
+            continue
+        if sub is None:
+            use = savehook_new_list
+        else:
+            use = sub["games"]
+        minidx = len(use)
+        minuid = None
+        for uid in uids:
+            if uid in use:
+                idx = use.index(uid)
+                if minidx > idx:
+                    minidx = idx
+                    minuid = uid
+        if minuid:
+            return minuid, use
+    if findall:
+        return collect
+    else:
+        return None, None
+
+
+def findgameuidofemugame(gameid, findall=False):
+    uids = []
+    for uid in savehook_new_data:
+        if gameid == savehook_new_data[uid].get("emugameid"):
+            uids.append(uid)
+    if findall:
+        return uids
+    collect = []
+    for sub in savegametaged:
+        if sub == 1:
+            continue
         if sub is None:
             use = savehook_new_list
         else:
@@ -322,7 +360,7 @@ syncconfig(transerrorfixdictconfig, defaulterrorfix)
 
 syncconfig(magpie_config, dfmagpie_config)
 syncconfig(
-    magpie_config["profiles"][globalconfig["profiles_index"]],
+    magpie_config["profiles"][globalconfig.get("profiles_index", 0)],
     dfmagpie_config["profiles"][0],
 )
 syncconfig(translatorsetting, translatordfsetting)
@@ -474,15 +512,16 @@ def saveallconfig(test=False):
 
 
 def dynamicapiname(apiuid):
-    return globalconfig["fanyi"][apiuid].get(
-        "name_self_set", globalconfig["fanyi"][apiuid]["name"]
-    )
+    my = globalconfig["fanyi"][apiuid].get("name_self_set")
+    if my:
+        return my
+    return _TR(globalconfig["fanyi"][apiuid]["name"])
 
 
 def getcopyfrom(uid):
     xx = uid
     while True:
-        cp = globalconfig["fanyi"][xx].get("copyfrom")
+        cp = globalconfig["fanyi"].get(xx, {}).get("copyfrom")
         if not cp:
             return xx
         xx = cp

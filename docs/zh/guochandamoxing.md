@@ -52,7 +52,7 @@
     自定义system prompt和user message中可以使用字段来引用一些信息：
     - `{sentence}`：当前欲翻译的文本
     - `{srclang}`和`{tgtlang}`：源语言和目标语言。如果prompt中仅使用英语，则会替换成语言名称的英语翻译，否则会替换成语言名称的当前UI语言翻译。
-    - `{contextOriginal[N]}`和`{contextTranslation[N]}`和`{contextBoth[N]}`：N条历史原文、译文、两者。N与`附带上下文个数`无关，需要输入时替换成整数。
+    - `{contextOriginal[N]}`和`{contextTranslation[N]}`和`{contextBoth[N]}`：N条历史原文、译文、两者。若输入是`contextBoth[N]`，则会引用`附带上下文个数`的值；若输入是`contextBoth[10]`，则会使用输入的10条数目。
     - `{DictWithPrompt[XXXXX]}`：此字段可以引用`专有名词翻译`中的词条，**且当没有匹配到的词条时，该字段会被清除以避免破坏翻译内容**。其中，`XXXXX`是一段引导LLM使用给定的词条来优化翻译的prompt，可以自行定义，或禁用自定义user message以使用默认的引导prompt。
 
 1. #### Temperature / max tokens / top p / frequency penalty
@@ -61,9 +61,15 @@
 
 1. #### reasoning effort
 
+    部分平台支持的思考强度控制。
+
     对于Gemini平台，会自动将选项映射为Gemini的`thinkingBudget`，映射规则为：
     
     none/minimal->0(停用思考，但对于Gemini-2.5-Pro模型不适用), low->512, medium->-1（开启动态思维）, high/xhigh->24576。
+
+1. #### thinking.type
+
+    部分平台支持的思考模式开关。
 
 1. #### 其他参数
 
@@ -120,17 +126,9 @@
 
 其中，将`{endpoint}`和`{deployName}`替换成你的endpoint和deployName
 
-== deepinfra
-
-**API Key** https://deepinfra.com/dash/api_keys
-
 == cerebras
 
 **API Key** https://cloud.cerebras.ai/  ->  API Keys
-
-== Chutes
-
-**API Key** https://chutes.ai/app/api
 
 :::
 
@@ -141,6 +139,10 @@
 == DeepSeek
 
 **API Key** https://platform.deepseek.com/api_keys
+
+== Xiaomi MiMo
+
+**API Key** https://platform.xiaomimimo.com/#/console/api-keys
 
 == 阿里云百炼大模型
 
@@ -164,14 +166,6 @@
 == 智谱AI
 
 **API Key** https://bigmodel.cn/usercenter/apikeys
-
-== 零一万物
-
-**API Key** https://platform.lingyiwanwu.com/apikeys
-
-== 硅基流动
-
-**API Key** https://cloud-hk.siliconflow.cn/account/ak
 
 == 讯飞星火大模型
 
@@ -207,10 +201,20 @@
 
 使用方法可以参考[此文章](https://www.newapi.ai/zh/docs/apps/luna-translator)
 
-### 离线部署模型
+## 特定离线翻译模型
 
-也可以使用[llama.cpp](https://github.com/ggerganov/llama.cpp) 、[ollama](https://github.com/ollama/ollama)之类的工具进行模型的部署，然后将地址和模型填入。
+存在一些专为离线翻译所设计，或针对特定场景微调的离线翻译大模型。
 
-#### Sakura大模型
+大部分模型部署好后，直接使用**大模型通用接口**调用即可。但部分模型，可能需要使用专用的prompt格式，来发挥其更好的翻译效果。
 
-部署方法可参考 https://github.com/SakuraLLM/SakuraLLM/wiki ，也可以部署到[Kaggle](https://kaggle.com/kernels/welcome?src=https://lunatranslator.org/nginxfile/llamacpp.ipynb)
+该接口专为这类需要专用prompt格式的模型而来。因此本接口不提供用户自定义的prompt设置，而是使用模型发布者提供的prompt格式。
+
+目前，本接口支持以下模型：
+
+| 作者 | 模型 | 语言 |
+| ---- | ---------- | ---------- | 
+| tencent | Hy-MT2 | 通用 |
+| SakuraLLM | SakuraLLM & GalTransl | 日语 -> 中文 |
+
+<!-- 
+部署方法可参考 https://github.com/SakuraLLM/SakuraLLM/wiki ，也可以部署到[Kaggle](https://kaggle.com/kernels/welcome?src=https://lunatranslator.org/nginxfile/llamacpp.ipynb) -->
