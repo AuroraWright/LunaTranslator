@@ -310,7 +310,8 @@ LunaHost::LunaHost()
         [=](HOSTINFO type, const std::wstring& output) { on_info(type, output); },
         {},
         {},
-        std::bind(&LunaHost::i18nQueryCallback, this, std::placeholders::_1)
+        std::bind(&LunaHost::i18nQueryCallback, this, std::placeholders::_1),
+        {}
     );
 
     Host::ResetLanguage();
